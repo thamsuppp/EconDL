@@ -47,9 +47,6 @@ from datetime import datetime
 
 from statsmodels.tsa.api import VAR
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-root_dir = 'drive/MyDrive/EconML DL/Fall 2021'
-
 """## Parameters for Model
 
 ### Variable Selection Networks
@@ -126,6 +123,32 @@ class VariableSelection(nn.Module):
     v = F.softmax(v, dim = -1)
     # size: num_obs x features
     return v
+
+# @title Fully Connected Network Architecture
+
+class FCN(nn.Module):
+  def __init__(self, n_features, n_outputs, dropout_rate, nodes, actv):
+    super(FCN, self).__init__()
+
+    # Assign the activation function
+    exec('self.actv = %s'%actv)
+
+    self.input = nn.Linear(n_features, nodes[0])
+    self.hidden = nn.ModuleList([nn.Linear(nodes[node_id], nodes[node_id+1]) for node_id in range(len(nodes)-1)])
+    self.output = nn.Linear(nodes[-1], n_outputs)
+    self.dropout = nn.Dropout(p = dropout_rate)
+
+  def forward(self, S):
+
+    x = self.actv(self.input(S))
+    x = self.dropout(x)
+
+    for i in range(len(self.hidden)):
+      x = self.actv(self.hidden[i](x))
+      x = self.dropout(x)
+    
+    output = self.output(x)
+    return output
 
 """### VARNN Code"""
 
