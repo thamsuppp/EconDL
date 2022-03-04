@@ -15,11 +15,6 @@ Original file is located at
 4. Execution Code Updated for different num variables, different methods of specifying hyperparams
 """
 
-!pip install statsmodels==0.12.2
-
-from google.colab import drive
-drive.mount('/content/drive')
-
 import pandas as pd
 import numpy as np
 from tqdm.auto import tqdm
