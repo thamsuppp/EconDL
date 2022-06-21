@@ -1257,7 +1257,7 @@ def process_varnn_data(data, nn_hyps, marx = True, test_size = 60, n_time_trends
 
   elif time_dummy_setting == 1: # Time dummies (1/0, no overlap)
     # Get number of time dummies to make - dummies every 60 months  (5 years)
-    n_dummies = int(x_d.shape[0] / dummy_interval)
+    n_dummies = int(x_mat_all.shape[0] / dummy_interval)
     time_dummies = np.zeros((x_mat_all.shape[0], n_dummies))
     for i in range(n_dummies):
       for t in range(x_mat_all.shape[0]):
@@ -1267,7 +1267,7 @@ def process_varnn_data(data, nn_hyps, marx = True, test_size = 60, n_time_trends
 
   elif time_dummy_setting == 2: # PGCtime dummies (1/0, overlapping)
     # Get number of time dummies to make - dummies every 60 months  (5 years)
-    n_dummies = int(x_d.shape[0] / dummy_interval)
+    n_dummies = int(x_mat_all.shape[0] / dummy_interval)
     time_dummies = np.ones((x_mat_all.shape[0], n_dummies))
     for i in range(n_dummies):
       for t in range(x_mat_all.shape[0]):
@@ -1287,7 +1287,7 @@ def process_varnn_data(data, nn_hyps, marx = True, test_size = 60, n_time_trends
       x_mat_all = np.hstack([x_mat_all, time_trends])
 
     # Get number of time dummies to make - dummies every 60 months  (5 years)
-    n_dummies = int(x_d.shape[0] / dummy_interval)
+    n_dummies = int(x_mat_all.shape[0] / dummy_interval)
     time_dummies = np.zeros((x_mat_all.shape[0], n_dummies))
     for i in range(n_dummies):
       for t in range(x_mat_all.shape[0]):
