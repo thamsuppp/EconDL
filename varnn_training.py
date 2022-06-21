@@ -1192,7 +1192,7 @@ def predict_nn(results, newx, device):
 def process_varnn_data(data, nn_hyps, marx = True, test_size = 60, n_time_trends = 0, time_dummy_setting = 0, dummy_interval = 12):
 
   n_var = data.shape[1]
-  var_name = list(x_d.columns)
+  var_name = list(data.columns)
   data = data.copy()
 
   n_lag_d = nn_hyps['n_lag_d']
