@@ -190,8 +190,10 @@ class VARNN(nn.Module):
           x_indices.append(torch.tensor(x_pos[i], dtype = torch.int64).to(device))
           n_betas.append(len(x_pos[i]))
 
-        # Hemispheres
+        self.n_betas = n_betas
+        self.n_alphas = int(n_outputs * (n_outputs+1) / 2)
 
+        # Hemispheres
         # Number of hemispheres is number of lists within the s_pos list
         self.num_hemispheres = len(self.s_pos)
         self.time_hemi_prior_variance = time_hemi_prior_variance
@@ -202,7 +204,7 @@ class VARNN(nn.Module):
 
           hemi_num_inputs = len(self.s_pos[hemi_id])
 
-          # Defining the TVPL and Output layers
+          # Defining the TVPL and Output layers - BETAS
           tvpl_all = []
           output_all = []
 
@@ -217,15 +219,37 @@ class VARNN(nn.Module):
               tvpl_var.append(nn.ModuleList(tvpl_list))
               output_var.append(nn.Linear(tvpl_archi[-1], 1))
             tvpl_all.append(nn.ModuleList(tvpl_var))
-            output_all.append(nn.ModuleList(output_var))            
-            
-          self.hemispheres.append(nn.ModuleDict({
-              'input': nn.Linear(hemi_num_inputs, nodes[0]).to(device),
-              'first': nn.Linear(nodes[0], nodes[0]).to(device),
-              'hidden': nn.ModuleList([nn.Linear(nodes[node_id], nodes[node_id+1]) for node_id in range(len(nodes)-1)]).to(device),
-              'tvpl': nn.ModuleList(tvpl_all).to(device),
-              'output': nn.ModuleList(output_all).to(device)
-        }))
+            output_all.append(nn.ModuleList(output_var))      
+
+          # Defining TVPL and Output layers - ALPHAS
+          tvpl_alphas = []
+          output_alphas = []
+          for i in range(self.n_alphas):
+            # Just use the 1st tvpl archi for now - could change later
+            tvpl_archi = neurons_weights[0]
+            tvpl_list = [nn.Linear(nodes[-1], tvpl_archi[0])]
+            for layer_id in range(len(tvpl_archi) - 1):
+              tvpl_list.append(nn.Linear(tvpl_archi[layer_id], tvpl_archi[layer_id+1]))
+            tvpl_alphas.append(nn.ModuleList(tvpl_list))
+            output_alphas.append(nn.Linear(tvpl_archi[-1], 1))
+
+          self.hemispheres.append(
+              nn.ModuleDict({
+              'betas': nn.ModuleDict({
+                'input': nn.Linear(hemi_num_inputs, nodes[0]).to(device),
+                'first': nn.Linear(nodes[0], nodes[0]).to(device),
+                'hidden': nn.ModuleList([nn.Linear(nodes[node_id], nodes[node_id+1]) for node_id in range(len(nodes)-1)]).to(device),
+                'tvpl': nn.ModuleList(tvpl_all).to(device),
+                'output': nn.ModuleList(output_all).to(device)
+              }),
+              'alphas': nn.ModuleDict({
+                'input': nn.Linear(hemi_num_inputs, nodes[0]).to(device),
+                'first': nn.Linear(nodes[0], nodes[0]).to(device),
+                'hidden': nn.ModuleList([nn.Linear(nodes[node_id], nodes[node_id+1]) for node_id in range(len(nodes)-1)]).to(device),
+                'tvpl': nn.ModuleList(tvpl_alphas).to(device),
+                'output': nn.ModuleList(output_alphas).to(device)
+              })
+              }))
 
         self.dropout = nn.Dropout(p = dropout_rate)
         self.input_dropout = nn.Dropout(p = 0)
@@ -234,7 +258,6 @@ class VARNN(nn.Module):
 
         # Instantiate the VSN or FCN networks if applicable
         if vsn == True:
-          #print('n_features', n_features, 'n_outputs', n_outputs)
           self.vsn = VariableSelection(n_features, n_outputs, input_dropout_rate)
           pytorch_total_params = sum(p.numel() for p in self.vsn.parameters())
         else:
@@ -251,12 +274,12 @@ class VARNN(nn.Module):
 
         self.x_indices = x_indices
         self.n_layers = len(nodes)
-        self.n_betas = n_betas
+        
         self.n_outputs = n_outputs
         self.neurons_weights = neurons_weights
 
     def forward(self, S):
-
+      
       # Get the Xs for the linear part
       dat = torch.index_select(S, 1, self.x_indices[0])
       for i in range(1, self.n_vars):
@@ -288,6 +311,7 @@ class VARNN(nn.Module):
       #   S = self.input_dropout(S)
 
       betas_hemispheres = []
+      alphas_hemispheres = []
 
       for hemi_id in range(self.num_hemispheres):
         # Subset the data going into that hemispheres
@@ -299,20 +323,18 @@ class VARNN(nn.Module):
 
         # Multiply by time hemisphere prior variance
         if self.num_hemispheres > 1 and hemi_id == self.num_hemispheres - 1:
-          S_hemi = S_hemi * (self.time_hemi_prior_variance ** 2)
+          S_hemi = S_hemi * (self.time_hemi_prior_variance ** 0.5)
         
-        # Pass the data through hemisphere, output betas
+        # BETAS: Pass the data through beta hemispheres, output betas
 
-        x = self.actv(self.hemispheres[hemi_id]['input'](S_hemi))
+        x = self.actv(self.hemispheres[hemi_id]['betas']['input'](S_hemi))
         x = self.dropout(x)
-
         # Hidden layers
-        x = self.actv(self.hemispheres[hemi_id]['first'](x))
+        x = self.actv(self.hemispheres[hemi_id]['betas']['first'](x))
         x = self.dropout(x)
-
         if self.n_layers > 1:
           for i in range(self.n_layers - 1):
-            x = self.actv(self.hemispheres[hemi_id]['hidden'][i](x))
+            x = self.actv(self.hemispheres[hemi_id]['betas']['hidden'][i](x))
             x = self.dropout(x)
 
         betas = []
@@ -320,77 +342,133 @@ class VARNN(nn.Module):
         for i in range(self.n_outputs):
           # For intercept
           x_i = torch.clone(x)
-          for l in range(len(self.hemispheres[hemi_id]['tvpl'][i][0])):
-            x_i = self.actv(self.hemispheres[hemi_id]['tvpl'][i][0][l](x_i))
-          betas_alt = self.hemispheres[hemi_id]['output'][i][0](x_i)
-
+          for l in range(len(self.hemispheres[hemi_id]['betas']['tvpl'][i][0])):
+            x_i = self.actv(self.hemispheres[hemi_id]['betas']['tvpl'][i][0][l](x_i))
+          betas_alt = self.hemispheres[hemi_id]['betas']['output'][i][0](x_i)
           del x_i
 
           # For betas on the variables
           for j in range(1, sum(self.n_betas) + 1):
             x_b = torch.clone(x)
-            for l in range(len(self.hemispheres[hemi_id]['tvpl'][i][j])):
-              x_b = self.actv(self.hemispheres[hemi_id]['tvpl'][i][j][l](x_b))
-            alt = self.hemispheres[hemi_id]['output'][i][j](x_b)
+            for l in range(len(self.hemispheres[hemi_id]['betas']['tvpl'][i][j])):
+              x_b = self.actv(self.hemispheres[hemi_id]['betas']['tvpl'][i][j][l](x_b))
+            alt = self.hemispheres[hemi_id]['betas']['output'][i][j](x_b)
             betas_alt = torch.cat([betas_alt, alt], dim = 1)
             del x_b
-
           betas.append(betas_alt)
           
         # betas
         betas_combined = torch.stack(betas, axis = 1)
         betas_hemispheres.append(betas_combined)
+
+        # ALPHAS: Pass the data through alpha hemispheres, output alphas
+        x = self.actv(self.hemispheres[hemi_id]['alphas']['input'](S_hemi))
+        x = self.dropout(x)
+        # Hidden layers
+        x = self.actv(self.hemispheres[hemi_id]['alphas']['first'](x))
+        x = self.dropout(x)
+        if self.n_layers > 1:
+          for i in range(self.n_layers - 1):
+            x = self.actv(self.hemispheres[hemi_id]['alphas']['hidden'][i](x))
+            x = self.dropout(x)
+
+        alphas = []
+
+        for i in range(self.n_alphas):
+          x_a = torch.clone(x)
+          for l in range(len(self.hemispheres[hemi_id]['alphas']['tvpl'][i])):
+            x_a = self.actv(self.hemispheres[hemi_id]['alphas']['tvpl'][i][l](x_a))
+          alphas_alt = self.hemispheres[hemi_id]['alphas']['output'][i](x_a)
+          del x_a
+          alphas.append(alphas_alt)
+        
+        alphas_combined = torch.stack(alphas, axis = 1)
+        alphas_hemispheres.append(alphas_combined)
       
-      betas_multiplied = reduce(lambda x, y: x + y, betas_hemispheres)
+      # Impose that the mean of the endog hemisphere is 0
+      if len(betas_hemispheres) == 2:
+        endog_hemi = betas_hemispheres[0]
+        exog_hemi = betas_hemispheres[1]
+        
+        # hemi dim: n_obs x n_var x n_betas
+        # Take the mean of the endog hemi over time
+        endog_hemi_mean = torch.nanmean(endog_hemi, axis = 0)
+        # Impose the endog hemi mean to be 0
+        endog_hemi = endog_hemi - endog_hemi_mean
+        exog_hemi = exog_hemi + endog_hemi_mean
+
+        betas_hemispheres = [endog_hemi, exog_hemi]
+
+      # Reorder alphas to the cholesky matrix
+      cholesky_hemispheres = []
+      for alpha_hemi in alphas_hemispheres:
+        alpha_hemi = alpha_hemi.squeeze()
+        # Construct precision matrix from the alphas
+        n_vars = self.n_outputs
+        # Lower-triangular Ct matrix
+        c_t = torch.zeros((alpha_hemi.shape[0], n_vars, n_vars))
+        i = 0
+        for row in range(n_vars):
+          for col in range(row+1):
+            if row == col:
+              # Absolute value for the diagonal elements of the cholesky matrix (6/2)
+              c_t[:, row, col] = torch.abs(alpha_hemi[:, i])
+            else:
+              c_t[:, row, col] = alpha_hemi[:, i]
+            i+=1
+        cholesky_hemispheres.append(c_t)
+      
+      # Combine results from different hemispheres (general reduce function to allow for mult or sum)
+      # Now we are using sum
+      betas_reduced = reduce(lambda x, y: x + y, betas_hemispheres)
+      cholesky_reduced = reduce(lambda x, y: x + y, cholesky_hemispheres)
+      
+      #c_t = n_obs x n_vars x n_vars
+      # Multiply by transpose to get precision matrix
+      precision = torch.bmm(cholesky_reduced, torch.permute(cholesky_reduced, (0, 2, 1)))
       
       # Generate predictions for this period (i.e. y_hat)
-      y_hat = torch.unsqueeze(torch.sum(torch.mul(dat, betas_multiplied[:, 0, :]), dim = 1), 1)
-      
+      y_hat = torch.unsqueeze(torch.sum(torch.mul(dat, betas_reduced[:, 0, :]), dim = 1), 1)
       for i in range(1, self.n_outputs):
-        alt = torch.unsqueeze(torch.sum(torch.mul(dat, betas_multiplied[:, i, :]), dim = 1), 1)
+        alt = torch.unsqueeze(torch.sum(torch.mul(dat, betas_reduced[:, i, :]), dim = 1), 1)
         y_hat = torch.hstack([y_hat, alt])
 
       with torch.no_grad():
         betas_hemispheres_stacked = torch.stack(betas_hemispheres, axis = -1)
         betas_hemispheres_stacked = torch.permute(betas_hemispheres_stacked, (0, 2, 1, 3))
 
-      return y_hat, betas_hemispheres_stacked, v
+        cholesky_hemispheres_stacked = torch.stack(cholesky_hemispheres, axis = -1)
 
-# @title Training Loop
+      return y_hat, precision, betas_hemispheres_stacked, cholesky_hemispheres_stacked, v
+
+
+# @title Training Loop (with New Loss)
 
 def training_loop_new(X_train, Y_train, model, criterion, optimizer, scheduler, train_indices, nn_hyps):
 
   num_epochs = nn_hyps['epochs']
+  loss_weights = nn_hyps['loss_weights']
+  n_vars = Y_train.shape[1]
+
   wait = 0
   best_epoch = 0
   best_loss = float('inf')
-
-  loss_weights = nn_hyps['loss_weights']
-
+  
   # Loss matrix, dim: num_epochs x num_variables
-  loss_matrix = np.empty((num_epochs, Y_train.shape[1]))
+  loss_matrix = np.empty((num_epochs, n_vars))
   loss_matrix[:] = np.nan
-  loss_matrix_oob = np.empty((num_epochs, Y_train.shape[1]))
+  loss_matrix_oob = np.empty((num_epochs, n_vars))
   loss_matrix_oob[:] = np.nan
-
-  #epoch_range = trange(num_epochs, desc='loss: ', leave=True)
 
   # Get the OOB indices (not in train_indices)
   oob_indices = [e for e in range(X_train.shape[0]) if e not in train_indices]
-  #print('train indices', train_indices)
-  #print('oob indices', oob_indices)
   train_losses = []
   oob_losses = []
+  oob_mse = []
   
   v_matrix = np.empty((num_epochs, X_train.shape[1]))
 
   for epoch in range(num_epochs):
-
-    if epoch % 50 == 0:
-      t = torch.cuda.get_device_properties(0).total_memory
-      r = torch.cuda.memory_reserved(0)
-      a = torch.cuda.memory_allocated(0)
-      print(f'Epoch {epoch}, Total Memory: {t / (10**9)}, Reserved {r / (10**9)}, Allocated {a / (10**9)}')
 
     loss_vars = []
     loss_vars_oob = []
@@ -398,61 +476,106 @@ def training_loop_new(X_train, Y_train, model, criterion, optimizer, scheduler, 
     model.train()
     optimizer.zero_grad()
 
-    ## Getting in-sample errors
-    for var in range(Y_train.shape[1]): # Loop through all variables
+    if nn_hyps['joint_estimation'] == False:
+      ## Getting in-sample errors
+      for var in range(n_vars): # Loop through all variables
+        Y_pred, _, betas, _, v = model(X_train[train_indices, :])
+        loss = criterion(Y_pred[:, var], Y_train[train_indices, var])
+        loss_matrix[epoch, var] = float(loss)
+        w = (loss_weights[0] / loss_weights[var]) ** nn_hyps['loss_weight_param']
+        loss = loss * w
+        loss_vars.append(loss)
+        
+        if type(v) is list:
+          pass
+        else:
+          v_matrix[epoch, :] = v.detach().cpu().numpy()
 
-      # Get the y_predictions (output of model() is yhat and betas)
-      Y_pred, betas, v = model(X_train[train_indices, :])
+      loss = torch.mean(torch.hstack(loss_vars))
+      l1_input = l1_reg_input(model) 
+      l1_input_loss = l1_input * nn_hyps['l1_input_lambda']
+      l0_input = l0_reg_input(model)
+      l0_input_loss = l0_input * nn_hyps['l0_input_lambda']
+      loss += (l1_input_loss + l0_input_loss)
 
-      # Get the loss for the 1st variable
-      loss = criterion(Y_pred[:, var], Y_train[train_indices, var])
-      # Store loss
-      loss_matrix[epoch, var] = float(loss)
-      # Reweight the loss (can delete since this is always 1)
-      w = (loss_weights[0] / loss_weights[var]) ** nn_hyps['loss_weight_param']
-      loss = loss * w
-      loss_vars.append(loss)
-      
-      # Store the v
-      if type(v) is list:
-        pass
+      loss.backward()
+      optimizer.step()
+      scheduler.step()
+      train_losses.append(float(loss))
+
+      model.eval()
+  
+      # Get OOB loss
+      for var in range(n_vars):
+        Y_pred_oob, _, _, _, _ = model(X_train[oob_indices, :])
+        loss_oob = criterion(Y_pred_oob[:, var], Y_train[oob_indices, var])
+        loss_matrix_oob[epoch, var] = float(loss_oob)
+        w = (loss_weights[0] / loss_weights[var]) ** nn_hyps['loss_weight_param']
+        loss_oob = loss_oob * w
+        loss_vars_oob.append(loss_oob)
+
+      loss_oob = torch.mean(torch.hstack(loss_vars_oob))
+      oob_losses.append(float(loss_oob))
+
+      if epoch % 40 == 0:
+        print(f'Epoch: {epoch}, Loss: {loss}, OOB Loss: {loss_oob}')
+
+    else: # Joint estimation
+
+      if nn_hyps['lambda_temper_epochs'] == False:
+        precision_lambda = nn_hyps['precision_lambda']
       else:
-        v_matrix[epoch, :] = v.detach().cpu().numpy()
+        if epoch > nn_hyps['lambda_temper_epochs']:
+          precision_lambda = 0
+        else:
+          precision_lambda = (1 - epoch/nn_hyps['lambda_temper_epochs']) * nn_hyps['precision_lambda']
 
-    # Combined loss is the mean of the re-weighted losses for each variable
-    loss = torch.mean(torch.hstack(loss_vars))
+      Y_pred, precision, betas, alphas, v = model(X_train[train_indices, :])
 
-    # Get the input L1 Loss
-    l1_input = l1_reg_input(model) 
-    l1_input_loss = l1_input * nn_hyps['l1_input_lambda']
-    l0_input = l0_reg_input(model)
-    l0_input_loss = l0_input * nn_hyps['l0_input_lambda']
-    loss += (l1_input_loss + l0_input_loss)
+      # Get the residuals
+      residuals = Y_pred - Y_train[train_indices, :]
+      precision = precision.to(device)
 
-    loss.backward()
-    optimizer.step()
-    scheduler.step()
-    train_losses.append(float(loss))
+      # Regularization to the precision matrix
+      precision = precision + torch.eye(n_vars).to(device) * precision_lambda
 
-    model.eval()
-    # Get OOB loss
-    for var in range(Y_train.shape[1]):
-      ## Getting OOB errors
-      Y_pred_oob, _, _ = model(X_train[oob_indices, :])
-      loss_oob = criterion(Y_pred_oob[:, var], Y_train[oob_indices, var])
-      # Store loss
-      loss_matrix_oob[epoch, var] = float(loss_oob)
-      # Reweight the loss (can delete since this is always 1)
-      w = (loss_weights[0] / loss_weights[var]) ** nn_hyps['loss_weight_param']
-      loss_oob = loss_oob * w
-      loss_vars_oob.append(loss_oob)
+      det_p = torch.linalg.det(precision).to(device)
+      temp = torch.bmm(residuals.unsqueeze(1), precision)
+      out = torch.bmm(temp, residuals.unsqueeze(2))
+      mean_log_det_p = torch.mean(torch.log(det_p))
+      loss = -nn_hyps['log_det_multiple'] * mean_log_det_p + torch.mean(out.squeeze())
 
-    loss_oob = torch.mean(torch.hstack(loss_vars_oob))
-    oob_losses.append(float(loss_oob))
+      mse = torch.mean(torch.bmm(residuals.unsqueeze(1), residuals.unsqueeze(2)))
 
-    if epoch % 20 == 0:
-      print(f'Epoch: {epoch}, Loss: {loss}, OOB Loss: {loss_oob}')
+      loss.backward()
+      optimizer.step()
+      scheduler.step()
+      train_losses.append(float(loss))
 
+      model.eval()
+
+      # Get OOB Loss 
+      Y_pred, precision, betas, alphas, v = model(X_train[oob_indices, :])
+      residuals = Y_pred - Y_train[oob_indices, :]
+      precision = precision.to(device)
+      # Regularization to the precision matrix
+      precision = precision + torch.eye(n_vars).to(device) * precision_lambda
+      det_p = torch.linalg.det(precision).to(device)
+      temp = torch.bmm(residuals.unsqueeze(1), precision)
+      out = torch.bmm(temp, residuals.unsqueeze(2))
+      mean_log_det_p = torch.mean(torch.log(det_p))
+      loss_oob = -nn_hyps['log_det_multiple'] * mean_log_det_p + torch.mean(out.squeeze())
+      
+      mse = torch.mean(torch.bmm(residuals.unsqueeze(1), residuals.unsqueeze(2)))
+      if epoch % 40 == 0:
+        print(f'OOB Mean Log Det Precision: {mean_log_det_p}, MSE: {mse}')
+
+      oob_losses.append(float(loss_oob))
+      oob_mse.append(float(mse))
+
+      if epoch % 40 == 0:
+        lr_now = optimizer.param_groups[0]['lr']
+        print(f'Epoch: {epoch}, Loss: {loss}, OOB Loss: {loss_oob}, LR: {lr_now}, precision_lambda: {precision_lambda}')
 
     ## Early Stopping
 
@@ -471,22 +594,22 @@ def training_loop_new(X_train, Y_train, model, criterion, optimizer, scheduler, 
     else: # If current epoch did not improve, increment wait
       wait = wait + 1
 
-    # Early stopping if wait exceeds patience
+    # Early stopping if wait exceeds patience (6/16 only stop when epoch is after 50)
     if wait > nn_hyps['patience']:
       lr_end = optimizer.param_groups[0]['lr']
       print(f'Early stopped, best epoch: {best_epoch}, train loss: {train_losses[best_epoch]}, best OOB loss: {best_loss}, LR: {lr_end}')
       break
-    
-    
-  #   if nn_hyps['show_train'] == 1:
-  #     print(f'Epoch {epoch} done. Loss: {loss}, OOB Loss: {loss_oob}')
-  # print(f'Epoch: {epoch}, Loss: {loss}, OOB Loss: {loss_oob}')
 
   # Plot the training curves
-  # plt.figure()
-  # plt.plot(train_losses)
-  # plt.plot(oob_losses)
-  # plt.show()
+  plt.figure()
+
+  ax1 = plt.subplot()
+  l1, = ax1.plot(train_losses[1:], label = 'Train Loss', color = 'blue')
+  l2, = ax1.plot(oob_losses[1:], label = 'OOB Loss', color = 'orange')
+  ax2 = ax1.twinx()
+  l3, = ax2.plot(oob_mse[1:], label = 'OOB MSE', color = 'red')
+  plt.legend([l1, l2, l3], ['Train Loss', 'OOB Loss', 'OOB MSE'])
+  plt.show()
 
   out = {
          'best_model': best_model,
@@ -497,6 +620,22 @@ def training_loop_new(X_train, Y_train, model, criterion, optimizer, scheduler, 
          'best_oob_loss': best_loss}
 
   return out
+
+### Calculate the Loss Weights (by running the Autoregression separately for each variable on training data)
+def get_mse_weights(X, Y, n_lags, trend = 't'):
+
+  mse_weights = []
+  # For each Y variable
+  for i in range(Y.shape[1]):
+    y = Y[:, i]
+    res = AutoReg(y, lags = n_lags, trend = 't').fit()
+    # Get predictions
+    y_pred = res.predict(start = 0, end = -1)
+    # Get MSE
+    mse = np.mean((y_pred - y[n_lags:]) ** 2)
+    mse_weights.append(mse)
+
+  return mse_weights
 
 ### Calculate the Loss Weights (by running the Autoregression separately for each variable on training data)
 def get_mse_weights(X, Y, n_lags, trend = 't'):
@@ -575,7 +714,6 @@ def build_VARNN(X, Y, train_indices, nn_hyps, device):
     n_features = X.shape[1]
 
   n_outputs= len(nn_hyps['x_pos'])
-  print('n_outputs', n_outputs)
   if nn_hyps['eqn_by_eqn'] == True:
     models = []
     results_all = []
@@ -653,6 +791,11 @@ def build_VARNN(X, Y, train_indices, nn_hyps, device):
 
     lmda = lambda epoch: nn_hyps['lr_multiple']
     scheduler = optim.lr_scheduler.MultiplicativeLR(optimizer_obj, lr_lambda = lmda)
+
+    # scheduler = optim.lr_scheduler.CyclicLR(optimizer_obj, base_lr = nn_hyps['lr'] / 2, max_lr = nn_hyps['lr'] * 4, 
+    #                                         step_size_up = 50, 
+    #                                         step_size_down = 50, cycle_momentum = False)
+    
     model = model.to(device)
     
     # Training the built VARNN and return the results
@@ -666,6 +809,12 @@ def build_VARNN(X, Y, train_indices, nn_hyps, device):
 def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
 
   x_pos_flat = list(itertools.chain(*nn_hyps['x_pos']))
+
+  n_obs = X_train.shape[0]
+  n_vars = Y_train.shape[1]
+  n_betas = len(x_pos_flat) + 1
+  n_hemispheres = len(nn_hyps['s_pos'])
+
   # Conduct prior shift
   if nn_hyps['prior_shift'] == True:
     x_pos_ps = sorted(list(itertools.chain(*nn_hyps['x_pos_ps'])))
@@ -724,18 +873,17 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
   sampling_rate = nn_hyps['sampling_rate']
   block_size = nn_hyps['block_size']
   bootstrap_indices = nn_hyps['bootstrap_indices']
-
   oob_loss_multiple_threshold = nn_hyps['oob_loss_multiple_threshold']
 
   # Matrix to store all predictions for every bootstrap run
   # pred_in_ensemble are the OOB results, pred_ensemble are the test results
-  pred_in_ensemble = np.empty((X_train.shape[0], num_bootstrap, Y_train.shape[1]))
+  pred_in_ensemble = np.empty((X_train.shape[0], num_bootstrap, n_vars))
   pred_in_ensemble[:] = np.nan
   pred_ensemble = np.empty((X_test.shape[0], num_bootstrap, Y_test.shape[1]))
   pred_ensemble[:] = np.nan
 
   # Matrix to store ensembled predictions
-  pred_in = np.empty((X_train.shape[0], Y_train.shape[1]))
+  pred_in = np.empty((X_train.shape[0], n_vars))
   pred_in[:] = np.nan
   pred = np.empty((X_test.shape[0], Y_test.shape[1]))
   pred[:] = np.nan
@@ -745,29 +893,46 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
   mse_in_ensemble[:] = np.nan
   mse_ensemble = np.empty(num_bootstrap)
   mse_ensemble[:] = np.nan
-
-  n_betas = len(x_pos_flat) + 1
-  n_hemispheres = len(nn_hyps['s_pos'])
   
   # Matrix to store all betas: dim is len(X) x n_betas (n_vars+1) x n_bootstraps x n_vars
   betas_draws = np.empty((X_train.shape[0] + X_test.shape[0], 
                           n_betas,
                           num_bootstrap,
-                          Y_train.shape[1], n_hemispheres))
-  
+                          n_vars, n_hemispheres))
   betas_in_draws = np.empty((X_train.shape[0] + X_test.shape[0], 
                           n_betas,
                           num_bootstrap,
-                          Y_train.shape[1], n_hemispheres))
+                          n_vars, n_hemispheres))
   betas_draws[:] = np.nan
   betas_in_draws[:] = np.nan
 
+  # Matrix to store all sigmas
+  sigmas_draws = np.empty((X_train.shape[0] + X_test.shape[0], 
+                           n_vars, n_vars,
+                           num_bootstrap))
+  sigmas_in_draws = np.empty((X_train.shape[0] + X_test.shape[0], 
+                           n_vars, n_vars,
+                           num_bootstrap))
+  sigmas_draws[:] = np.nan
+  sigmas_in_draws[:] = np.nan
+
+  # Matrix to store precision matrix and choleksy of precision
+  precision_draws = np.zeros_like(sigmas_draws)
+  precision_in_draws = np.zeros_like(sigmas_in_draws)
+  precision_draws[:] = np.nan
+  precision_in_draws[:] = np.nan
+
+  cholesky_draws = np.empty((X_train.shape[0] + X_test.shape[0], 
+                           n_vars, n_vars, n_hemispheres,
+                           num_bootstrap))
+  cholesky_in_draws = np.zeros_like(cholesky_draws)
+  cholesky_draws[:] = np.nan
+  cholesky_in_draws[:] = np.nan
+  
   # Store models and values
   trained_model = []
-  mse = [] # Matrix of losses
-  mse_oob = [] # Matrix of OOB losses
-  val_mse = [] # MSE values
   v_matrix = []
+  bootstrap_indexes = []
 
   accepted_bootstraps = 0
   ## 3A: Sample bootstrap indices
@@ -778,15 +943,13 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
 
     print(f'Bootstrap iteration {j} at time {datetime.now()}')
 
-    if bootstrap_indices:
-      # If bootstrap indices are provided in nn_hyps, then no need to sample inside
+    if bootstrap_indices: # If bootstrap indices are provided in nn_hyps, then no need to sample inside
       boot = bootstrap_indices[j]['in_sample']
       oob = bootstrap_indices[j]['oob']
       oos = list(range(X_train.shape[0], X_train.shape[0] + X_test.shape[0]))
     
-    else:
-      if opt_bootstrap == 1:
-        # Sample the bootstrap indices
+    else: # Sample the bootstraps
+      if opt_bootstrap == 1: # Individual obs bootstrap
         k = int(sampling_rate * X_train.shape[0])
 
         boot = sorted(random.sample(list(range(X_train.shape[0])), k = k))
@@ -794,7 +957,6 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
         oos = list(range(X_train.shape[0], X_train.shape[0] + X_test.shape[0]))
 
       if opt_bootstrap == 2: # Block bootstrap
-        n_obs = X_train.shape[0]
         # Select the size of first block
         first_block_size = random.sample(list(range(int(block_size / 2), block_size + 1)), k = 1)[0]
         # Get the starting ids of the blocks
@@ -829,14 +991,6 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
       for e in models_out:
         models.append(e['best_model'].to(device))
     
-    # if nn_hyps['save_models'] == True:
-    #     trained_model.append(model)
-    # val_mse.append(model_out['best_oob_loss'])
-    # mse.append(model_out['loss_matrix'])
-    # mse_oob.append(model_out['loss_matrix_oob'])
-    # v_matrix.append(model_out['v'])
-    n_vars = Y_train.shape[1]
-
     # Reject the model if the OOB loss is much higher than train loss
     # oob_loss_multiple = model_out['best_oob_loss'] / model_out['best_train_loss']
     # if oob_loss_multiple > oob_loss_multiple_threshold:
@@ -847,36 +1001,53 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
       # 4: Inverting the scaling and storing the estimated predictions and betas
 
       if nn_hyps['eqn_by_eqn'] == False:
-        in_preds, in_betas, _ = model(X_train[boot, :])
-        oob_preds, oob_betas, _ = model(X_train[oob, :])
-        test_preds, test_betas, _ = model(X_test)
+        in_preds, in_precision, in_betas, in_cholesky, _ = model(X_train[boot, :])
+        oob_preds, oob_precision, oob_betas, oob_cholesky, _ = model(X_train[oob, :])
+        test_preds, test_precision, test_betas, test_cholesky, _ = model(X_test)
         del model
 
       else:
-        for var in range(n_vars):
-          if var == 0:
-            in_preds, in_betas, _ = models[var](X_train[boot, :])
-            oob_preds, oob_betas, _ = models[var](X_train[oob, :])
-            test_preds, test_betas, _ = models[var](X_test)
-          else:
-            in_pred, in_beta, _ = models[var](X_train[boot, :])
-            oob_pred, oob_beta, _ = models[var](X_train[oob, :])
-            test_pred, test_beta, _ = models[var](X_test)
+        raise NotImplementedError('Not implemented for eqn by eqn True')
 
-            in_preds = torch.hstack((in_preds, in_pred))
-            in_betas = torch.dstack((in_betas, in_beta))
-            oob_preds = torch.hstack((oob_preds, oob_pred))
-            oob_betas = torch.dstack((oob_betas, oob_beta))
-            test_preds = torch.hstack((test_preds, test_pred))
-            test_betas = torch.dstack((test_betas, test_beta))
+      # Add the regularization to the preicision matrix
+      in_precision = in_precision.detach().cpu().numpy()
+      oob_precision = oob_precision.detach().cpu().numpy()
+      test_precision = test_precision.detach().cpu().numpy()
+      
+      if nn_hyps['lambda_temper_epochs'] == False:
+        in_precision = in_precision + nn_hyps['precision_lambda'] * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), in_precision.shape[0], axis = 0)
+        oob_precision = oob_precision + nn_hyps['precision_lambda'] * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), oob_precision.shape[0], axis = 0)
+        test_precision = test_precision + nn_hyps['precision_lambda'] * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), test_precision.shape[0], axis = 0)
 
-        del models
+      # Save covariance matrices by inverting precision matrix
+      sigmas_in_draws[boot, :, :, j] = np.linalg.inv(in_precision)
+      sigmas_draws[oob, :, :, j] = np.linalg.inv(oob_precision)
+      sigmas_draws[oos, :, :, j] = np.linalg.inv(test_precision)
+
+      # Save precision matrix
+      precision_in_draws[boot, :, :, j] = in_precision
+      precision_draws[oob, :, :, j] = oob_precision
+      precision_draws[oos, :, :, j] = test_precision
+
+      # Save cholesky
+      cholesky_in_draws[boot, :, :, :, j] = in_cholesky.detach().cpu().numpy()
+      cholesky_draws[oob, :, :, :, j] = oob_cholesky.detach().cpu().numpy()
+      cholesky_draws[oos, :, :, :, j] = test_cholesky.detach().cpu().numpy()
 
       if nn_hyps['standardize'] == True:
         pred_in_ensemble[oob, j, :] = invert_scaling(oob_preds.detach().cpu().numpy(), scale_output['mu_y'], scale_output['sigma_y'])
         pred_ensemble[:, j, :] = invert_scaling(test_preds.detach().cpu().numpy(), scale_output['mu_y'], scale_output['sigma_y'])
         
         if nn_hyps['fcn'] == False:
+
+            # Un-standardize the covariance matrix
+            for i in range(n_vars): # multiply each row, and each column
+              sigmas_in_draws[:, i, :, j] = sigmas_in_draws[:, i, :, j] * scale_output['sigma_y'][i]
+              sigmas_in_draws[:, :, i, j] = sigmas_in_draws[:, :, i, j] * scale_output['sigma_y'][i]
+
+              sigmas_draws[:, i, :, j] = sigmas_draws[:, i, :, j] * scale_output['sigma_y'][i]
+              sigmas_draws[:, :, i, j] = sigmas_draws[:, :, i, j] * scale_output['sigma_y'][i]
+
             # Store the betas
             betas_in_draws[boot, :, j, :, :] = in_betas.detach().cpu().numpy()
             betas_draws[oob, :, j, :, :] = oob_betas.detach().cpu().numpy()
@@ -886,8 +1057,7 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
             betas_in_draws_std = betas_in_draws.copy()
             betas_draws_std = betas_draws.copy()
 
-            for i in range(Y_train.shape[1]):
-    
+            for i in range(n_vars):
               # Invert scaling for the constant term
               for hemi in range(n_hemispheres):
                 betas_draws[:, 0, j, i, hemi] = betas_draws[:, 0, j, i, hemi] * scale_output['sigma_y'][i] + (scale_output['mu_y'][i] if hemi == 0 else 0)
@@ -914,7 +1084,6 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
             betas_draws[oob, :, j, :, :] = oob_betas.detach().cpu().numpy()
             betas_draws[oos, :, j, :, :] = test_betas.detach().cpu().numpy()
 
-
   # Add the prior shift betas back
   if nn_hyps['prior_shift'] == True:
     pass
@@ -927,9 +1096,7 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
     # betas_in_draws = betas_in_draws + ps_params
     # betas_draws = betas_draws + ps_params
 
-  print(f'Accepted bootstraps: {accepted_bootstraps}/{num_bootstrap}')
-
-  ### 5: Take the median of the bootstrapped values
+  ### 5: Take the median of the bootstrapped values (needed for forecasting)
   betas = np.nanmedian(betas_draws, axis = 2) # n_periods x n_betas x n_vars (= n_equations)
   pred_in = np.nanmedian(pred_in_ensemble, axis = 1) # n_periods x n_vars
   pred = np.nanmedian(pred_ensemble, axis = 1) # n_periods x n_vars
@@ -943,6 +1110,12 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
           'betas_draws': betas_draws,
           'betas_in_draws_std': betas_in_draws_std,
           'betas_draws_std': betas_draws_std,
+          'sigmas_in_draws': sigmas_in_draws,
+          'sigmas_draws': sigmas_draws,
+          'precision_in_draws': precision_in_draws,
+          'precision_draws': precision_draws,
+          'cholesky_in_draws': cholesky_in_draws,
+          'cholesky_draws': cholesky_draws,
           'pred_ensemble': pred_ensemble, 
           'pred_in_ensemble': pred_in_ensemble,
           'pred_in': pred_in,
@@ -950,12 +1123,7 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
           'oos_index': oos,
           'v_matrix': v_matrix,
           'trained_model': trained_model,
-          'mse_oob': mse_oob,
-          'mse': mse,
           'scale_output': scale_output,
-          'prior_shift': nn_hyps['prior_shift'],
-          'prior_shift_strength': nn_hyps['prior_shift_strength'],
-          'standardize': nn_hyps['standardize'],
           'x_pos_ps': x_pos_ps,
           'ps_model': ps_model
           }
@@ -1017,10 +1185,16 @@ def predict_nn(results, newx, device):
 
 # Wrapper function to process all the VARNN data
 
-def process_varnn_data(x_d, nn_hyps, marx = True, test_size = 60, n_time_trends = 0, time_dummy_setting = 0, dummy_interval = 12):
-  n_var = x_d.shape[1]
+# @title Process VARNN Data
+
+# Wrapper function to process all the VARNN data
+
+def process_varnn_data(data, nn_hyps, marx = True, test_size = 60, n_time_trends = 0, time_dummy_setting = 0, dummy_interval = 12):
+
+  n_var = data.shape[1]
   var_name = list(x_d.columns)
-  mat_data_d = x_d.copy()
+  data = data.copy()
+
   n_lag_d = nn_hyps['n_lag_d']
   n_lag_linear = nn_hyps['n_lag_linear']
   n_lag_ps = nn_hyps['n_lag_ps']
@@ -1028,119 +1202,121 @@ def process_varnn_data(x_d, nn_hyps, marx = True, test_size = 60, n_time_trends 
   # 2: Generating the lags
   for lag in range(1, n_lag_d + 1):
     for col in var_name:
-      mat_data_d[f'{col}.l{lag}'] = mat_data_d[col].shift(lag)
+      data[f'{col}.l{lag}'] = data[col].shift(lag)
 
-  mat_data_d = mat_data_d.dropna()
+  data = data.dropna()
 
-  mat_y_d = np.array(mat_data_d.iloc[:, :n_var])
-  mat_x_d = np.array(mat_data_d.iloc[:, n_var:])
-  mat_x_d_colnames = mat_data_d.iloc[:, n_var:].columns
+  y_mat = np.array(data.iloc[:, :n_var]) # Target vairables (n_vars)
+  x_mat = np.array(data.iloc[:, n_var:]) # Explanatory variables (lags of target variables + other exogenous variables)
+  x_mat_colnames = data.iloc[:, n_var:].columns
   
   if marx == True:
     # Computing MARX (moving averages)
-    mat_x_d_marx = np.array(mat_x_d)
+    x_mat_marx = np.array(x_mat)
 
     for lag in range(2, n_lag_d + 1):
       for var in range(n_var):
         # For earlier lags, set earliest lagged value to be the mean of all more recent lags
         who_to_avg = list(range(var, n_var * (lag - 1) + var + 1, n_var))
-        #print(lag, var, who_to_avg)
-        mat_x_d_marx[:, who_to_avg[-1]] = mat_x_d[:, who_to_avg].mean(axis = 1)
+        x_mat_marx[:, who_to_avg[-1]] = x_mat[:, who_to_avg].mean(axis = 1)
 
-    mat_x_d_marx_colnames = ['MARX_' + e for e in mat_x_d_colnames]
-    print(mat_x_d_marx_colnames)
-
-    print('Size of mat_x_d before appending MARX', mat_x_d[:, :(n_var * n_lag_linear)].shape)
-    print('Size of mat_x_d_marx', mat_x_d_marx.shape)
+    x_mat_marx_colnames = ['MARX_' + e for e in x_mat_colnames]
+    print('Size of x_mat before appending MARX', x_mat[:, :(n_var * n_lag_linear)].shape)
+    print('Size of x_mat_marx', x_mat_marx.shape)
 
     # Concatenate
-    mat_x_d_all = np.hstack([mat_x_d[:, :(n_var * n_lag_linear)], mat_x_d_marx])
-    mat_x_d_all_colnames = list(mat_x_d_colnames[:(n_var * n_lag_linear)]) + list(mat_x_d_marx_colnames)
+    x_mat_all = np.hstack([x_mat[:, :(n_var * n_lag_linear)], x_mat_marx])
+    x_mat_all_colnames = list(x_mat_colnames[:(n_var * n_lag_linear)]) + list(x_mat_marx_colnames)
 
-    print('mat_x_d_all size', mat_x_d_all.shape)
+    print('x_mat_all size', x_mat_all.shape)
   
   else: # If no MARX
-    mat_x_d_all = np.array(mat_x_d)
-    mat_x_d_all = mat_x_d_all[:, :(n_var * n_lag_d)]
-    mat_x_d_all_colnames = list(mat_x_d_colnames[:(n_var * n_lag_d)])
+    x_mat_all = np.array(x_mat)
+    x_mat_all = x_mat_all[:, :(n_var * n_lag_d)]
+    x_mat_all_colnames = list(x_mat_colnames[:(n_var * n_lag_d)])
 
-    print('mat_x_d_all size', mat_x_d_all.shape)
+    print('x_mat_all size', x_mat_all.shape)
 
-  if time_dummy_setting == 1:
-    # Get number of time dummies to make - dummies every 60 months  (5 years)
-    n_dummies = int(x_d.shape[0] / dummy_interval)
-    time_dummies = np.zeros((mat_x_d_all.shape[0], n_dummies))
-    for i in range(n_dummies):
-      for t in range(mat_x_d_all.shape[0]):
-        time_dummies[t, i] = 1 if ( int(t / dummy_interval) == i) else 0
-    
-    mat_x_d_all = np.hstack([mat_x_d_all, time_dummies])
-    print('Size of X_train after dummies', mat_x_d_all.shape)
+  # Add exog
+  if nn_hyps['exog'] is not None:
+    x_mat_all = np.hstack([x_mat_all, nn_hyps['exog'][n_lag_d:, :]])
+    print('Appended exogenous data', nn_hyps['exog'].shape)
+  size_before_time = x_mat_all.shape[1]
 
-  
-  elif time_dummy_setting == 2:
-    # Get number of time dummies to make - dummies every 60 months  (5 years)
-    n_dummies = int(x_d.shape[0] / dummy_interval)
-    time_dummies = np.ones((mat_x_d_all.shape[0], n_dummies))
-    for i in range(n_dummies):
-      for t in range(mat_x_d_all.shape[0]):
-        time_dummies[t, i] = 0 if ( int(t / dummy_interval) <= i) else 1
+  ### Create time dummies based on different methods
 
-    random_mat = np.random.randn(mat_x_d_all.shape[0], n_dummies) * 0.001
-    time_dummies = time_dummies + random_mat
-    mat_x_d_all = np.hstack([mat_x_d_all, time_dummies])
-    print('Size of X_train after dummies', mat_x_d_all.shape)
-
-  elif time_dummy_setting == 0:
-    time_trends = np.zeros((mat_x_d_all.shape[0], 3))
-    time_trends[:, 0] = np.array(list(range(mat_x_d_all.shape[0])))
+  if time_dummy_setting == 0: # Linear + Quad + Cubic time trend
+    time_trends = np.zeros((x_mat_all.shape[0], 3))
+    time_trends[:, 0] = np.array(list(range(x_mat_all.shape[0])))
     time_trends[:, 1] = time_trends[:, 0] ** 2
     time_trends[:, 2] = time_trends[:, 0] ** 3
 
     # Add time trend
     for i in range(n_time_trends):
-      mat_x_d_all = np.hstack([mat_x_d_all, time_trends])
+      x_mat_all = np.hstack([x_mat_all, time_trends])
 
-    print('Size of X_train before appending time', mat_x_d_all.shape)
+  elif time_dummy_setting == 1: # Time dummies (1/0, no overlap)
+    # Get number of time dummies to make - dummies every 60 months  (5 years)
+    n_dummies = int(x_d.shape[0] / dummy_interval)
+    time_dummies = np.zeros((x_mat_all.shape[0], n_dummies))
+    for i in range(n_dummies):
+      for t in range(x_mat_all.shape[0]):
+        time_dummies[t, i] = 1 if ( int(t / dummy_interval) == i) else 0
+    
+    x_mat_all = np.hstack([x_mat_all, time_dummies])
 
-  elif time_dummy_setting == 3:
-  # Both time dummies and time trends
-    time_trends = np.zeros((mat_x_d_all.shape[0], 3))
-    time_trends[:, 0] = np.array(list(range(mat_x_d_all.shape[0])))
+  elif time_dummy_setting == 2: # PGCtime dummies (1/0, overlapping)
+    # Get number of time dummies to make - dummies every 60 months  (5 years)
+    n_dummies = int(x_d.shape[0] / dummy_interval)
+    time_dummies = np.ones((x_mat_all.shape[0], n_dummies))
+    for i in range(n_dummies):
+      for t in range(x_mat_all.shape[0]):
+        time_dummies[t, i] = 0 if ( int(t / dummy_interval) <= i) else 1
+
+    random_mat = np.random.randn(x_mat_all.shape[0], n_dummies) * 0.001
+    time_dummies = time_dummies + random_mat
+    x_mat_all = np.hstack([x_mat_all, time_dummies])
+
+  elif time_dummy_setting == 3: # Both time dummies and time trends 
+  # (essentially settings 0 and 1 combined)
+    time_trends = np.zeros((x_mat_all.shape[0], 3))
+    time_trends[:, 0] = np.array(list(range(x_mat_all.shape[0])))
     time_trends[:, 1] = time_trends[:, 0] ** 2
     time_trends[:, 2] = time_trends[:, 0] ** 3
-
     for i in range(n_time_trends):
-      mat_x_d_all = np.hstack([mat_x_d_all, time_trends])
+      x_mat_all = np.hstack([x_mat_all, time_trends])
 
     # Get number of time dummies to make - dummies every 60 months  (5 years)
     n_dummies = int(x_d.shape[0] / dummy_interval)
-    time_dummies = np.zeros((mat_x_d_all.shape[0], n_dummies))
+    time_dummies = np.zeros((x_mat_all.shape[0], n_dummies))
     for i in range(n_dummies):
-      for t in range(mat_x_d_all.shape[0]):
+      for t in range(x_mat_all.shape[0]):
         time_dummies[t, i] = 1 if ( int(t / dummy_interval) == i) else 0
-    
-    mat_x_d_all = np.hstack([mat_x_d_all, time_dummies])
+    x_mat_all = np.hstack([x_mat_all, time_dummies])
 
-    print('Size of X_train after time', mat_x_d_all.shape)
-    
-    # Just one time trend
-  elif time_dummy_setting == 4:
-    time_trends = np.zeros((mat_x_d_all.shape[0], 1))
-    time_trends[:, 0] = np.array(list(range(mat_x_d_all.shape[0])))
-    mat_x_d_all = np.hstack([mat_x_d_all, time_trends])
-    print('Size of X_train after time', mat_x_d_all.shape)
+  elif time_dummy_setting == 4: # Only linear trend
+    time_trends = np.zeros((x_mat_all.shape[0], 1))
+    time_trends[:, 0] = np.array(list(range(x_mat_all.shape[0])))
+    for i in range(n_time_trends):
+      x_mat_all = np.hstack([x_mat_all, time_trends])
 
-  X_train = mat_x_d_all[:-test_size, :]
-  X_test = mat_x_d_all[-test_size:, :]
-  Y_train = mat_y_d[:-test_size, :]
-  Y_test = mat_y_d[-test_size:, :]
+  print('Size of X_train afer appending time', x_mat_all.shape, f'Time dummy setting: {time_dummy_setting}')
+
+  # Train-test split
+  X_train = x_mat_all[:-test_size, :]
+  X_test = x_mat_all[-test_size:, :]
+  Y_train = y_mat[:-test_size, :]
+  Y_test = y_mat[-test_size:, :]
+
+  # If time dummies, set test time dummy values to the same as the last value
+  if time_dummy_setting in [1,2,3]:
+    X_test[:, size_before_time:] = X_train[-1, size_before_time:]
 
   # Get the index of the lagged values of unemployment rate
   first_parts = ['.l' + str(lag) for lag in range(1, n_lag_linear + 1)]
   first_parts_ps = ['.l' + str(lag) for lag in range(1, n_lag_ps + 1)]
 
-  get_xpos = lambda variable_name, first_parts: [list(i for i, n in enumerate(mat_x_d_all_colnames) if n == variable_name + first_part)[0] for first_part in first_parts]
+  get_xpos = lambda variable_name, first_parts: [list(i for i, n in enumerate(x_mat_all_colnames) if n == variable_name + first_part)[0] for first_part in first_parts]
 
   x_pos = {}
   for var in var_name:
@@ -1164,4 +1340,4 @@ def process_varnn_data(x_d, nn_hyps, marx = True, test_size = 60, n_time_trends 
                   'x_pos_ps': x_pos_ps})
   print('Size of X_train', X_train.shape)
 
-  return X_train, X_test, Y_train, Y_test, mat_x_d_all, mat_y_d, nn_hyps
+  return X_train, X_test, Y_train, Y_test, x_mat_all, y_mat, nn_hyps
