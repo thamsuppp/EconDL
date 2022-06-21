@@ -444,7 +444,7 @@ class VARNN(nn.Module):
 
 # @title Training Loop (with New Loss)
 
-def training_loop_new(X_train, Y_train, model, criterion, optimizer, scheduler, train_indices, nn_hyps):
+def training_loop_new(X_train, Y_train, model, criterion, optimizer, scheduler, train_indices, nn_hyps, device):
 
   num_epochs = nn_hyps['epochs']
   loss_weights = nn_hyps['loss_weights']
@@ -753,7 +753,7 @@ def build_VARNN(X, Y, train_indices, nn_hyps, device):
       model = model.to(device)
       
       # Train the built VARNN on one variable and return the results
-      results = training_loop_new(X, Y[:,var:(var+1)], model, criterion, optimizer_obj, scheduler, train_indices, nn_hyps)
+      results = training_loop_new(X, Y[:,var:(var+1)], model, criterion, optimizer_obj, scheduler, train_indices, nn_hyps, device)
       results_all.append(results)
     return results_all
 
