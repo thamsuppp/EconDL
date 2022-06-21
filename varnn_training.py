@@ -637,22 +637,6 @@ def get_mse_weights(X, Y, n_lags, trend = 't'):
 
   return mse_weights
 
-### Calculate the Loss Weights (by running the Autoregression separately for each variable on training data)
-def get_mse_weights(X, Y, n_lags, trend = 't'):
-
-  mse_weights = []
-  # For each Y variable
-  for i in range(Y.shape[1]):
-    y = Y[:, i]
-    res = AutoReg(y, lags = n_lags, trend = 't').fit()
-    # Get predictions
-    y_pred = res.predict(start = 0, end = -1)
-    # Get MSE
-    mse = np.mean((y_pred - y[n_lags:]) ** 2)
-    mse_weights.append(mse)
-
-  return mse_weights
-
 # @title Scaling Functions and L1/L0
 
 # Scale data
@@ -799,7 +783,7 @@ def build_VARNN(X, Y, train_indices, nn_hyps, device):
     model = model.to(device)
     
     # Training the built VARNN and return the results
-    results = training_loop_new(X, Y, model, criterion, optimizer_obj, scheduler, train_indices, nn_hyps)
+    results = training_loop_new(X, Y, model, criterion, optimizer_obj, scheduler, train_indices, nn_hyps, device)
     
     return results
 
