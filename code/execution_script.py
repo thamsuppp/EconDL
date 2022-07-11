@@ -31,9 +31,11 @@ else:
 # Add experiment to a running list of experiments I've run
 
 # Load dataset
-dataset = DataLoader.load_data(experiment_params)
+dataset, experiment_params = DataLoader.load_data(experiment_params)
 
-print(dataset)
+print(dataset.head())
+print(experiment_params['n_var'])
+print(experiment_params['var_names'])
 
 # Process dataset
 processed_dataset = DataProcesser.process_data(dataset)
