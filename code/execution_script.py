@@ -33,12 +33,8 @@ else:
 # Load dataset
 dataset, experiment_params = DataLoader.load_data(experiment_params)
 
-print(dataset.head())
-print(experiment_params['n_var'])
-print(experiment_params['var_names'])
-
 # Process dataset
-processed_dataset = DataProcesser.process_data(dataset)
+processed_dataset = DataProcesser.process_data(dataset, experiment_params)
 
 # Train the VARNN
 results = TrainVARNN.train(processed_dataset, experiment_params)
