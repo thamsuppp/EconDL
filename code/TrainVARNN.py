@@ -185,15 +185,15 @@ def training_loop(X_train, Y_train, model, criterion, optimizer, scheduler, trai
       break
 
   # Plot the training curves
-  plt.figure()
+  # plt.figure()
 
-  ax1 = plt.subplot()
-  l1, = ax1.plot(train_losses[1:], label = 'Train Loss', color = 'blue')
-  l2, = ax1.plot(oob_losses[1:], label = 'OOB Loss', color = 'orange')
-  ax2 = ax1.twinx()
-  l3, = ax2.plot(oob_mse[1:], label = 'OOB MSE', color = 'red')
-  plt.legend([l1, l2, l3], ['Train Loss', 'OOB Loss', 'OOB MSE'])
-  plt.show()
+  # ax1 = plt.subplot()
+  # l1, = ax1.plot(train_losses[1:], label = 'Train Loss', color = 'blue')
+  # l2, = ax1.plot(oob_losses[1:], label = 'OOB Loss', color = 'orange')
+  # ax2 = ax1.twinx()
+  # l3, = ax2.plot(oob_mse[1:], label = 'OOB MSE', color = 'red')
+  # plt.legend([l1, l2, l3], ['Train Loss', 'OOB Loss', 'OOB MSE'])
+  # plt.show()
 
   out = {
          'best_model': best_model,

@@ -1,10 +1,10 @@
-num_inner_bootstraps = 100
-num_repeats = 2
+num_inner_bootstraps = 20
+num_repeats = 1
 
 
 nn_hyps = {
     # Mostly unchanged hyperparameters
-    'epochs': 500,
+    'epochs': 100,
     'show_train': 3,
     'opt_bootstrap': 2,
     'num_bootstrap': num_inner_bootstraps, 
@@ -21,7 +21,7 @@ nn_hyps = {
 
 
     # Hyperparamters of interest - but not changed in this experiment
-    'nodes': [400, 200, 100],
+    'nodes': [200, 100, 50],
     'tvpl_archi': [5],
     'patience': 50,
     'lr': 0.0005,
@@ -48,11 +48,11 @@ nn_hyps = {
     'precision_lambda': 0.05, 
     'lambda_temper_epochs': 25,
     'optimizer': 'Adam',
-    'n_lag_d': 12, 'n_lag_linear': 6, 'n_lag_ps': 6,
+    'n_lag_d': 2, 'n_lag_linear': 1, 'n_lag_ps': 1,
     'variables': ['DGS3', 'inf', 'unrate'],
 
     's_pos_setting': {'is_hemi': True, 'n_times': 123}, 'joint_estimation': True, 
-    's_pos': [list(range(54)), list(range(54, 173))], 
+    's_pos': [list(range(9)), list(range(9, 12))], 
     'name': 'Joint RELU New',
     'test_size': 100
 

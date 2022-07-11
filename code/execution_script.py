@@ -44,9 +44,26 @@ X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(d
 # Train the VARNN
 results = TrainVARNN.conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
 
-#def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
-
 # Save the training results
+BETAS = results['betas_draws']
+BETAS_IN = results['betas_in_draws']
+SIGMAS = results['sigmas_draws']
+SIGMAS_IN = results['sigmas_in_draws']
+PRECISION = results['precision_draws']
+PRECISION_IN = results['precision_in_draws']
+CHOLESKY = results['cholesky_draws']
+CHOLESKY_IN = results['cholesky_in_draws']
+PREDS = results['pred_in_ensemble'] 
+PREDS_TEST = results['pred_ensemble']
+
+with open(f'{folder_path}/params_{i}_repeat_{repeat}.npz', 'wb') as f:
+    np.savez(f, betas = BETAS, betas_in = BETAS_IN, 
+        sigmas = SIGMAS, sigmas_in = SIGMAS_IN,
+        precision = PRECISION, precision_in = PRECISION_IN,
+        cholesky = CHOLESKY, cholesky_in = CHOLESKY_IN,
+        train_preds = PREDS, test_preds = PREDS_TEST, 
+        y = Y_train, y_test = Y_test, 
+        params = nn_hyps)
 
 # Compute conditional IRFs (straight from VARNN estimation results) and plot
 # @DEV: do conditional IRFs come from 
