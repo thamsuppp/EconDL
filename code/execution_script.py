@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import torch
 import DataLoader
 import DataProcesser # possible to combine w dataloader
 import IRF.IRFConditional as IRFConditional # @TODO: fix this import (want to put it in a folder) - also create IRF superclass, and IRFConditional and IRFUnconditional subclasses
@@ -13,6 +14,10 @@ import Evaluation
 import json
 import os
 import sys
+
+from nn_hyps import nn_hyps
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Experiment name is the command-line argument
 experiment_name = sys.argv[1]
@@ -33,11 +38,13 @@ else:
 # Load dataset
 dataset, experiment_params = DataLoader.load_data(experiment_params)
 
-# Process dataset
-processed_dataset = DataProcesser.process_data(dataset, experiment_params)
+# Process dataset - DONE
+X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, nn_hyps)
 
 # Train the VARNN
-results = TrainVARNN.train(processed_dataset, experiment_params)
+results = TrainVARNN.conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
+
+#def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
 
 # Save the training results
 

@@ -1,3 +1,5 @@
+import numpy as np 
+from utils import get_bootstrap_indices
 
 
 def process_data(data, nn_hyps, marx = True, test_size = 60, n_time_trends = 0, time_dummy_setting = 0, dummy_interval = 12):
@@ -152,3 +154,53 @@ def process_data(data, nn_hyps, marx = True, test_size = 60, n_time_trends = 0, 
   print('Size of X_train', X_train.shape)
 
   return X_train, X_test, Y_train, Y_test, x_mat_all, y_mat, nn_hyps
+
+def process_data_wrapper(data, nn_hyps):
+
+    test_size = nn_hyps['test_size']
+    variable_list = nn_hyps['variables']
+    num_inner_bootstraps = nn_hyps['num_bootstrap']
+
+    # Subset variables
+    x_d = data[variable_list]
+    x_d_colnames = x_d.columns
+    var_names = x_d.columns
+    n_var = len(var_names)
+
+    # Get the bootstraps
+    
+    train_size = x_d.shape[0] - test_size - nn_hyps['n_lag_d']
+    if nn_hyps['fix_bootstrap'] == True:
+        bootstrap_indices = get_bootstrap_indices(num_bootstrap = num_inner_bootstraps, n_obs = train_size, block_size = nn_hyps['block_size'], sampling_rate = nn_hyps['sampling_rate'], opt_bootstrap = nn_hyps['opt_bootstrap'])
+        nn_hyps['bootstrap_indices'] = bootstrap_indices
+    else:
+        nn_hyps['bootstrap_indices'] = None
+
+    
+    n_betas = n_var * nn_hyps['n_lag_linear'] + 1
+    n_inputs_wo_time = n_var * (nn_hyps['n_lag_linear'] + nn_hyps['n_lag_d'])
+
+    X_train, X_test, Y_train, Y_test, x_mat_all, y_mat, nn_hyps = process_data(x_d, nn_hyps, test_size = test_size, n_time_trends = 100,
+        time_dummy_setting = nn_hyps['time_dummy_setting'], marx = nn_hyps['marx'], dummy_interval = nn_hyps['dummy_interval'])
+
+
+    n_inputs_total = X_train.shape[1]
+    nn_hyps['neurons_weights'] = [nn_hyps['tvpl_archi'] for i in range(n_betas)]
+
+    # If s_pos is already not defined (s_pos can be defined by user)
+    if not nn_hyps.get('s_pos'):
+        # s_pos_setting
+        if nn_hyps['s_pos_setting']['is_hemi'] == False:
+            nn_hyps['s_pos'] = [ list(range(n_inputs_total)) ]
+        else:
+            n_inputs_total_new = n_inputs_wo_time + nn_hyps['s_pos_setting']['n_times']
+            nn_hyps['s_pos'] = [ list(range(n_inputs_wo_time)), list(range(n_inputs_wo_time, n_inputs_total_new))]
+            # Subset the X_train and X_test to only the required columns
+            X_train = X_train[:, :n_inputs_total_new]
+            X_test = X_test[:, :n_inputs_total_new]
+
+    
+    return X_train, X_test, Y_train, Y_test, nn_hyps
+
+
+
