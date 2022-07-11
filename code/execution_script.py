@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import DataLoader
 import DataProcesser # possible to combine w dataloader
-import IRFConditional # @TODO: fix this import (want to put it in a folder) - also create IRF superclass, and IRFConditional and IRFUnconditional subclasses
-import IRFUnconditional
+import IRF.IRFConditional as IRFConditional # @TODO: fix this import (want to put it in a folder) - also create IRF superclass, and IRFConditional and IRFUnconditional subclasses
+import IRF.IRFUnconditional as IRFUnconditional
 import TrainVARNN 
 import Benchmarks # @TODO: create Benchmark superclass, and VARNNBenchmarks and ForecastBenchmarks subclasses
 import ForecastBenchmarks 
@@ -11,17 +11,23 @@ import ForecastMulti
 import Evaluation
 
 import json
+import os
+import sys
 
-# @DEV: what is the accepted way to read config for python (or anything) from industry? store in another constants.py (same language) file, or read from JSON, or what?
+# Experiment name is the command-line argument
+experiment_name = sys.argv[1]
 
 # Read experiment configuration - dataset, parameters: nn_hyps, experiment_settings (num_repeats), evaluation_settings (how to draw graphs etc.)
-
-# @DEV: somehow does not work (ConnectionRefusedError)
-experiment_params = json.load('exp_config/exp1_config.json')
-
-print(experiment_params)
+with open(f'../exp_config/{experiment_name}.json', 'r') as f:
+    experiment_params = json.load(f)
 
 # Create folder to store results - that is where the results go into
+folder_path = f'../results/{experiment_name}'
+if os.path.isdir(folder_path) == False:
+  os.mkdir(folder_path)
+else:
+  print('Folder already exists')
+
 # Add experiment to a running list of experiments I've run
 
 # Load dataset
