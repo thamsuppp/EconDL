@@ -47,43 +47,44 @@ num_experiments = len(run_params['nn_hyps'])
 num_repeats = run_params['run_params']['num_repeats']
 num_inner_bootstraps = run_params['run_params']['num_inner_bootstraps']
 
-# for repeat_id in range(num_repeats):
-#   for experiment_id in range(num_experiments):
+if run_params['execution_params']['varnn_estimation'] == True:
 
-#     experiment_params = run_params['nn_hyps'][experiment_id]
+  for repeat_id in range(num_repeats):
+    for experiment_id in range(num_experiments):
 
-#     print(f'Experiment {experiment_id}, Params: {experiment_params}')
-#     nn_hyps = nn_hyps_default.copy()
-#     nn_hyps.update(experiment_params)
-#     nn_hyps['num_bootstrap'] = num_inner_bootstraps
+      experiment_params = run_params['nn_hyps'][experiment_id]
 
-#     # Process dataset - DONE
-#     X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, nn_hyps)
+      print(f'Experiment {experiment_id}, Params: {experiment_params}')
+      nn_hyps = nn_hyps_default.copy()
+      nn_hyps.update(experiment_params)
+      nn_hyps['num_bootstrap'] = num_inner_bootstraps
 
-#     # Train the VARNN
-#     results = TrainVARNN.conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
+      # Process dataset - DONE
+      X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, nn_hyps)
 
-#     # Save the training results
-#     BETAS = results['betas_draws']
-#     BETAS_IN = results['betas_in_draws']
-#     SIGMAS = results['sigmas_draws']
-#     SIGMAS_IN = results['sigmas_in_draws']
-#     PRECISION = results['precision_draws']
-#     PRECISION_IN = results['precision_in_draws']
-#     CHOLESKY = results['cholesky_draws']
-#     CHOLESKY_IN = results['cholesky_in_draws']
-#     PREDS = results['pred_in_ensemble'] 
-#     PREDS_TEST = results['pred_ensemble']
+      # Train the VARNN
+      results = TrainVARNN.conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
 
-#     with open(f'{folder_path}/params_{experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
-#         np.savez(f, betas = BETAS, betas_in = BETAS_IN, 
-#             sigmas = SIGMAS, sigmas_in = SIGMAS_IN,
-#             precision = PRECISION, precision_in = PRECISION_IN,
-#             cholesky = CHOLESKY, cholesky_in = CHOLESKY_IN,
-#             train_preds = PREDS, test_preds = PREDS_TEST, 
-#             y = Y_train, y_test = Y_test, 
-#             params = nn_hyps)
+      # Save the training results
+      BETAS = results['betas_draws']
+      BETAS_IN = results['betas_in_draws']
+      SIGMAS = results['sigmas_draws']
+      SIGMAS_IN = results['sigmas_in_draws']
+      PRECISION = results['precision_draws']
+      PRECISION_IN = results['precision_in_draws']
+      CHOLESKY = results['cholesky_draws']
+      CHOLESKY_IN = results['cholesky_in_draws']
+      PREDS = results['pred_in_ensemble'] 
+      PREDS_TEST = results['pred_ensemble']
 
+      with open(f'{folder_path}/params_{experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
+          np.savez(f, betas = BETAS, betas_in = BETAS_IN, 
+              sigmas = SIGMAS, sigmas_in = SIGMAS_IN,
+              precision = PRECISION, precision_in = PRECISION_IN,
+              cholesky = CHOLESKY, cholesky_in = CHOLESKY_IN,
+              train_preds = PREDS, test_preds = PREDS_TEST, 
+              y = Y_train, y_test = Y_test, 
+              params = nn_hyps)
 
 # Compute benchmarks
 benchmark_params = {
@@ -95,9 +96,9 @@ benchmark_params = {
   'window_length': 80,
   'reestimation_window': 1
 }
-
-BenchmarkObj = Benchmarks(dataset, benchmark_params, run_name)
-BenchmarkObj.compute_benchmarks()
+if run_params['execution_params']['benchmarks'] == True:
+  BenchmarkObj = Benchmarks(dataset, benchmark_params, run_name)
+  BenchmarkObj.compute_benchmarks()
 
 
 # # Compute conditional IRFs (straight from VARNN estimation results) and plot
