@@ -4,7 +4,7 @@ import torch
 import DataHelpers.DataLoader as DataLoader
 import DataHelpers.DataProcesser as DataProcesser # possible to combine w dataloader
 import IRF.IRFConditional as IRFConditional # @TODO: fix this import (want to put it in a folder) - also create IRF superclass, and IRFConditional and IRFUnconditional subclasses
-import IRF.IRFUnconditional as IRFUnconditional
+from IRF.IRFUnconditional import IRFUnconditional
 import TrainVARNN 
 from Benchmarks import Benchmarks # @TODO: create Benchmark superclass, and VARNNBenchmarks and ForecastBenchmarks subclasses
 import ForecastBenchmarks 
@@ -19,12 +19,10 @@ from nn_hyps import nn_hyps_default
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print('device: ', device)
 
 # Experiment name is the command-line argument
-#run_name = sys.argv[1]
-run_name = '10jul_test'
-
-print(os.getcwd())
+run_name = sys.argv[1]
 
 # Read experiment configuration - dataset, parameters: nn_hyps, experiment_settings (num_repeats), evaluation_settings (how to draw graphs etc.)
 with open(f'../exp_config/{run_name}.json', 'r') as f:
@@ -42,49 +40,73 @@ else:
 # Load dataset
 dataset, run_params = DataLoader.load_data(run_params)
 
+
+
 # Get the number of experiments to run
 num_experiments = len(run_params['nn_hyps'])
 num_repeats = run_params['run_params']['num_repeats']
 num_inner_bootstraps = run_params['run_params']['num_inner_bootstraps']
 
-if run_params['execution_params']['varnn_estimation'] == True:
 
-  for repeat_id in range(num_repeats):
-    for experiment_id in range(num_experiments):
+for repeat_id in range(num_repeats):
+  for experiment_id in range(num_experiments):
 
-      experiment_params = run_params['nn_hyps'][experiment_id]
+    experiment_params = run_params['nn_hyps'][experiment_id]
 
-      print(f'Experiment {experiment_id}, Params: {experiment_params}')
-      nn_hyps = nn_hyps_default.copy()
-      nn_hyps.update(experiment_params)
-      nn_hyps['num_bootstrap'] = num_inner_bootstraps
+    print(f'Experiment {experiment_id}, Params: {experiment_params}')
+    nn_hyps = nn_hyps_default.copy()
+    nn_hyps.update(experiment_params)
+    nn_hyps['num_bootstrap'] = num_inner_bootstraps
 
-      # Process dataset - DONE
-      X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, nn_hyps)
+    # Process dataset - DONE
+    X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, nn_hyps)
 
+
+    if run_params['execution_params']['varnn_estimation'] == True:
       # Train the VARNN
+      print('s_pos', nn_hyps['s_pos'])
       results = TrainVARNN.conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
 
-      # Save the training results
-      BETAS = results['betas_draws']
-      BETAS_IN = results['betas_in_draws']
-      SIGMAS = results['sigmas_draws']
-      SIGMAS_IN = results['sigmas_in_draws']
-      PRECISION = results['precision_draws']
-      PRECISION_IN = results['precision_in_draws']
-      CHOLESKY = results['cholesky_draws']
-      CHOLESKY_IN = results['cholesky_in_draws']
-      PREDS = results['pred_in_ensemble'] 
-      PREDS_TEST = results['pred_ensemble']
-
       with open(f'{folder_path}/params_{experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
-          np.savez(f, betas = BETAS, betas_in = BETAS_IN, 
-              sigmas = SIGMAS, sigmas_in = SIGMAS_IN,
-              precision = PRECISION, precision_in = PRECISION_IN,
-              cholesky = CHOLESKY, cholesky_in = CHOLESKY_IN,
-              train_preds = PREDS, test_preds = PREDS_TEST, 
-              y = Y_train, y_test = Y_test, 
-              params = nn_hyps)
+          np.savez(f, 
+            betas = results['betas_draws'], 
+            betas_in = results['betas_in_draws'], 
+            sigmas = results['sigmas_draws'], 
+            sigmas_in = results['sigmas_in_draws'],
+            precision = results['precision_draws'], 
+            precision_in = results['precision_in_draws'],
+            cholesky = results['cholesky_draws'], 
+            cholesky_in = results['cholesky_in_draws'],
+            train_preds = results['pred_in_ensemble'] , 
+            test_preds = results['pred_ensemble'], 
+            y = Y_train, 
+            y_test = Y_test, 
+            params = nn_hyps)
+
+
+    if run_params['execution_params']['unconditional_irfs'] == True:
+
+      unconditional_irf_params = {
+        'n_lag_linear': nn_hyps['n_lag_linear'],
+        'n_lag_d': nn_hyps['n_lag_d'],
+        'n_var': len(nn_hyps['variables']),
+        'num_simulations': 600,
+        'endh': 40,
+        'start_shock_time': 40,
+        'forecast_method': 'new', # old or new
+        'max_h': 20, 
+        'var_names': nn_hyps['variables'],
+        'plot_all_bootstraps': False
+      }
+
+      IRFUnconditionalObj = IRFUnconditional(run_name, unconditional_irf_params, device)
+      fcast, fcast_cov_mat, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, results)
+
+      with open(f'{folder_path}/fcast_params_{experiment_id}_repeat{repeat_id}.npz', 'wb') as f:
+        np.savez(f, fcast = fcast, fcast_cov_mat = fcast_cov_mat)
+
+
+
 
 # Compute benchmarks
 benchmark_params = {
@@ -101,9 +123,15 @@ if run_params['execution_params']['benchmarks'] == True:
   BenchmarkObj.compute_benchmarks()
 
 
-# # Compute conditional IRFs (straight from VARNN estimation results) and plot
-# # @DEV: do conditional IRFs come from 
-# irf_cond_results = IRFConditional.compute_IRF()
+# Compute conditional IRFs (straight from VARNN estimation results) and plot
+# @DEV: do conditional IRFs come from 
+if run_params['execution_params']['conditional_irfs'] == True:
+  irf_cond_results = IRFConditional.compute_IRF()
+
+
+
+
+
 
 # # Compute unconditional IRFs (only if there is no time hemisphere!) and plot
 # irf_uncond_results = IRFUnconditional.compute_IRF()

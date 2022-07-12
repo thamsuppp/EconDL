@@ -489,6 +489,9 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
     if nn_hyps['eqn_by_eqn'] == False:
       model_out = build_VARNN(X_train, Y_train, boot, nn_hyps, device)
       model = model_out['best_model'].to(device)
+
+      # Save the trained models (for multi-horizon prediction)
+      trained_model.append(model)
     else:
       models_out = build_VARNN(X_train, Y_train, boot, nn_hyps, device)
       for e in models_out:
@@ -628,6 +631,8 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
           'trained_model': trained_model,
           'scale_output': scale_output,
           'x_pos_ps': x_pos_ps,
+          'standardize': nn_hyps['standardize'],
+          'prior_shift': nn_hyps['prior_shift'],
           'ps_model': ps_model
           }
 

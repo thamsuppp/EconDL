@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import os
 
 
 class Evaluation:
@@ -495,6 +494,16 @@ class Evaluation:
     plt.savefig(image_file)
 
     print(f'{data_sample} Cum Errors plotted at {image_file}')
+
+  # Wrapper function to do all plots
+  def plot_all(self):
+    self.evaluate_cholesky()
+    self.evaluate_precision()
+    self.evaluate_sigmas()
+    self.evaluate_TVPs()
+    self.plot_predictions()
+    self.plot_errors(data_sample='oob')
+    self.plot_errors(data_sample='test', exclude_last=20)
 
   def evaluate_one_step_forecasts(results, benchmark_results):
       return {}

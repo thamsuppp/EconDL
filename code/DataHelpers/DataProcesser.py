@@ -202,6 +202,10 @@ def process_data_wrapper(data, nn_hyps):
       s_pos = nn_hyps['s_pos']
       nn_hyps['s_pos'] = [list(range(s[0], s[1])) for s in s_pos]
 
+    # Subset the X_train and X_test to only the required columns
+    X_train = X_train[:, :n_inputs_wo_time]
+    X_test = X_test[:, :n_inputs_wo_time]
+
     
     return X_train, X_test, Y_train, Y_test, nn_hyps
 

@@ -257,8 +257,9 @@ class VARNN(nn.Module):
 
       # Reorder alphas to the cholesky matrix
       cholesky_hemispheres = []
+
       for alpha_hemi in alphas_hemispheres:
-        alpha_hemi = alpha_hemi.squeeze()
+        alpha_hemi = alpha_hemi.squeeze(dim = 2)
         # Construct precision matrix from the alphas
         n_vars = self.n_outputs
         # Lower-triangular Ct matrix
