@@ -189,15 +189,18 @@ def process_data_wrapper(data, nn_hyps):
 
     # If s_pos is already not defined (s_pos can be defined by user)
     if not nn_hyps.get('s_pos'):
-        # s_pos_setting
-        if nn_hyps['s_pos_setting']['is_hemi'] == False:
-            nn_hyps['s_pos'] = [ list(range(n_inputs_total)) ]
-        else:
-            n_inputs_total_new = n_inputs_wo_time + nn_hyps['s_pos_setting']['n_times']
-            nn_hyps['s_pos'] = [ list(range(n_inputs_wo_time)), list(range(n_inputs_wo_time, n_inputs_total_new))]
-            # Subset the X_train and X_test to only the required columns
-            X_train = X_train[:, :n_inputs_total_new]
-            X_test = X_test[:, :n_inputs_total_new]
+      # s_pos_setting
+      if nn_hyps['s_pos_setting']['is_hemi'] == False:
+          nn_hyps['s_pos'] = [ list(range(n_inputs_total)) ]
+      else:
+          n_inputs_total_new = n_inputs_wo_time + nn_hyps['s_pos_setting']['n_times']
+          nn_hyps['s_pos'] = [ list(range(n_inputs_wo_time)), list(range(n_inputs_wo_time, n_inputs_total_new))]
+          # Subset the X_train and X_test to only the required columns
+          X_train = X_train[:, :n_inputs_total_new]
+          X_test = X_test[:, :n_inputs_total_new]
+    else: # Format s_pos properly
+      s_pos = nn_hyps['s_pos']
+      nn_hyps['s_pos'] = [list(range(s[0], s[1])) for s in s_pos]
 
     
     return X_train, X_test, Y_train, Y_test, nn_hyps

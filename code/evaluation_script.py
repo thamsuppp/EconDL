@@ -43,10 +43,10 @@ print(EvaluationObj.BETAS_ALL.shape)
 print(EvaluationObj.check_results_sizes())
 
 # Plot the TVPs
-#EvaluationObj.evaluate_TVPs()
+EvaluationObj.evaluate_TVPs()
 EvaluationObj.evaluate_cholesky()
-#EvaluationObj.evaluate_precision()
-#EvaluationObj.evaluate_sigmas()
+EvaluationObj.evaluate_precision()
+EvaluationObj.evaluate_sigmas()
 
 
 

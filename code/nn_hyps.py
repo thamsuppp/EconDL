@@ -1,12 +1,13 @@
+# Default nn_hyps
+
 num_inner_bootstraps = 25
 num_repeats = 1
 
-
-nn_hyps = {
+nn_hyps_default = {
     # Mostly unchanged hyperparameters
-    'epochs': 100,
     'show_train': 3,
     'opt_bootstrap': 2,
+    'epochs': 400,
     'num_bootstrap': num_inner_bootstraps, 
     'sampling_rate': 0.75,
     'block_size': 12,
@@ -18,7 +19,6 @@ nn_hyps = {
     'save_models': False,
     'exog': None,
     'tol': 0.0001,
-
 
     # Hyperparamters of interest - but not changed in this experiment
     'nodes': [200, 100, 50],
