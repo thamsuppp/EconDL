@@ -1,4 +1,4 @@
-num_inner_bootstraps = 20
+num_inner_bootstraps = 25
 num_repeats = 1
 
 
@@ -32,7 +32,7 @@ nn_hyps = {
     'time_dummy_setting': 2, 
     'marx': True,
     
-    'dummy_interval': 6,
+    'dummy_interval': 12,
     'l1_input_lambda': 0,
     'l0_input_lambda': 0,
     'precision_lambda': 0,
@@ -52,7 +52,7 @@ nn_hyps = {
     'variables': ['DGS3', 'inf', 'unrate'],
 
     's_pos_setting': {'is_hemi': True, 'n_times': 123}, 'joint_estimation': True, 
-    's_pos': [list(range(9)), list(range(9, 12))], 
+    's_pos': [list(range(9)), list(range(9, 70))], 
     'name': 'Joint RELU New',
     'test_size': 100
 

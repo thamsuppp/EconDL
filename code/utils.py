@@ -16,7 +16,7 @@ def get_mse_weights(X, Y, n_lags, trend = 't'):
     # Get predictions
     y_pred = res.predict(start = 0, end = -1)
     # (new code to fix bug due to statsmodels versions)
-    y_pred = y_pred[n_lags:]
+    # y_pred = y_pred[n_lags:]
     # Get MSE
     mse = np.mean((y_pred - y[n_lags:]) ** 2)
     mse_weights.append(mse)

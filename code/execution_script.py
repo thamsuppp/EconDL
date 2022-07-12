@@ -17,6 +17,8 @@ import sys
 
 from nn_hyps import nn_hyps
 
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Experiment name is the command-line argument
@@ -56,7 +58,7 @@ CHOLESKY_IN = results['cholesky_in_draws']
 PREDS = results['pred_in_ensemble'] 
 PREDS_TEST = results['pred_ensemble']
 
-with open(f'{folder_path}/params_{i}_repeat_{repeat}.npz', 'wb') as f:
+with open(f'{folder_path}/params.npz', 'wb') as f:
     np.savez(f, betas = BETAS, betas_in = BETAS_IN, 
         sigmas = SIGMAS, sigmas_in = SIGMAS_IN,
         precision = PRECISION, precision_in = PRECISION_IN,
