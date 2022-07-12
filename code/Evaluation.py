@@ -30,6 +30,8 @@ class Evaluation:
 
     # Store the names of every hyperparameter list
     self.experiment_names = []
+    self.benchmark_names = evaluation_params['benchmarks']
+
 
     self.params = []
     self.BETAS_IN_ALL = None
@@ -41,6 +43,17 @@ class Evaluation:
     self.CHOLESKY_IN_ALL = None
     self.CHOLESKY_ALL = None
     self.SIGMAS_CONS_ALL = None
+    self.PREDS_ALL = None
+    self.PREDS_TEST_ALL = None
+
+    self.Y_train = None
+    self.Y_test = None
+
+    self.M_varnn = len(evaluation_params['experiments_to_load'])
+    self.M_benchmarks = len(self.benchmark_names)
+    self.M_total = self.M_varnn + self.M_benchmarks
+    self.num_bootstraps = None
+
 
     # Load the results and params
     self.load_results(evaluation_params['experiments_to_load'])
@@ -54,14 +67,15 @@ class Evaluation:
       'PRECISION_IN_ALL': self.PRECISION_IN_ALL.shape,
       'PRECISION_ALL': self.PRECISION_ALL.shape,
       'CHOLESKY_IN_ALL': self.CHOLESKY_IN_ALL.shape,
-      'CHOLESKY_ALL': self.CHOLESKY_ALL.shape
+      'CHOLESKY_ALL': self.CHOLESKY_ALL.shape,
+      'PREDS_ALL': self.PREDS_ALL.shape,
+      'PREDS_TEST_ALL': self.PREDS_TEST_ALL.shape
     }
 
   def load_results(self, experiments_to_load):
 
-    M_total = len(experiments_to_load)
-
-    for i in range(M_total):
+    # Load VARNN results
+    for i in range(self.M_varnn):
       experiment = experiments_to_load[i]
 
       compiled_text = 'compiled' if self.need_to_combine == True else 'repeat_0'
@@ -74,6 +88,7 @@ class Evaluation:
 
       n_lag_linear = params['n_lag_linear']
       num_bootstraps = params['num_bootstrap']
+      self.num_bootstraps = num_bootstraps
       
       self.experiment_names.append(out['params'].item()['name'])
       BETAS = out['betas']
@@ -84,10 +99,12 @@ class Evaluation:
       PRECISION_IN = out['precision_in']
       CHOLESKY = out['cholesky']
       CHOLESKY_IN = out['cholesky_in']
+      PREDS = out['train_preds']
+      PREDS_TEST = out['test_preds']
 
       # Estimate time-invariant cov mat from the residuals
       Y_train = out['y']
-      PREDS = out['train_preds']
+      Y_test = out['y_test']
       resids = np.repeat(np.expand_dims(Y_train, axis = 1), PREDS.shape[1], axis = 1) - PREDS
 
       # For experiments with more than 1 lag, get the ids of the 1st beta to plot
@@ -97,29 +114,34 @@ class Evaluation:
       BETAS = BETAS[:, beta_ids_to_keep, :,:,:]
 
       if i == 0:
-        BETAS_ALL = np.zeros((M_total, BETAS.shape[0], BETAS.shape[1], num_bootstraps, BETAS.shape[3], BETAS.shape[4]))
+        BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], num_bootstraps, BETAS.shape[3], BETAS.shape[4]))
         BETAS_ALL[:] = np.nan
         # n_models x n_obs x n_betas x n_bootstraps x n_vars x n_hemispheres
-        BETAS_IN_ALL = np.zeros((M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], num_bootstraps, BETAS_IN.shape[3], BETAS_IN.shape[4]))
+        BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], num_bootstraps, BETAS_IN.shape[3], BETAS_IN.shape[4]))
         BETAS_IN_ALL[:] = np.nan 
 
         # n_models x n_obs x n_vars x n_vars x n_bootstraps
-        SIGMAS_ALL = np.zeros((M_total, SIGMAS.shape[0], SIGMAS.shape[1], SIGMAS.shape[2], num_bootstraps))
+        SIGMAS_ALL = np.zeros((self.M_total, SIGMAS.shape[0], SIGMAS.shape[1], SIGMAS.shape[2], num_bootstraps))
         SIGMAS_ALL[:] = np.nan
         PRECISION_ALL = np.zeros_like(SIGMAS_ALL)
         PRECISION_ALL[:] = np.nan
-        CHOLESKY_ALL = np.zeros((M_total, SIGMAS.shape[0], SIGMAS.shape[1], SIGMAS.shape[2], 2, num_bootstraps))
+        CHOLESKY_ALL = np.zeros((self.M_total, SIGMAS.shape[0], SIGMAS.shape[1], SIGMAS.shape[2], 2, num_bootstraps))
         CHOLESKY_ALL[:] = np.nan 
 
-        SIGMAS_IN_ALL = np.zeros((M_total, SIGMAS_IN.shape[0], SIGMAS_IN.shape[1], SIGMAS_IN.shape[2], num_bootstraps))
+        SIGMAS_IN_ALL = np.zeros((self.M_total, SIGMAS_IN.shape[0], SIGMAS_IN.shape[1], SIGMAS_IN.shape[2], num_bootstraps))
         SIGMAS_IN_ALL[:] = np.nan 
         PRECISION_IN_ALL = np.zeros_like(SIGMAS_IN_ALL)
         PRECISION_IN_ALL[:] = np.nan
         CHOLESKY_IN_ALL = np.zeros_like(CHOLESKY_ALL)
         CHOLESKY_IN_ALL[:] = np.nan
 
-        SIGMAS_CONS_ALL = np.zeros((M_total, SIGMAS.shape[1], SIGMAS.shape[2], num_bootstraps))
+        SIGMAS_CONS_ALL = np.zeros((self.M_total, SIGMAS.shape[1], SIGMAS.shape[2], num_bootstraps))
         SIGMAS_CONS_ALL[:] = np.nan
+
+        PREDS_ALL = np.zeros((self.M_total, PREDS.shape[0], num_bootstraps, PREDS.shape[2]))
+        PREDS_ALL[:] = np.nan
+        PREDS_TEST_ALL = np.zeros((self.M_total, PREDS_TEST.shape[0], num_bootstraps, PREDS_TEST.shape[2]))
+        PREDS_TEST_ALL[:] = np.nan 
 
       # If >1 hemis, Demean the time hemisphere and add the mean to the endogenous hemisphere
       # (note: the means are the in-sample means, not the oob ones)
@@ -139,6 +161,8 @@ class Evaluation:
       PRECISION_IN_ALL[i, :,:,:,:] = PRECISION_IN
       CHOLESKY_ALL[i, :,:,:,:, :] = CHOLESKY
       CHOLESKY_IN_ALL[i, :,:,:,:, :] = CHOLESKY_IN
+      PREDS_ALL[i,:,:,:] = PREDS
+      PREDS_TEST_ALL[i,:,:,:] = PREDS_TEST
 
       for b in range(num_bootstraps):
         SIGMAS_CONS_ALL[i, :,:,b] = pd.DataFrame(resids[:, b, :]).dropna().cov()
@@ -152,10 +176,30 @@ class Evaluation:
     self.CHOLESKY_IN_ALL = CHOLESKY_IN_ALL
     self.CHOLESKY_ALL = CHOLESKY_ALL
     self.SIGMAS_CONS_ALL = SIGMAS_CONS_ALL
+    self.PREDS_ALL = PREDS_ALL
+    self.PREDS_TEST_ALL = PREDS_TEST_ALL
+    self.Y_train = Y_train
+    self.Y_test = Y_test
 
+    # Load the benchmarks
+    self._load_benchmarks()
 
-  def load_benchmark_results(self):
-    pass
+    # Update all_names
+    self.all_names = self.experiment_names + self.benchmark_names
+
+  def _load_benchmarks(self):
+    benchmark_folder_path = f'{self.folder_path}/benchmarks'
+
+    for i in range(self.M_benchmarks):
+      out = np.load(f'{benchmark_folder_path}/benchmark_{self.benchmark_names[i]}.npz')
+
+      preds = out['train_preds']
+      preds_test = out['test_preds']
+
+      preds = np.repeat(np.expand_dims(preds, axis = 1), self.num_bootstraps, axis = 1)
+      preds_test = np.repeat(np.expand_dims(preds_test, axis = 1), self.num_bootstraps, axis = 1)
+      self.PREDS_ALL[self.M_varnn + i, :,:,:] = preds
+      self.PREDS_TEST_ALL[self.M_varnn + i,:,:,:] = preds_test
     
 
   # Helper function to plot betas
@@ -368,6 +412,89 @@ class Evaluation:
 
       print(f'Cov Mat plotted at {image_file}')
 
+  def plot_predictions(self):
+
+    fig, ax = plt.subplots(self.n_var, 1, figsize = (12, 3 * self.n_var), constrained_layout = True)
+
+    for i in range(self.M_total):
+
+      preds_median = np.nanmedian(self.PREDS_ALL[i,:,:,:], axis = 1)
+      preds_test_median = np.nanmedian(self.PREDS_TEST_ALL[i,:,:,:], axis = 1)
+      for var in range(self.n_var):
+        if i < self.M_varnn:
+          ax[var].plot(preds_median[:, var], lw = 0.75, label = self.all_names[i])
+        if i == self.M_total - 1:
+          ax[var].plot(self.Y_train[:, var], lw = 1, label = 'Actual', color = 'black')
+          ax[var].set_title(self.var_names[var])
+        if i >= self.M_varnn:
+          ax[var].plot(preds_median[:, var], lw = 0.75, label = self.all_names[i], ls = 'dotted')
+
+        if var == 0:
+          ax[var].legend()
+
+    image_file = f'{self.image_folder_path}/preds.png'
+    plt.savefig(image_file)
+
+    print(f'Predictions plotted at {image_file}')
+
+  # type = oob or test
+  def plot_errors(self, data_sample = 'oob', exclude_last = 0):
+        
+    fig, ax = plt.subplots(1, self.n_var, figsize = (6 * self.n_var, 4), constrained_layout = True)
+    for i in range(self.M_total):
+      
+      if data_sample == 'oob':
+        preds_median = np.nanmedian(self.PREDS_ALL[i,:,:,:], axis = 1)
+        error = np.abs(self.Y_train - preds_median)
+      else:
+        preds_median = np.nanmedian(self.PREDS_TEST_ALL[i,:,:,:], axis = 1)
+        error = np.abs(self.Y_test - preds_median)
+      
+      error = error[:-exclude_last, :]
+
+      for var in range(self.n_var):
+        if i == 0:
+          ax[var].set_title(self.var_names[var])
+        ax[var].plot(error[:, var], lw = 0.5, label = self.all_names[i])
+        if var == 0:
+          ax[var].legend()
+
+    plt.savefig(f'{self.image_folder_path}/error_{data_sample}.png')
+
+    fig, ax = plt.subplots(1, self.n_var, figsize = (6 * self.n_var, 4), constrained_layout = True)
+
+    # Calculating errors
+    if data_sample == 'oob':
+      preds_median = np.nanmedian(self.PREDS_ALL, axis = 2)
+      y_repeated = np.repeat(np.expand_dims(self.Y_train, axis = 0), self.M_total, axis = 0)
+    else: # test
+      preds_median = np.nanmedian(self.PREDS_TEST_ALL, axis = 2)
+      y_repeated = np.repeat(np.expand_dims(self.Y_test, axis = 0), self.M_total, axis = 0)
+
+    errors = np.abs(preds_median - y_repeated)
+    cum_errors = np.nancumsum(errors, axis = 1)
+    cum_errors = cum_errors[:, :-exclude_last, :]
+
+    # Choose the benchmark (fix as VAR whole)
+    benchmark_cum_error = cum_errors[(self.M_varnn), :, :]
+
+    for i in range(self.M_total):
+      
+      for var in range(self.n_var):
+        if i == 0:
+          ax[var].set_title(self.var_names[var])
+        if i >= self.M_varnn: # Make benchmarks dotted
+          ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i], ls = 'dotted')
+        else:
+          ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i])
+
+        if var == 0:
+          ax[var].legend()
+
+    image_file = f'{self.image_folder_path}/cum_errors_{data_sample}.png'
+    plt.savefig(image_file)
+
+    print(f'{data_sample} Cum Errors plotted at {image_file}')
 
   def evaluate_one_step_forecasts(results, benchmark_results):
       return {}

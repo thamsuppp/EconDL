@@ -88,12 +88,12 @@ if run_params['execution_params']['varnn_estimation'] == True:
 
 # Compute benchmarks
 benchmark_params = {
-  'n_lag_linear': 2,
-  'n_lag_d': 8,
+  'n_lag_linear': 1, 
+  'n_lag_d': 2,
   'benchmarks': ['VAR_whole', 'AR_whole', 'VAR_roll', 'AR_roll', 'VAR_expand', 'AR_expand', 'RF_whole'],
   'var_names': ['DGS3', 'inf', 'unrate'],
-  'test_size': 90,
-  'window_length': 80,
+  'test_size': 100,
+  'window_length': 40,
   'reestimation_window': 1
 }
 if run_params['execution_params']['benchmarks'] == True:
