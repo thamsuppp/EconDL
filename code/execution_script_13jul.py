@@ -25,18 +25,15 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Experiment name is the command-line argument
 run_name = sys.argv[1]
 
+# Instantiate the Run:
+# - Creates a new folder
+# - Reads the json
+# - Instantiates the experiments with the corresponding nn_hyps
 RunObj = Run(run_name)
-RunObj.print_params()
-print(RunObj.experiments)
+RunObj.print_data()
 
 
 
-# # Create folder to store results - that is where the results go into
-# folder_path = f'../results/{run_name}'
-# if os.path.isdir(folder_path) == False:
-#   os.mkdir(folder_path)
-# else:
-#   print('Folder already exists')
 
 # # Add experiment to a running list of experiments I've run
 
