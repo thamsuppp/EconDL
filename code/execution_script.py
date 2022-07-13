@@ -41,7 +41,6 @@ else:
 dataset, run_params = DataLoader.load_data(run_params)
 
 
-
 # Get the number of experiments to run
 num_experiments = len(run_params['nn_hyps'])
 num_repeats = run_params['run_params']['num_repeats']
@@ -105,7 +104,21 @@ for repeat_id in range(num_repeats):
       with open(f'{folder_path}/fcast_params_{experiment_id}_repeat{repeat_id}.npz', 'wb') as f:
         np.savez(f, fcast = fcast, fcast_cov_mat = fcast_cov_mat)
 
+    if run_params['execution_params']['multi_forecasting'] == True:
 
+      multi_forecasting_params = {
+        'test_size': 60, 
+        'forecast_horizons': 6,
+        'reestimation_window': 60,
+        'num_inner_bootstraps': num_inner_bootstraps,
+        'num_repeats': 1, 
+
+        'n_lag_linear': nn_hyps['n_lag_linear'],
+        'n_lag_d': nn_hyps['n_lag_d'],
+        'n_var': len(nn_hyps['variables']),
+        'forecast_method': 'new', # old or new
+        'var_names': nn_hyps['variables'],
+      }
 
 
 # Compute benchmarks

@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import os
 
 
 class Evaluation:
@@ -13,7 +14,6 @@ class Evaluation:
     self.image_folder_path = f'{self.folder_path}/images'
     if os.path.isdir(self.image_folder_path) == False:
       os.mkdir(self.image_folder_path)
-
 
     self.need_to_combine = evaluation_params['need_to_combine']
     self.is_simulation = evaluation_params['is_simulation']
