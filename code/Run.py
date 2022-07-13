@@ -6,10 +6,11 @@ import DataHelpers.DataLoader as DataLoader
 
 
 class Run:
-
-  def __init__(self, run_name):
+  
+  def __init__(self, run_name, device):
 
     self.run_name = run_name
+    self.device = device
 
     self.dataset_name = None
     self.dataset = None
@@ -23,8 +24,6 @@ class Run:
     self.num_experiments = 0
 
     self._load_params()
-    self._init_experiments()
-    self._load_data()
 
     # Create folder to store results - that is where the results go into
     folder_path = f'../results/{run_name}'
@@ -33,6 +32,12 @@ class Run:
       print(f'Folder made at {folder_path}')
     else:
       print(f'Folder at {folder_path} already exists')
+
+    self.run_params.update({'folder_path': folder_path})
+
+    
+    self._init_experiments()
+    self._load_data()
 
   def _load_params(self):
     with open(f'../exp_config/{self.run_name}.json', 'r') as f:
@@ -55,13 +60,21 @@ class Run:
         # Combine the default nn_hyps with changed_nn_hyps
         all_nn_hyps = default_nn_hyps.copy()
         default_nn_hyps.update(changed_nn_hyps)
-        ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps)
+        ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps, self.run_params)
         self.experiments.append(ExperimentObj)
       
       self.num_experiments = len(self.experiments)
   
   def _load_data(self):
     self.dataset, self.n_var, self.var_names = DataLoader.load_data(self.dataset_name)
+
+  def train_experiments(self, experiment_ids = None):  
+    # If experiment_ids = None, then train all
+    experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
+    
+    for experiment_id in experiment_ids:
+      ExperimentObj = self.experiments[experiment_id]
+      ExperimentObj.train(self.dataset, self.device)
 
 
   def print_params(self):

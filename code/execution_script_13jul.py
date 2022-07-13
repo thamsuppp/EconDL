@@ -28,8 +28,9 @@ run_name = sys.argv[1]
 # - Reads the json
 # - Instantiates the experiments with the corresponding nn_hyps
 # - Loads the data into the RunObj
-RunObj = Run(run_name)
+RunObj = Run(run_name, device)
 RunObj.print_params()
+RunObj.train_experiments()
 
 
 

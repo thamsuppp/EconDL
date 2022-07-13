@@ -202,9 +202,11 @@ def process_data_wrapper(data, nn_hyps):
       s_pos = nn_hyps['s_pos']
       nn_hyps['s_pos'] = [list(range(s[0], s[1])) for s in s_pos]
 
+    # Get the max of s_pos
+    max_s_pos = max([max(e) for e in nn_hyps['s_pos']])
     # Subset the X_train and X_test to only the required columns
-    X_train = X_train[:, :n_inputs_wo_time]
-    X_test = X_test[:, :n_inputs_wo_time]
+    X_train = X_train[:, :(max_s_pos+1)]
+    X_test = X_test[:, :(max_s_pos+1)]
 
     
     return X_train, X_test, Y_train, Y_test, nn_hyps
