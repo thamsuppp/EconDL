@@ -20,6 +20,7 @@ class Run:
     self.experiment_params = None
 
     self.experiments = []
+    self.num_experiments = 0
 
     self._load_params()
     self._init_experiments()
@@ -43,10 +44,21 @@ class Run:
     self.dataset_name = all_params['dataset']
 
   def _init_experiments(self): # Only if experiments are not already initialized
+
+    # Load the default nn_hyps
+    default_nn_hyps_path = self.run_params['default_nn_hyps']
+    with open(f'../exp_config/{default_nn_hyps_path}.json', 'r') as f:
+      default_nn_hyps = json.load(f)
+
     if self.experiments == []:
-      for experiment_id, nn_hyps in enumerate(self.experiment_params):
-        ExperimentObj = Experiment(self.run_name, experiment_id, nn_hyps)
+      for experiment_id, changed_nn_hyps in enumerate(self.experiment_params):
+        # Combine the default nn_hyps with changed_nn_hyps
+        all_nn_hyps = default_nn_hyps.copy()
+        default_nn_hyps.update(changed_nn_hyps)
+        ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps)
         self.experiments.append(ExperimentObj)
+      
+      self.num_experiments = len(self.experiments)
   
   def _load_data(self):
     self.dataset, self.n_var, self.var_names = DataLoader.load_data(self.dataset_name)

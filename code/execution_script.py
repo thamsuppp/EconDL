@@ -15,7 +15,7 @@ import json
 import os
 import sys
 
-from nn_hyps import nn_hyps_default
+from exp_config.nn_hyps import nn_hyps_default
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -39,7 +39,6 @@ else:
 
 # Load dataset
 dataset, run_params = DataLoader.load_data(run_params)
-
 
 # Get the number of experiments to run
 num_experiments = len(run_params['nn_hyps'])

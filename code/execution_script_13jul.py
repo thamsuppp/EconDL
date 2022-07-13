@@ -18,8 +18,6 @@ import json
 import os
 import sys
 
-from nn_hyps import nn_hyps_default
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Experiment name is the command-line argument
@@ -29,8 +27,11 @@ run_name = sys.argv[1]
 # - Creates a new folder
 # - Reads the json
 # - Instantiates the experiments with the corresponding nn_hyps
+# - Loads the data into the RunObj
 RunObj = Run(run_name)
-RunObj.print_data()
+RunObj.print_params()
+
+
 
 
 
