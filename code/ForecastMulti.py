@@ -1,27 +1,29 @@
 import pandas as pd
 import numpy as np
 import random 
+from datetime import datetime
 from utils import invert_scaling
 from predict_nn import predict_nn_new, predict_nn_old, predict_ml_model
 
 
 class ForecastMulti:
 
-  def __init__(self, experiment_name, multi_forecasting_params, device = None):
+  def __init__(self, multi_forecasting_params, device = None):
 
     self.h = multi_forecasting_params['forecast_horizons']
-    self.test_size = multi_forecasting_params['test_size']
+    self.test_size = multi_forecasting_params['test_size'] #T
     self.reestimation_window = multi_forecasting_params['reestimation_window']
     self.R = int(self.test_size / self.reestimation_window)
     self.num_repeats = multi_forecasting_params['num_repeats']
     self.num_inner_bootstraps = multi_forecasting_params['num_inner_bootstraps']
+    self.num_sim_bootstraps =  multi_forecasting_params['num_sim_bootstraps'] # B
 
-    self.experiment_name = experiment_name
     self.n_lag_linear = multi_forecasting_params['n_lag_linear']
     self.n_lag_d = multi_forecasting_params['n_lag_d']
     self.n_var = multi_forecasting_params['n_var']
-    self.max_h = multi_forecasting_params['max_h']
     self.var_names = multi_forecasting_params['var_names']
+
+    self.forecast_method = multi_forecasting_params['forecast_method']
 
     self.device = device
 
@@ -31,7 +33,8 @@ class ForecastMulti:
   # Base code: Make 0-h horizon predictions for 1 bootstrap, for 1 tiemstep
   # New for 14 Dec: input the error_ids so we can keep constant across different models
   def predict_one_bootstrap_new(self, newx, results, nn_hyps):
-
+    
+    Y_train = results['Y_train']
     n_lag_linear = nn_hyps['n_lag_linear']
     n_lag_d = nn_hyps['n_lag_d']
     # Input dim of newx: 1 dimensional
@@ -39,7 +42,7 @@ class ForecastMulti:
     # Store the average OOB predictions across all inner bootstraps
     oob_preds = results['pred_in']
     # oob_res: set of OOB error vectors to sample from for the iterated forecasts
-    oob_res = results['Y_train'] - results['pred_in']
+    oob_res = Y_train - results['pred_in']
 
     # Remove all NA values so that we don't sample NAs
     a = pd.DataFrame(oob_res)
@@ -94,7 +97,7 @@ class ForecastMulti:
       fcast_cov_mat[period, :, :] = cov
       c_t = np.linalg.cholesky(cov)
       
-      if period != h:
+      if period != self.h:
         # Sample 1 shock from normal distribution
         sim_shock = np.random.multivariate_normal([0] * self.n_var, np.eye(self.n_var), size = 1)
 
@@ -184,3 +187,32 @@ class ForecastMulti:
         fcast[period, :] = pred
       
     return fcast 
+
+  def conduct_multi_forecasting_wrapper(self, X_train, X_test, Y_train, Y_test, results, nn_hyps):
+
+    # Fix the shock ids across the different models
+    #error_ids = np.array(random.choices(range(X_train.shape[0]), k = self.h * self.num_sim_bootstraps * self.test_size))
+    #error_ids = error_ids.reshape((self.h, self.num_sim_bootstraps, self.test_size))
+
+    if self.forecast_method == 'new':
+        predict_fn = self.predict_one_bootstrap_new
+    else:
+      predict_fn = self.predict_one_bootstrap_old
+
+    results['Y_train'] = Y_train
+    results['Y_test'] = Y_test
+
+    FCAST = np.zeros((self.h + 1, self.n_var, self.num_sim_bootstraps, self.test_size, self.R))
+    FCAST[:] = np.nan
+    r = 0
+    # For every timestep (in the future), for every bootstrap, get the h-th horizon prediction
+    for t in range(r * self.reestimation_window, self.test_size):
+      if t % 5 == 0:
+        print(f'Time {t}, {datetime.now()}')
+      for b in range(self.num_sim_bootstraps):
+        if t == r * self.reestimation_window: # first sample (X_train is continually changed so can take last value of X_train)
+          FCAST[:, :, b, t, r] = predict_fn(X_train[-1, :], results, nn_hyps)
+        else: # not the first sample (X_test is unchanged so can just index t)
+          FCAST[:, :, b, t, r] = predict_fn(X_test[t, :], results, nn_hyps)
+    
+    return FCAST

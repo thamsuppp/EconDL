@@ -31,7 +31,6 @@ run_name = sys.argv[1]
 RunObj = Run(run_name, device)
 # Train all experiments within the run and store the experiments within the object
 RunObj.train_experiments()
-
 RunObj.train_benchmarks()
 
 # for ExperimentObj in RunObj.experiments:

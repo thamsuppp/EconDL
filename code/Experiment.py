@@ -8,6 +8,7 @@ import TrainVARNN
 from IRF.IRFConditional import IRFConditional 
 from IRF.IRFUnconditional import IRFUnconditional
 from IRF.IRFUnconditionalEvaluation import IRFUnconditionalEvaluation
+from ForecastMulti import ForecastMulti
 
 keys_to_keep = {'betas': 2,
                 'betas_in': 2,
@@ -29,6 +30,7 @@ class Experiment:
     
     self.nn_hyps = nn_hyps
     self.run_params = run_params # run_inner_bootstraps, num_repeats, default_nn_hyps
+    self.execution_params = execution_params
     self.extensions_params = extensions_params
 
     self.folder_path = self.run_params['folder_path']
@@ -62,6 +64,9 @@ class Experiment:
       self.evaluations['conditional_irf'] = IRFConditionalObj
 
   def get_unconditional_irfs(self, Y_train, Y_test, results, device, repeat_id):
+    if self.execution_params['unconditional_irfs'] == False:
+      print('Unconditional IRFs turned off')
+      return 
     # results contains the trained model
     unconditional_irf_params = {
         'n_lag_linear': self.nn_hyps['n_lag_linear'],
@@ -81,7 +86,33 @@ class Experiment:
     with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
       np.savez(f, fcast = fcast, fcast_cov_mat = fcast_cov_mat)
 
-    
+  def get_multi_forecasts(self, X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id):
+
+    if self.execution_params['multi_forecasting'] == False:
+      print('Multi Forecasting turned off')
+      return 
+
+    multi_forecasting_params = {
+      'test_size': self.nn_hyps['test_size'], 
+      'forecast_horizons': self.extensions_params['multi_forecasting']['forecast_horizons'],
+      'reestimation_window': self.extensions_params['multi_forecasting']['reestimation_window'],
+      'num_inner_bootstraps': self.nn_hyps['num_inner_bootstraps'],
+      'num_sim_bootstraps': self.extensions_params['multi_forecasting']['num_sim_bootstraps'],
+      'num_repeats': 1, 
+
+      'n_lag_linear': self.nn_hyps['n_lag_linear'],
+      'n_lag_d': self.nn_hyps['n_lag_d'],
+      'n_var': len(self.nn_hyps['variables']),
+      'forecast_method': self.extensions_params['multi_forecasting']['forecast_method'], # old or new
+      'var_names': self.nn_hyps['variables']
+    }
+
+    ForecastMultiObj = ForecastMulti(multi_forecasting_params, device = device)
+    FCAST = ForecastMultiObj.conduct_multi_forecasting_wrapper(X_train, X_test, Y_train, Y_test, results, nn_hyps)
+
+    print('Done with Multiforecasting')
+    with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
+      np.savez(f, fcast = FCAST)
 
   # Compile results if there are multiple repeats (in results)
   def _compile_results(self):
@@ -111,7 +142,31 @@ class Experiment:
     with open(f'{self.folder_path}/params_{self.experiment_id}_compiled.npz', 'wb') as f:
       np.savez(f, results = self.results)
 
+  def _compile_multi_forecasting_results(self):
+
+    if self.execution_params['multi_forecasting'] == False:
+      print('Multi Forecasting turned off')
+      return 
+    num_repeats = self.run_params['num_repeats']
+    repeat_id = 0
+    while repeat_id < num_repeats:
+
+      fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)['fcast']
+      if repeat_id == 0:
+        fcast_all = fcast_repeat # horizons x variables x bootstraps x time x reestimation_window
+      if repeat_id == 0:
+        fcast_all = np.concatenate([fcast_all, fcast_repeat], axis = 2)
+      repeat_id += 1
+    
+    with open(f'{self.folder_path}/multi_fcast_{self.experiment_id}_compiled.npz', 'wb') as f:
+      np.savez(f, fcast = fcast_all)
+
   def _compile_unconditional_irf_results(self):
+
+    if self.execution_params['unconditional_irfs'] == False:
+      print('Unconditional IRFs turned off')
+      return 
+      
     num_repeats = self.run_params['num_repeats']
     repeat_id = 0
     while repeat_id < num_repeats:
@@ -192,14 +247,17 @@ class Experiment:
 
         print(f'Finished training repeat {repeat_id} of experiment {self.experiment_id} at {datetime.now()}')
 
-        # Do unconditional IRFs
+        # Do unconditional IRFs and forecasting
+        
         self.get_unconditional_irfs(Y_train, Y_test, results, device = device, repeat_id = repeat_id)
+        self.get_multi_forecasts(X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id)
 
       # After completing all repeats
       self.is_trained = True
 
       self._compile_results()
     self._compile_unconditional_irf_results()
+    self._compile_multi_forecasting_results()
 
 
   def load_results(self):
