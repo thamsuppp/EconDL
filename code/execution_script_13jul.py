@@ -32,12 +32,20 @@ RunObj = Run(run_name, device)
 # Train all experiments within the run and store the experiments within the object
 RunObj.train_experiments()
 
+RunObj.train_benchmarks()
+
 # for ExperimentObj in RunObj.experiments:
 #   ExperimentObj.check_results_sizes()
 
-RunObj.get_conditional_irfs()
+# RunObj.get_conditional_irfs()
+
+
+# Compute benchmarks
 
 # Everything above this works!
+
+# E
+
 
 
 
