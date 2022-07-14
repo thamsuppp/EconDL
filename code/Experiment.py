@@ -107,8 +107,11 @@ class Experiment:
       'var_names': self.nn_hyps['variables']
     }
 
-    ForecastMultiObj = ForecastMulti(multi_forecasting_params, device = device)
-    FCAST = ForecastMultiObj.conduct_multi_forecasting_wrapper(X_train, X_test, Y_train, Y_test, results, nn_hyps)
+    ForecastMultiObj = ForecastMulti(self.run_name, Y_train, Y_test, multi_forecasting_params, device = device)
+    
+    # Benchmarks
+    FCAST = ForecastMultiObj.conduct_multi_forecasting_wrapper(X_train, X_test, results, nn_hyps)
+    ForecastMultiObj.conduct_multi_forecasting_benchmarks()
 
     print('Done with Multiforecasting')
     with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
