@@ -29,12 +29,13 @@ run_name = sys.argv[1]
 # - Instantiates the experiments with the corresponding nn_hyps
 # - Loads the data into the RunObj
 RunObj = Run(run_name, device)
-RunObj.print_params()
 # Train all experiments within the run and store the experiments within the object
 RunObj.train_experiments()
 
 # for ExperimentObj in RunObj.experiments:
 #   ExperimentObj.check_results_sizes()
+
+RunObj.get_conditional_irfs()
 
 # Everything above this works!
 

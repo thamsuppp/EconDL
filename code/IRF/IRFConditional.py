@@ -11,8 +11,9 @@ class IRFConditional:
     self.max_h = irf_params['max_h']
     self.var_names = irf_params['var_names']
 
-    self.BETAS = results['BETAS']
-    self.SIGMAS = results['SIGMAS']
+    # Sum hemis to get BETAS: (n_obs, n_betas, n_bootstraps, n_var)
+    self.BETAS = np.sum(results['betas'], axis = -1)
+    self.SIGMAS = results['sigmas']
     self.IRFS = None
 
     # Computes the IRFs
@@ -97,7 +98,7 @@ class IRFConditional:
 
         IRFS[t, boot, :, :, :] = irf_draw
 
-    return IRFS
+    self.IRFS = IRFS
 
     # # Get the median of the IRF draws
     # IRFS_median = np.nanmedian(IRFS, axis = 1)
@@ -105,7 +106,10 @@ class IRFConditional:
     # return IRFS_median
 
 
-  def plot_irfs(self, IRFS_estimated, image_folder_path):
+  def plot_irfs(self, image_folder_path, experiment_id):
+
+    # Take the median 
+    IRFS_median = np.nanmedian(self.IRFS, axis = 1)
 
     times_to_draw = [90, 210, 330, 450]
     times_to_draw_labels = [1968, 1978, 1988, 1998]
@@ -116,7 +120,7 @@ class IRFConditional:
     for k in range(self.n_var):
       for kk in range(self.n_var):
         for i in range(len(times_to_draw)):
-          irf_df = IRFS_estimated[times_to_draw[i], k, kk, :]
+          irf_df = IRFS_median[times_to_draw[i], k, kk, :]
           ax[kk, k].plot(irf_df, label = times_to_draw_labels[i], color = cmap(i))
 
           #irf_actual_df = IRFS_actual[times_to_draw[i], k, kk, :]
@@ -128,7 +132,9 @@ class IRFConditional:
         if k == 0 and kk == 0:
           ax[kk, k].legend()
 
-    image_file = f'{image_folder_path}/irf_conditional.png'
-    plt.savefig(image_file)
+    image_path = f'{image_folder_path}/irf_conditional_{experiment_id}.png'
+    plt.savefig(image_path)
+
+    print(f'Conditional IRF saved at {image_path}')
 
 

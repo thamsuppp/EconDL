@@ -18,6 +18,7 @@ class Run:
     self.var_names = None
     self.run_params = None
     self.execution_params = None
+    self.extensions_params = None
     self.experiment_params = None
 
     self.experiments = []
@@ -26,15 +27,24 @@ class Run:
     self._load_params()
 
     # Create folder to store results - that is where the results go into
-    folder_path = f'../results/{run_name}'
-    if os.path.isdir(folder_path) == False:
-      os.mkdir(folder_path)
-      print(f'Folder made at {folder_path}')
+    self.folder_path = f'../results/{run_name}'
+    if os.path.isdir(self.folder_path) == False:
+      os.mkdir(self.folder_path)
+      print(f'Folder made at {self.folder_path}')
     else:
-      print(f'Folder at {folder_path} already exists')
+      print(f'Folder at {self.folder_path} already exists')
 
-    self.run_params.update({'folder_path': folder_path})
+    # Create image folder if not exist yet
+    self.image_folder_path = f'{self.folder_path}/images'
+    if os.path.isdir(self.image_folder_path) == False:
+      os.mkdir(self.image_folder_path)
 
+    self.run_params.update(
+      {
+        'folder_path': self.folder_path,
+        'image_folder_path': self.image_folder_path
+        }
+      )
     
     self._init_experiments()
     self._load_data()
@@ -47,6 +57,7 @@ class Run:
     self.run_params = all_params['run_params']
     self.execution_params = all_params['execution_params']
     self.experiment_params = all_params['nn_hyps']
+    self.extensions_params = all_params['extensions_params']
     self.dataset_name = all_params['dataset']
 
   def _init_experiments(self): # Only if experiments are not already initialized
@@ -60,8 +71,8 @@ class Run:
       for experiment_id, changed_nn_hyps in enumerate(self.experiment_params):
         # Combine the default nn_hyps with changed_nn_hyps
         all_nn_hyps = default_nn_hyps.copy()
-        default_nn_hyps.update(changed_nn_hyps)
-        ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps, self.run_params)
+        all_nn_hyps.update(changed_nn_hyps)
+        ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params)
         self.experiments.append(ExperimentObj)
       
       self.num_experiments = len(self.experiments)
@@ -76,6 +87,14 @@ class Run:
     for experiment_id in experiment_ids:
       ExperimentObj = self.experiments[experiment_id]
       ExperimentObj.train(self.dataset, self.device)
+
+  def get_conditional_irfs(self, experiment_ids = None):
+    # If experiment_ids = None, then train all
+    experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
+    
+    for experiment_id in experiment_ids:
+      ExperimentObj = self.experiments[experiment_id]
+      ExperimentObj.get_conditional_irfs()
 
 
   def print_params(self):
