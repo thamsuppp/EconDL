@@ -30,59 +30,14 @@ run_name = sys.argv[1]
 # - Loads the data into the RunObj
 RunObj = Run(run_name, device)
 RunObj.print_params()
+# Train all experiments within the run and store the experiments within the object
 RunObj.train_experiments()
 
+# Everything above this works!
 
 
 
 
-
-# # Add experiment to a running list of experiments I've run
-
-# # Load dataset
-# dataset, run_params = DataLoader.load_data(run_params)
-
-
-# # Get the number of experiments to run
-# num_experiments = len(run_params['nn_hyps'])
-# num_repeats = run_params['run_params']['num_repeats']
-# num_inner_bootstraps = run_params['run_params']['num_inner_bootstraps']
-
-
-# for repeat_id in range(num_repeats):
-#   for experiment_id in range(num_experiments):
-
-#     experiment_params = run_params['nn_hyps'][experiment_id]
-
-#     print(f'Experiment {experiment_id}, Params: {experiment_params}')
-#     nn_hyps = nn_hyps_default.copy()
-#     nn_hyps.update(experiment_params)
-#     nn_hyps['num_bootstrap'] = num_inner_bootstraps
-
-#     # Process dataset - DONE
-#     X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, nn_hyps)
-
-
-#     if run_params['execution_params']['varnn_estimation'] == True:
-#       # Train the VARNN
-#       print('s_pos', nn_hyps['s_pos'])
-#       results = TrainVARNN.conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
-
-#       with open(f'{folder_path}/params_{experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
-#           np.savez(f, 
-#             betas = results['betas_draws'], 
-#             betas_in = results['betas_in_draws'], 
-#             sigmas = results['sigmas_draws'], 
-#             sigmas_in = results['sigmas_in_draws'],
-#             precision = results['precision_draws'], 
-#             precision_in = results['precision_in_draws'],
-#             cholesky = results['cholesky_draws'], 
-#             cholesky_in = results['cholesky_in_draws'],
-#             train_preds = results['pred_in_ensemble'] , 
-#             test_preds = results['pred_ensemble'], 
-#             y = Y_train, 
-#             y_test = Y_test, 
-#             params = nn_hyps)
 
 
 #     if run_params['execution_params']['unconditional_irfs'] == True:

@@ -18,10 +18,16 @@ class Experiment:
     self.nn_hyps['num_bootstrap'] = self.run_params['num_inner_bootstraps']
 
     self.results = []
-    self.results_loaded = []
     self.is_trained = False
 
+    self.evaluations = {
+      'conditional_irf': None,
+      'unconditional_irf': None,
+      'multi_forecasting': None
+    }
+
     self.load_results()
+
 
   # @DEV: Don't pass in the dataset in the _init_() because if not then there will be multiply copies of
   # the dataset sitting in each run.
@@ -38,24 +44,28 @@ class Experiment:
       print(nn_hyps)
       results = TrainVARNN.conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
       
-      self.results.append(results)
-
       folder_path = self.run_params['folder_path']
+
+      results_saved = {
+          'betas': results['betas_draws'], 
+          'betas_in': results['betas_in_draws'], 
+          'sigmas': results['sigmas_draws'], 
+          'sigmas_in': results['sigmas_in_draws'],
+          'precision': results['precision_draws'], 
+          'precision_in': results['precision_in_draws'],
+          'cholesky': results['cholesky_draws'], 
+          'cholesky_in': results['cholesky_in_draws'],
+          'train_preds': results['pred_in_ensemble'] , 
+          'test_preds': results['pred_ensemble'], 
+          'y': Y_train, 
+          'y_test': Y_test, 
+          'params': nn_hyps
+      }
+
       with open(f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
-        np.savez(f, 
-          betas = results['betas_draws'], 
-          betas_in = results['betas_in_draws'], 
-          sigmas = results['sigmas_draws'], 
-          sigmas_in = results['sigmas_in_draws'],
-          precision = results['precision_draws'], 
-          precision_in = results['precision_in_draws'],
-          cholesky = results['cholesky_draws'], 
-          cholesky_in = results['cholesky_in_draws'],
-          train_preds = results['pred_in_ensemble'] , 
-          test_preds = results['pred_ensemble'], 
-          y = Y_train, 
-          y_test = Y_test, 
-          params = nn_hyps)
+        np.savez(f, results = results_saved)
+
+      self.results.append(results_saved)
 
       print(f'Finished training repeat {repeat_id} of experiment {self.experiment_id} at {datetime.now()}')
 
@@ -72,8 +82,8 @@ class Experiment:
       while os.path.exists(f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'):
         self.is_trained = True
         load_file = f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'
-        results = np.load(load_file, allow_pickle = True)
-        self.results_loaded.append(results)
+        results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
+        self.results.append(results_loaded)
 
         print(f'Loaded results for repeat {repeat_id}')
         repeat_id += 1

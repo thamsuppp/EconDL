@@ -31,13 +31,13 @@ image_folder_path = f'{folder_path}/images'
 #     'exps_to_plot': [0]
 # }
 
-# irf_params = {
-#     'n_var': 3,
-#     'n_lags': 1,
-#     'n_betas': 4,
-#     'max_h': 10,
-#     'var_names': ['DGS3', 'inf', 'unrate']
-# }
+irf_params = {
+    'n_var': 3,
+    'n_lags': 1,
+    'n_betas': 4,
+    'max_h': 10,
+    'var_names': ['DGS3', 'inf', 'unrate']
+}
 
 # # Create an Evaluation instance
 # EvaluationObj = Evaluation(run_name, evaluation_params)

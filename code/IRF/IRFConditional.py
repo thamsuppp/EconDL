@@ -4,16 +4,22 @@ import matplotlib.pyplot as plt
 
 class IRFConditional:
 
-  def __init__(self, irf_params):
-      self.n_betas = irf_params['n_betas']
-      self.n_lags = irf_params['n_lags']
-      self.n_var = irf_params['n_var']
-      self.max_h = irf_params['max_h']
-      self.var_names = irf_params['var_names']
+  def __init__(self, results, irf_params):
+    self.n_betas = irf_params['n_betas']
+    self.n_lags = irf_params['n_lags']
+    self.n_var = irf_params['n_var']
+    self.max_h = irf_params['max_h']
+    self.var_names = irf_params['var_names']
 
+    self.BETAS = results['BETAS']
+    self.SIGMAS = results['SIGMAS']
+    self.IRFS = None
+
+    # Computes the IRFs
+    self.get_irfs()
 
   # @title Function to get IRF for One Draw
-  def get_irf_draw(self, beta_draw, cov_mat_draw = None):
+  def _get_irf_draw(self, beta_draw, cov_mat_draw = None):
 
     # Rearranging the betas so they fit into A matrix
     constant = beta_draw[:, 0]
@@ -61,12 +67,12 @@ class IRFConditional:
 
     return irf_draw
 
-  # @title Get the Median IRFs across all draws
-
-  # Execution code: Compute the conditional IRFs for each bootstrap draw
+  # @title Computes the conditional IRFs for all bootstrap draws, updates self.IRFS
   # Note: If you want to use estimated covariance matrix, then change cov_mat_draw parameter to cov_mat_draw, otherwise None makes it identity matrix
+  def get_irfs(self):
 
-  def get_irfs(self, BETAS, SIGMAS):
+    BETAS = self.BETAS
+    SIGMAS = self.SIGMAS
 
     n_obs = BETAS.shape[0]
     n_bootstraps = BETAS.shape[2]
@@ -87,14 +93,16 @@ class IRFConditional:
         #cov_mat_draw = COV_MATS[boot, :, :]
         # Get the time-varying cov mat
         cov_mat_draw = SIGMAS[t, :, :, boot]
-        irf_draw = self.get_irf_draw(beta_draw, cov_mat_draw = cov_mat_draw)
+        irf_draw = self._get_irf_draw(beta_draw, cov_mat_draw = cov_mat_draw)
 
         IRFS[t, boot, :, :, :] = irf_draw
 
-    # Get the median of the IRF draws
-    IRFS_median = np.nanmedian(IRFS, axis = 1)
+    return IRFS
+
+    # # Get the median of the IRF draws
+    # IRFS_median = np.nanmedian(IRFS, axis = 1)
     
-    return IRFS_median
+    # return IRFS_median
 
 
   def plot_irfs(self, IRFS_estimated, image_folder_path):
@@ -124,8 +132,3 @@ class IRFConditional:
     plt.savefig(image_file)
 
 
-
-
-
-  def compute_IRF():
-    return dict()
