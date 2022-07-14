@@ -33,6 +33,9 @@ RunObj.print_params()
 # Train all experiments within the run and store the experiments within the object
 RunObj.train_experiments()
 
+# for ExperimentObj in RunObj.experiments:
+#   ExperimentObj.check_results_sizes()
+
 # Everything above this works!
 
 

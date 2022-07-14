@@ -6,6 +6,16 @@ import os
 import DataHelpers.DataProcesser as DataProcesser
 import TrainVARNN 
 
+keys_to_keep = {'betas': 2,
+                'betas_in': 2,
+                'sigmas': 3,
+                'sigmas_in': 3, 
+                'precision': 3,
+                'precision_in': 3,
+                'cholesky': 4, 
+                'cholesky_in': 4, 
+                'train_preds': 1, 
+                'test_preds': 1}
 
 class Experiment:
   def __init__(self, run_name, experiment_id, nn_hyps, run_params):
@@ -17,8 +27,10 @@ class Experiment:
 
     self.nn_hyps['num_bootstrap'] = self.run_params['num_inner_bootstraps']
 
+    self.results_uncompiled = []
     self.results = []
     self.is_trained = False
+    self.is_compiled = False
 
     self.evaluations = {
       'conditional_irf': None,
@@ -28,6 +40,42 @@ class Experiment:
 
     self.load_results()
 
+
+  def check_results_sizes(self):
+    for k in keys_to_keep.keys():
+      print(k, self.results[k].shape)
+
+  def get_conditional_irfs(self):
+    pass
+
+  # Compile results if there are multiple repeats (in results)
+  def _compile_results(self):
+    folder_path = self.run_params['folder_path']
+    num_repeats = self.run_params['num_repeats']
+
+    repeat_id = 0
+    # While there are more repeats to process, stack the fields
+    while repeat_id < num_repeats:
+
+      results_repeat = self.results_uncompiled[repeat_id]
+
+      if repeat_id == 0:
+        results_compiled = {k:v for k,v in results_repeat.items() if k in keys_to_keep.keys()}
+      else:
+        for k, v in results_compiled.items():
+          results_compiled[k] = np.concatenate([results_compiled[k], results_repeat[k]], axis = keys_to_keep[k])
+      repeat_id += 1
+
+    results_compiled['y'] = results_repeat['y']
+    results_compiled['y_test'] = results_repeat['y_test']
+    results_compiled['params'] = results_repeat['params']
+
+    # Assign the compiled results back to the original results
+    self.results = results_compiled
+    self.is_compiled = True
+
+    with open(f'{folder_path}/params_{self.experiment_id}_compiled.npz', 'wb') as f:
+      np.savez(f, results = self.results)
 
   # @DEV: Don't pass in the dataset in the _init_() because if not then there will be multiply copies of
   # the dataset sitting in each run.
@@ -65,28 +113,38 @@ class Experiment:
       with open(f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
         np.savez(f, results = results_saved)
 
-      self.results.append(results_saved)
+      self.results_uncompiled.append(results_saved)
 
       print(f'Finished training repeat {repeat_id} of experiment {self.experiment_id} at {datetime.now()}')
 
     self.is_trained = True
+    self._compile_results()
 
 
   def load_results(self):
+
     folder_path = self.run_params['folder_path']
     # Check if the results exist
+    if os.path.exists(f'{folder_path}/params_{self.experiment_id}_compiled.npz'):
+      self.is_trained = True
+      load_file = f'{folder_path}/params_{self.experiment_id}_compiled.npz'
+      results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
+      self.results = results_loaded
+      print(f'Loaded compiled results')
+      return
 
-    if os.path.exists(f'{folder_path}/params_{self.experiment_id}_repeat_0.npz'):
-
+    elif os.path.exists(f'{folder_path}/params_{self.experiment_id}_repeat_0.npz'):
       repeat_id = 0
       while os.path.exists(f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'):
         self.is_trained = True
         load_file = f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'
         results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
-        self.results.append(results_loaded)
+        self.results_uncompiled.append(results_loaded)
 
         print(f'Loaded results for repeat {repeat_id}')
         repeat_id += 1
+
+      return
     else:
       print('Not trained yet')
 
