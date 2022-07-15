@@ -1,9 +1,40 @@
 {
     "dataset": "monthly",
+
+    "run_params": {
+        "num_inner_bootstraps": 20,
+        "num_repeats": 1,
+        "default_nn_hyps": "nn_hyps_default"
+    },
+
+    "execution_params": {
+        "benchmarks": true,
+        "varnn_estimation": false,
+        "conditional_irfs": false,
+        "unconditional_irfs": false,
+        "multi_forecasting": false
+    },
+
     "nn_hyps": [
         {
-            "nodes": [400, 200, 100], 
+            "nodes": [200, 100, 50], 
             "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.0025, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 9]],
+            "joint_estimation": true, 
+            "name": "RELU"
+        },
+
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.SELU()", 
             "tvpl_archi": [5], 
             "lr": 0.002, 
             "time_dummy_setting": 2, 
@@ -12,9 +43,9 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 144], [144, 226]],
+            "s_pos": [[0, 9]],
             "joint_estimation": true, 
-            "name": "Baseline"
+            "name": "SELU"
         }
     ]
 }

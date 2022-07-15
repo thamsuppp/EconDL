@@ -4,7 +4,7 @@ import os
 from Experiment import Experiment
 from Benchmarks import Benchmarks
 import DataHelpers.DataLoader as DataLoader
-from ForecastBenchmarks import ForecastBenchmarks
+from Forecast.ForecastBenchmarks import ForecastBenchmarks
 
 
 class Run:
@@ -52,6 +52,51 @@ class Run:
     self._init_experiments()
     self._load_data()
 
+  
+  def _load_params(self):
+    with open(f'../exp_config/{self.run_name}.json', 'r') as f:
+      all_params = json.load(f)
+    
+    self.run_params = all_params['run_params']
+    self.execution_params = all_params['execution_params']
+    self.experiment_params = all_params['nn_hyps']
+    self.extensions_params = all_params['extensions_params']
+    self.evaluation_params = all_params['evaluation_params']
+    self.dataset_name = all_params['dataset']
+
+    self.n_var = all_params['run_params']['n_var']
+    self.var_names = all_params['run_params']['var_names']
+
+  def _init_experiments(self): # Only if experiments are not already initialized
+
+    # Load the default nn_hyps
+    default_nn_hyps_path = self.run_params['default_nn_hyps']
+    with open(f'../exp_config/{default_nn_hyps_path}.json', 'r') as f:
+      default_nn_hyps = json.load(f)
+
+    # Combine default_nn_hyps with the run_params
+    default_nn_hyps.update(self.run_params)
+
+    if self.experiments == []:
+      for experiment_id, changed_nn_hyps in enumerate(self.experiment_params):
+        # Combine the default nn_hyps with changed_nn_hyps
+        all_nn_hyps = default_nn_hyps.copy()
+        all_nn_hyps.update(changed_nn_hyps)
+        ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params)
+        self.experiments.append(ExperimentObj)
+      
+      self.num_experiments = len(self.experiments)
+  
+  def _load_data(self):
+    self.dataset, _, _ = DataLoader.load_data(self.dataset_name)
+
+  def train_experiments(self, experiment_ids = None):  
+    # If experiment_ids = None, then train all
+    experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
+    
+    for experiment_id in experiment_ids:
+      ExperimentObj = self.experiments[experiment_id]
+      ExperimentObj.train(self.dataset, self.device)
 
   def train_benchmarks(self):
 
@@ -106,66 +151,11 @@ class Run:
 
     print('Multi-forecasting Benchmarks trained')
 
-  
-  def _load_params(self):
-    with open(f'../exp_config/{self.run_name}.json', 'r') as f:
-      all_params = json.load(f)
-    
-    self.run_params = all_params['run_params']
-    self.execution_params = all_params['execution_params']
-    self.experiment_params = all_params['nn_hyps']
-    self.extensions_params = all_params['extensions_params']
-    self.evaluation_params = all_params['evaluation_params']
-    self.dataset_name = all_params['dataset']
-
-    self.n_var = all_params['run_params']['n_var']
-    self.var_names = all_params['run_params']['var_names']
-
-  def _init_experiments(self): # Only if experiments are not already initialized
-
-    # Load the default nn_hyps
-    default_nn_hyps_path = self.run_params['default_nn_hyps']
-    with open(f'../exp_config/{default_nn_hyps_path}.json', 'r') as f:
-      default_nn_hyps = json.load(f)
-
-    # Combine default_nn_hyps with the run_params
-    default_nn_hyps.update(self.run_params)
-
-    if self.experiments == []:
-      for experiment_id, changed_nn_hyps in enumerate(self.experiment_params):
-        # Combine the default nn_hyps with changed_nn_hyps
-        all_nn_hyps = default_nn_hyps.copy()
-        all_nn_hyps.update(changed_nn_hyps)
-        ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params)
-        self.experiments.append(ExperimentObj)
-      
-      self.num_experiments = len(self.experiments)
-  
-  def _load_data(self):
-    self.dataset, _, _ = DataLoader.load_data(self.dataset_name)
-
-  def train_experiments(self, experiment_ids = None):  
-    # If experiment_ids = None, then train all
-    experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
-    
-    for experiment_id in experiment_ids:
-      ExperimentObj = self.experiments[experiment_id]
-      ExperimentObj.train(self.dataset, self.device)
-
   # Wrapper function that trains experiments, benchmarks and multi-forecast benchmarks
   def train_all(self):
     self.train_experiments()
     self.train_benchmarks()
     self.train_multi_forecast_benchmarks()
-
-  def get_conditional_irfs(self, experiment_ids = None):
-    # If experiment_ids = None, then train all
-    experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
-    
-    for experiment_id in experiment_ids:
-      ExperimentObj = self.experiments[experiment_id]
-      ExperimentObj.get_conditional_irfs()
-
 
   def print_params(self):
     print('Run Params: ', self.run_params)

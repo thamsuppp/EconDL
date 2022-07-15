@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import os
-from ForecastMultiEvaluation import ForecastMultiEvaluation
+from Forecast.ForecastMultiEvaluation import ForecastMultiEvaluation
 
 class Evaluation:
   def __init__(self, Run):
@@ -277,7 +276,7 @@ class Evaluation:
 
     print(f'Betas plotted at {image_file}')
 
-  def evaluate_TVPs(self):
+  def plot_betas(self):
     # Plot individual hemisphere and summd betas
     if self.is_test == False:
       BETAS_ALL_PLOT = self.BETAS_IN_ALL[:, :-self.test_size,:,:,:]
@@ -296,7 +295,7 @@ class Evaluation:
       image_file = f'{self.image_folder_path}/betas_{i}_sum.png'
       self.plot_betas_all(np.sum(BETAS_ALL_PLOT[i, :, :, :, :,:], axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} Betas, Sum', actual = None)
 
-  def evaluate_precision(self):
+  def plot_precision(self):
 
       # Don't show test (change this code to show in-sample)
     if self.is_test == False:
@@ -336,7 +335,7 @@ class Evaluation:
 
       print(f'Precision plotted at {image_file}')
 
-  def evaluate_cholesky(self):
+  def plot_cholesky(self):
     # Don't show test (change this code to show in-sample)
     if self.is_test == False:
       CHOLESKY_ALL_PLOT = self.CHOLESKY_ALL[:, :-self.test_size,:,:,:,:]
@@ -377,7 +376,7 @@ class Evaluation:
 
       print(f'Cholesky plotted at {image_file}')
 
-  def evaluate_sigmas(self):
+  def plot_sigmas(self):
         
     # Don't show test (change this code to show in-sample)
     if self.is_test == False:
@@ -517,13 +516,13 @@ class Evaluation:
 
   # Wrapper function to do all plots
   def plot_all(self):
-    # self.evaluate_cholesky()
-    # self.evaluate_precision()
-    # self.evaluate_sigmas()
-    # self.evaluate_TVPs()
-    # self.plot_predictions()
-    # self.plot_errors(data_sample='oob')
-    # self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
+    self.plot_cholesky()
+    self.plot_precision()
+    self.plot_sigmas()
+    self.plot_betas()
+    self.plot_predictions()
+    self.plot_errors(data_sample='oob')
+    self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
     self.evaluate_multi_step_forecasts()
 
   def evaluate_multi_step_forecasts(self):

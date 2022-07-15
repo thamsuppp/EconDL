@@ -1,0 +1,105 @@
+{
+    "dataset": "monthly",
+
+    "run_params": {
+        "num_inner_bootstraps": 20,
+        "num_repeats": 5,
+        "default_nn_hyps": "nn_hyps_default",
+        
+        "var_names": ["DGS3", "inf", "unrate"],
+        "n_lag_linear": 1, 
+        "n_lag_d": 2,
+        "n_var": 3,
+        "test_size": 100
+    },
+
+    "execution_params": {
+        "benchmarks": true,
+        "varnn_estimation": false,
+        "conditional_irfs": false,
+        "unconditional_irfs": false,
+        "multi_forecasting": true
+    },
+
+    "extensions_params": {
+        "conditional_irfs": {
+            "n_var": 3,
+            "n_lags": 1,
+            "n_betas": 4, 
+            "max_h": 10,
+            "var_names": ["DGS3", "inf", "unrate"]
+        },
+        "unconditional_irfs": {
+            "num_simulations": 1000,
+            "endh": 50, 
+            "start_shock_time": 50,
+            "forecast_method": "new",
+            "max_h": 20,
+            "plot_all_bootstraps": false
+        },
+
+        "benchmarks": {
+            "window_length": 40,
+            "reestimation_window": 1
+        },
+
+        "multi_forecasting": {
+            "forecast_horizons": 6,
+            "reestimation_window": 100,
+            "forecast_method": "new",
+            "num_sim_bootstraps": 50
+        }
+    },
+
+    "nn_hyps": [
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.0005, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 9]],
+            "joint_estimation": true, 
+            "name": "RELU"
+        },
+
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [20], 
+            "lr": 0.0005, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 9]],
+            "joint_estimation": true, 
+            "name": "RELU TVPL20"
+        },
+
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.SELU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.0005, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 9]],
+            "joint_estimation": true, 
+            "name": "SELU"
+        }
+    ]
+}
+
+

@@ -1,4 +1,3 @@
-# Experiment class
 from datetime import datetime
 import numpy as np
 import os
@@ -8,19 +7,9 @@ import TrainVARNN
 from IRF.IRFConditional import IRFConditional 
 from IRF.IRFUnconditional import IRFUnconditional
 from IRF.IRFUnconditionalEvaluation import IRFUnconditionalEvaluation
-from ForecastMulti import ForecastMulti
+from Forecast.ForecastMulti import ForecastMulti
+from constants import keys_to_keep
 
-keys_to_keep = {'betas': 2,
-                'betas_in': 2,
-                'sigmas': 3,
-                'sigmas_in': 3, 
-                'precision': 3,
-                'precision_in': 3,
-                'cholesky': 4, 
-                'cholesky_in': 4, 
-                'train_preds': 1, 
-                'test_preds': 1
-              }
 
 class Experiment:
   def __init__(self, run_name, experiment_id, nn_hyps, run_params, execution_params, extensions_params):
@@ -61,7 +50,7 @@ class Experiment:
     for k in keys_to_keep.keys():
       print(k, self.results[k].shape)
 
-  def get_conditional_irfs(self):
+  def compute_conditional_irfs(self):
     if self.execution_params['conditional_irfs'] == False:
       print('Unconditional IRFs turned off')
       return 
@@ -82,7 +71,7 @@ class Experiment:
       IRFConditionalObj.plot_irfs(image_folder_path, self.experiment_id)
       self.evaluations['conditional_irf'] = IRFConditionalObj
 
-  def get_unconditional_irfs(self, Y_train, Y_test, results, device, repeat_id):
+  def compute_unconditional_irfs(self, Y_train, Y_test, results, device, repeat_id):
     if self.execution_params['unconditional_irfs'] == False:
       print('Unconditional IRFs turned off')
       return 
@@ -105,7 +94,7 @@ class Experiment:
     with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
       np.savez(f, fcast = fcast, fcast_cov_mat = fcast_cov_mat)
 
-  def get_multi_forecasts(self, X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id):
+  def compute_multi_forecasts(self, X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id):
 
     if self.execution_params['multi_forecasting'] == False:
       print('Multi Forecasting turned off')
@@ -134,8 +123,6 @@ class Experiment:
     print('Done with Multiforecasting')
     with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
       np.savez(f, fcast = FCAST)
-
-
 
 
   # @DEV: Don't pass in the dataset in the _init_() because if not then there will be multiple copies of
@@ -176,8 +163,8 @@ class Experiment:
 
         print(f'Finished training repeat {repeat_id} of experiment {self.experiment_id} at {datetime.now()}')
 
-        self.get_unconditional_irfs(Y_train, Y_test, results, device = device, repeat_id = repeat_id)
-        self.get_multi_forecasts(X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id)
+        self.compute_unconditional_irfs(Y_train, Y_test, results, device = device, repeat_id = repeat_id)
+        self.compute_multi_forecasts(X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id)
 
       # After completing all repeats
       self.is_trained = True
@@ -186,7 +173,7 @@ class Experiment:
 
     self._compile_unconditional_irf_results()
     self._compile_multi_forecasting_results()
-    self.get_conditional_irfs()
+    self.compute_conditional_irfs()
 
   # Compile results if there are multiple repeats (in results)
   def _compile_results(self):
@@ -304,7 +291,6 @@ class Experiment:
       return
     else:
       print('Not trained yet')
-
 
   def __str__(self):
     return f'''

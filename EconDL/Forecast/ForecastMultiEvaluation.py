@@ -43,7 +43,6 @@ class ForecastMultiEvaluation:
     for i in range(self.M_varnn):
 
       out = np.load(f'{self.folder_path}/multi_fcast_{i}_compiled.npz')
-      print(out)
       FCAST = out['fcast']
       experiments_names.append(f'Exp {i}')
       FCAST_nan = FCAST.copy()
