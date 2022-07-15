@@ -2,15 +2,15 @@
     "dataset": "monthly",
 
     "run_params": {
-        "num_inner_bootstraps": 10,
+        "num_inner_bootstraps": 40,
         "num_repeats": 1,
         "default_nn_hyps": "nn_hyps_default",
         
         "var_names": ["DGS3", "inf", "unrate"],
-        "n_lag_linear": 1, 
-        "n_lag_d": 2,
+        "n_lag_linear": 3, 
+        "n_lag_d": 6,
         "n_var": 3,
-        "test_size": 60
+        "test_size": 40
     },
 
     "execution_params": {
@@ -27,7 +27,7 @@
             "max_h": 10
         },
         "unconditional_irfs": {
-            "num_simulations": 600,
+            "num_simulations": 1000,
             "endh": 40, 
             "start_shock_time": 40,
             "max_h": 20,
@@ -39,17 +39,17 @@
             "reestimation_window": 1
         },
         "multi_forecasting": {
-            "forecast_horizons": 3,
-            "reestimation_window": 60,
+            "forecast_horizons": 6,
+            "reestimation_window": 40,
             "forecast_method": "new",
-            "num_sim_bootstraps": 20,
+            "num_sim_bootstraps": 25,
             "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand"]
         }
     },
 
     "nn_hyps": [
         {
-            "nodes": [100, 75, 50], 
+            "nodes": [200, 100, 50], 
             "actv": "nn.ReLU()", 
             "tvpl_archi": [5], 
             "lr": 0.001, 
@@ -59,22 +59,22 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 9]],
+            "s_pos": [[0, 54]],
             "joint_estimation": true, 
             "name": "RELU"
         },
         {
-            "nodes": [100, 75, 50], 
-            "actv": "nn.ReLU()", 
+            "nodes": [200, 100, 50], 
+            "actv": "nn.SELU()", 
             "tvpl_archi": [5], 
-            "lr": 0.001, 
+            "lr": 0.0005, 
             "time_dummy_setting": 2, 
             "dropout_rate": 0.25, 
             "precision_lambda": 0.25, 
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 9]],
+            "s_pos": [[0, 54]],
             "joint_estimation": true, 
             "name": "SELU"
         }
@@ -89,7 +89,7 @@
         "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole"],
         "experiments_to_load": [0, 1],
         "plot_all_bootstraps": false,
-        "exps_to_plot": [0, 1],
+        "exps_to_plot": [0, 1, 2],
         "test_exclude_last": 20
     }
 }

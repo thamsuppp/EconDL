@@ -60,17 +60,19 @@ def predict_nn_new(results, newx, device):
     if sigma[0, 0 , 0] > 0:
       cov_mat[:, i, :, :] = sigma
     else:
-      print('Non-PSD cov mat found: ', sigma)
+      print(f'Non-PSD cov mat found at bootstrap {i}: ', sigma)
+      print('Precision', precision)
+      print('Pred', pred)
 
     #print(f'Bootstrap {i} Cov Mat: ', sigma)
 
   # Take mean BEFORE unscaling (REVISIT IF WE NEED TO FLIP ORDER)
-  pred = np.nanmean(pred_mat, axis = 1)
+  pred = np.nanmedian(pred_mat, axis = 1)
   # Add back the oos adj
 
   pred = pred + pred_oos_adj
 
-  cov = np.nanmean(cov_mat, axis = 1)
+  cov = np.nanmedian(cov_mat, axis = 1)
   return pred, cov
 
 # @title Predict NN Function OLD (Non-Joint Estimation)
@@ -111,7 +113,7 @@ def predict_nn_old(self, results, newx, device):
     pred_mat[:, i, :] = pred
 
   # Take mean BEFORE unscaling (REVISIT IF WE NEED TO FLIP ORDER)
-  pred = pred_mat.mean(axis = 1)
+  pred = pred_mat.nanmedian(axis = 1)
 
   # Invert scaling of the prediction
   if results['standardize'] == True:

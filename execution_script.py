@@ -1,5 +1,6 @@
 import torch
 import sys
+import os
 from EconDL.Run import Run
 from EconDL.Evaluation import Evaluation
 
@@ -13,6 +14,8 @@ run_name = sys.argv[1]
 # - Reads the run's configuration json file
 # - Instantiates the experiments with the corresponding nn_hyps
 # - Loads the data into the RunObj
+
+#repeat = int(os.environ.get('SLURM_ARRAY_TASK_ID')) - 1
 
 # If we are doing this in parallel, then we pass in the job_id parameter here
 RunObj = Run(run_name, device, job_id = None)

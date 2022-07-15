@@ -9,7 +9,7 @@ class Benchmarks:
   def __init__(self, dataset, benchmark_params, run_name):
 
     self.run_name = run_name
-    self.folder_path = f'../results/{run_name}'
+    self.folder_path = f'results/{run_name}'
     # Create benchmark folder if not exist yet
     self.benchmark_folder_path = f'{self.folder_path}/benchmarks'
     if os.path.isdir(self.benchmark_folder_path) == False:

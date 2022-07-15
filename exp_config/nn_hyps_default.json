@@ -1,7 +1,7 @@
 {
     "show_train": 3,
     "opt_bootstrap": 2,
-    "epochs": 100,
+    "epochs": 400,
     "num_bootstrap": 25, 
     "sampling_rate": 0.75,
     "block_size": 12,

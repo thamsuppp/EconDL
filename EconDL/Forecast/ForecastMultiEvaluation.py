@@ -6,7 +6,7 @@ class ForecastMultiEvaluation:
   def __init__(self, run_name, multi_forecasting_params, Y_train, Y_test):
     
     self.run_name = run_name
-    self.folder_path = f'../results/{self.run_name}'
+    self.folder_path = f'results/{self.run_name}'
     self.image_folder_path = f'{self.folder_path}/images'
 
     self.Y_train = Y_train

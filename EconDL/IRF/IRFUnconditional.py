@@ -106,9 +106,9 @@ class IRFUnconditional:
 
           ### 2: Call NN forward to get pred and cov mat (stop if the whole thing exploded)
           if np.any(np.isnan(new_data_all)) == False and np.all(np.isfinite(new_data_all)) == True:
-            #print(f'Simul Timestep {f}')
+            
+#            print('new_data_all', new_data_all)
             pred, cov = predict_nn_new(results, new_data_all, device)
-            #print(f'Pred: {pred}, Cov: {cov}')
 
             # Cholesky the cov mat to get C matrix
             cov = np.squeeze(cov, axis = 0)
@@ -128,6 +128,9 @@ class IRFUnconditional:
             ### 5: Convert shock back into residual, add this to the series
             sim_resid = np.matmul(sim_shock, c_t.T)
             fcast[f, :, kk, shock_level] = pred + sim_resid
+
+            # print('pred', pred)
+            # print('sim_resid', sim_resid)
 
             f = f+1  
 
