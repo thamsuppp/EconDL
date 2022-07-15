@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
-
+from ForecastMultiEvaluation import ForecastMultiEvaluation
 
 class Evaluation:
   def __init__(self, Run):
@@ -515,25 +515,31 @@ class Evaluation:
     print(f'{data_sample} Cum Errors plotted at {image_file}')
     
 
-  def evaluate_multi_forecasting(self):
-
-    # Load multi-forecasting results
-
-
-
-    pass
-    # Call the ForecastMulti object
-
-
   # Wrapper function to do all plots
   def plot_all(self):
-    self.evaluate_cholesky()
-    self.evaluate_precision()
-    self.evaluate_sigmas()
-    self.evaluate_TVPs()
-    self.plot_predictions()
-    self.plot_errors(data_sample='oob')
-    self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
+    # self.evaluate_cholesky()
+    # self.evaluate_precision()
+    # self.evaluate_sigmas()
+    # self.evaluate_TVPs()
+    # self.plot_predictions()
+    # self.plot_errors(data_sample='oob')
+    # self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
+    self.evaluate_multi_step_forecasts()
 
-  def evaluate_multi_step_forecasts(results, benchmark_results):
-      return {}
+  def evaluate_multi_step_forecasts(self):
+    multi_forecasting_params = {
+      'test_size': self.test_size,
+      'forecast_horizons': self.Run.extensions_params['multi_forecasting']['forecast_horizons'],
+      'reestimation_window': self.Run.extensions_params['multi_forecasting']['reestimation_window'],
+      'benchmarks': self.Run.extensions_params['multi_forecasting']['benchmarks'],
+      'n_var': self.n_var, 
+      'var_names': self.var_names,
+      'M_varnn': self.M_varnn
+    }
+
+    ForecastMultiEvaluationObj = ForecastMultiEvaluation(self.run_name, multi_forecasting_params, 
+      self.Y_train, self.Y_test)
+
+    ForecastMultiEvaluationObj.plot_different_horizons()
+    ForecastMultiEvaluationObj.plot_forecast_errors()
+    

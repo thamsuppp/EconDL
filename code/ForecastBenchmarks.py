@@ -31,6 +31,8 @@ class ForecastBenchmarks:
     self.n_var = multi_forecasting_params['n_var']
     self.var_names = multi_forecasting_params['var_names']
 
+    self.benchmarks = multi_forecasting_params['benchmarks']
+
     self._process_dataset()
 
   def _process_dataset(self):
@@ -50,10 +52,14 @@ class ForecastBenchmarks:
 
 
   def conduct_multi_forecasting_benchmarks(self):
-    self.expanding_window_VAR()
-    self.rolling_window_VAR()
-    self.expanding_window_AR()
-    self.rolling_window_AR()
+    if 'VAR_expand' in self.benchmarks:
+      self.expanding_window_VAR()
+    if 'VAR_roll' in self.benchmarks:
+      self.rolling_window_VAR()
+    if 'AR_expand' in self.benchmarks:
+      self.expanding_window_AR()
+    if 'AR_roll' in self.benchmarks:
+      self.rolling_window_AR()
 
   ### Expanding Window VAR
   def expanding_window_VAR(self):
@@ -82,7 +88,7 @@ class ForecastBenchmarks:
         else:
           FCAST[1:, :, t, r] = results.forecast(self.Y_test[(t-self.n_lag_linear):t, :], steps = self.h)
 
-    with open(f'{self.folder_path}/expanding_var_forecasting.npz', 'wb') as f:
+    with open(f'{self.benchmark_folder_path}/benchmark_multi_VAR_expand.npz', 'wb') as f:
         np.save(f, FCAST)
 
   def rolling_window_VAR(self):
@@ -111,7 +117,7 @@ class ForecastBenchmarks:
         else:
           FCAST[1:, :, t, r] = results.forecast(self.Y_test[(t-self.n_lag_linear):t, :], steps = self.h)
 
-    with open(f'{self.folder_path}/rolling_var_forecasting.npz', 'wb') as f:
+    with open(f'{self.benchmark_folder_path}/benchmark_multi_VAR_roll.npz', 'wb') as f:
         np.save(f, FCAST)
   
   def get_ar_forecasts(self, y_in, results_coefs, h):
@@ -170,7 +176,7 @@ class ForecastBenchmarks:
 
             FCAST[1:, var, t, r] = self.get_ar_forecasts(y_in, results_coefs, self.h)
 
-    with open(f'{self.folder_path}/expanding_ar_forecasting.npz', 'wb') as f:
+    with open(f'{self.benchmark_folder_path}/benchmark_multi_AR_expand.npz', 'wb') as f:
         np.save(f, FCAST)
 
   ### Rolling Window AR(4)
@@ -214,5 +220,5 @@ class ForecastBenchmarks:
 
             FCAST[1:, var, t, r] = self.get_ar_forecasts(y_in, results_coefs, self.h)
 
-    with open(f'{self.folder_path}/rolling_ar_forecasting.npz', 'wb') as f:
+    with open(f'{self.benchmark_folder_path}/benchmark_multi_AR_roll.npz', 'wb') as f:
         np.save(f, FCAST)

@@ -40,13 +40,7 @@ EvaluationObj = Evaluation(RunObj)
 print(EvaluationObj.BETAS_ALL.shape)
 print(EvaluationObj.check_results_sizes())
 
-EvaluationObj.evaluate_TVPs()
-EvaluationObj.evaluate_cholesky()
-EvaluationObj.evaluate_precision()
-EvaluationObj.evaluate_sigmas()
-EvaluationObj.plot_predictions()
-EvaluationObj.plot_errors(data_sample='oob')
-EvaluationObj.plot_errors(data_sample='test', exclude_last = 5)
+EvaluationObj.plot_all()
 
 # for ExperimentObj in RunObj.experiments:
 #   ExperimentObj.check_results_sizes()

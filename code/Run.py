@@ -91,6 +91,7 @@ class Run:
       'reestimation_window': self.extensions_params['multi_forecasting']['reestimation_window'],
       'num_inner_bootstraps': self.run_params['num_inner_bootstraps'],
       'num_sim_bootstraps': self.extensions_params['multi_forecasting']['num_sim_bootstraps'],
+      'benchmarks': self.extensions_params['multi_forecasting']['benchmarks'],
       'num_repeats': 1, 
 
       'n_lag_linear': self.run_params['n_lag_linear'],
