@@ -4,6 +4,7 @@ import os
 from Experiment import Experiment
 from Benchmarks import Benchmarks
 import DataHelpers.DataLoader as DataLoader
+from ForecastBenchmarks import ForecastBenchmarks
 
 
 class Run:
@@ -21,6 +22,7 @@ class Run:
     self.execution_params = None
     self.extensions_params = None
     self.experiment_params = None
+    self.evaluation_params = None
 
     self.experiments = []
     self.num_experiments = 0
@@ -74,6 +76,36 @@ class Run:
 
       print('Benchmarks trained')
 
+  def train_multi_forecast_benchmarks(self):
+    # # Check if the results exist == benchmark_folder exists
+    # if os.path.isdir(f'{self.folder_path}/benchmarks'):
+    #   print('Benchmarks already trained')
+    if self.execution_params['multi_forecasting'] == False:
+      print('Multiforecasting turned off')
+      return
+
+    print('Training Multi-forecasting Benchmarks')
+    multi_forecasting_params = {
+      'test_size': self.run_params['test_size'], 
+      'forecast_horizons': self.extensions_params['multi_forecasting']['forecast_horizons'],
+      'reestimation_window': self.extensions_params['multi_forecasting']['reestimation_window'],
+      'num_inner_bootstraps': self.run_params['num_inner_bootstraps'],
+      'num_sim_bootstraps': self.extensions_params['multi_forecasting']['num_sim_bootstraps'],
+      'num_repeats': 1, 
+
+      'n_lag_linear': self.run_params['n_lag_linear'],
+      'n_lag_d': self.run_params['n_lag_d'],
+      'n_var': self.n_var,
+      'forecast_method': self.extensions_params['multi_forecasting']['forecast_method'], # old or new
+      'var_names': self.var_names
+    }
+
+    ForecastBenchmarkObj = ForecastBenchmarks(self.dataset, multi_forecasting_params, self.run_name)
+    ForecastBenchmarkObj.conduct_multi_forecasting_benchmarks()
+
+    print('Multi-forecasting Benchmarks trained')
+
+  
   def _load_params(self):
     with open(f'../exp_config/{self.run_name}.json', 'r') as f:
       all_params = json.load(f)
@@ -82,7 +114,11 @@ class Run:
     self.execution_params = all_params['execution_params']
     self.experiment_params = all_params['nn_hyps']
     self.extensions_params = all_params['extensions_params']
+    self.evaluation_params = all_params['evaluation_params']
     self.dataset_name = all_params['dataset']
+
+    self.n_var = all_params['run_params']['n_var']
+    self.var_names = all_params['run_params']['var_names']
 
   def _init_experiments(self): # Only if experiments are not already initialized
 
@@ -105,7 +141,7 @@ class Run:
       self.num_experiments = len(self.experiments)
   
   def _load_data(self):
-    self.dataset, self.n_var, self.var_names = DataLoader.load_data(self.dataset_name)
+    self.dataset, _, _ = DataLoader.load_data(self.dataset_name)
 
   def train_experiments(self, experiment_ids = None):  
     # If experiment_ids = None, then train all
@@ -114,6 +150,12 @@ class Run:
     for experiment_id in experiment_ids:
       ExperimentObj = self.experiments[experiment_id]
       ExperimentObj.train(self.dataset, self.device)
+
+  # Wrapper function that trains experiments, benchmarks and multi-forecast benchmarks
+  def train_all(self):
+    self.train_experiments()
+    self.train_benchmarks()
+    self.train_multi_forecast_benchmarks()
 
   def get_conditional_irfs(self, experiment_ids = None):
     # If experiment_ids = None, then train all

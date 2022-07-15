@@ -9,7 +9,7 @@ import TrainVARNN
 from Benchmarks import Benchmarks # @TODO: create Benchmark superclass, and VARNNBenchmarks and ForecastBenchmarks subclasses
 import ForecastBenchmarks 
 import ForecastMulti
-import Evaluation
+from Evaluation import Evaluation
 
 from Run import Run
 from Experiment import Experiment
@@ -17,11 +17,13 @@ from Experiment import Experiment
 import json
 import os
 import sys
+import pandas as pd
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Experiment name is the command-line argument
-run_name = sys.argv[1]
+#run_name = sys.argv[1]
+run_name = '14jul_test2'
 
 # Instantiate the Run:
 # - Creates a new folder
@@ -30,8 +32,21 @@ run_name = sys.argv[1]
 # - Loads the data into the RunObj
 RunObj = Run(run_name, device)
 # Train all experiments within the run and store the experiments within the object
-RunObj.train_experiments()
-RunObj.train_benchmarks()
+RunObj.train_all()
+
+
+
+EvaluationObj = Evaluation(RunObj)
+print(EvaluationObj.BETAS_ALL.shape)
+print(EvaluationObj.check_results_sizes())
+
+EvaluationObj.evaluate_TVPs()
+EvaluationObj.evaluate_cholesky()
+EvaluationObj.evaluate_precision()
+EvaluationObj.evaluate_sigmas()
+EvaluationObj.plot_predictions()
+EvaluationObj.plot_errors(data_sample='oob')
+EvaluationObj.plot_errors(data_sample='test', exclude_last = 5)
 
 # for ExperimentObj in RunObj.experiments:
 #   ExperimentObj.check_results_sizes()
@@ -42,8 +57,6 @@ RunObj.train_benchmarks()
 # Compute benchmarks
 
 # Everything above this works!
-
-# E
 
 
 

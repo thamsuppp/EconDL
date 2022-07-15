@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+### Experiment-level class to evaluate unconditional IRFs
 class IRFUnconditionalEvaluation:
 
   def __init__(self, FCAST, FCAST_COV_MAT, irf_params):

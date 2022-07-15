@@ -5,31 +5,40 @@ import os
 
 
 class Evaluation:
-  def __init__(self, run_name, evaluation_params):
+  def __init__(self, Run):
 
-    self.run_name = run_name
-    self.folder_path = f'../results/{run_name}'
+    '''
+    What Run has:
+    - folder_path, image_folder_path
+    - n_var, var_names, test_size
+    - run params: num_inner_bootstraps, n_lag_linear, n_lag_d
+    - M_varnn: num_experiments
+    '''
 
-    # Create image folder if not exist yet
-    self.image_folder_path = f'{self.folder_path}/images'
-    if os.path.isdir(self.image_folder_path) == False:
-      os.mkdir(self.image_folder_path)
+    # Run object
+    self.Run = Run
+    evaluation_params = self.Run.evaluation_params
 
+    self.run_name = self.Run.run_name
+    self.folder_path = self.Run.folder_path
+    self.image_folder_path = self.Run.image_folder_path
+    self.n_var = self.Run.n_var
+    self.var_names = self.Run.var_names
+    self.beta_names = ['Constant'] + self.var_names
+    self.test_size = self.Run.run_params['test_size']
+
+    self.exps_to_plot = evaluation_params['exps_to_plot']
     self.need_to_combine = evaluation_params['need_to_combine']
     self.is_simulation = evaluation_params['is_simulation']
     self.is_test = evaluation_params['is_test']
     self.multiple_datasets = evaluation_params['multiple_datasets']
     self.plot_all_bootstraps = evaluation_params['plot_all_bootstraps']
     self.sim_dataset = evaluation_params['sim_dataset']
-    self.n_var = len(evaluation_params['var_names'])
-    self.var_names = evaluation_params['var_names']
-    self.beta_names = ['Constant'] + self.var_names
-    self.test_size = evaluation_params['test_size']
-    self.exps_to_plot = evaluation_params['exps_to_plot']
+    self.benchmark_names = evaluation_params['benchmarks']
+    self.test_exclude_last = evaluation_params['test_exclude_last']
 
     # Store the names of every hyperparameter list
     self.experiment_names = []
-    self.benchmark_names = evaluation_params['benchmarks']
 
 
     self.params = []
@@ -48,14 +57,20 @@ class Evaluation:
     self.Y_train = None
     self.Y_test = None
 
-    self.M_varnn = len(evaluation_params['experiments_to_load'])
+    if evaluation_params['experiments_to_load'] is None:
+      self.M_varnn = self.Run.num_experiments
+      self.experiments_to_load = list(range(self.Run.num_experiments))
+    else:
+      self.M_varnn = len(evaluation_params['experiments_to_load'])
+      self.experiments_to_load = evaluation_params['experiments_to_load']
+
     self.M_benchmarks = len(self.benchmark_names)
     self.M_total = self.M_varnn + self.M_benchmarks
     self.num_bootstraps = None
 
 
     # Load the results and params
-    self.load_results(evaluation_params['experiments_to_load'])
+    self.load_results()
 
   def check_results_sizes(self):
     return {
@@ -71,39 +86,39 @@ class Evaluation:
       'PREDS_TEST_ALL': self.PREDS_TEST_ALL.shape
     }
 
-  def load_results(self, experiments_to_load):
+  def load_results(self):
 
     # Load VARNN results
     for i in range(self.M_varnn):
-      experiment = experiments_to_load[i]
+      experiment = self.experiments_to_load[i]
 
       compiled_text = 'compiled' if self.need_to_combine == True else 'repeat_0'
       dataset_text = f'_dataset_{self.sim_dataset}' if self.multiple_datasets == True else ''
       load_file = f'{self.folder_path}/params_{experiment}{dataset_text}_{compiled_text}.npz'
 
-      out = np.load(load_file, allow_pickle = True)
-      params = out['params'].item()
+      results = np.load(load_file, allow_pickle = True)['results'].item()
+      params = results['params']
       self.params.append(params)
 
       n_lag_linear = params['n_lag_linear']
       num_bootstraps = params['num_bootstrap']
       self.num_bootstraps = num_bootstraps
       
-      self.experiment_names.append(out['params'].item()['name'])
-      BETAS = out['betas']
-      BETAS_IN = out['betas_in']
-      SIGMAS = out['sigmas']
-      SIGMAS_IN = out['sigmas_in']
-      PRECISION = out['precision']
-      PRECISION_IN = out['precision_in']
-      CHOLESKY = out['cholesky']
-      CHOLESKY_IN = out['cholesky_in']
-      PREDS = out['train_preds']
-      PREDS_TEST = out['test_preds']
+      self.experiment_names.append(params['name'])
+      BETAS = results['betas']
+      BETAS_IN = results['betas_in']
+      SIGMAS = results['sigmas']
+      SIGMAS_IN = results['sigmas_in']
+      PRECISION = results['precision']
+      PRECISION_IN = results['precision_in']
+      CHOLESKY = results['cholesky']
+      CHOLESKY_IN = results['cholesky_in']
+      PREDS = results['train_preds']
+      PREDS_TEST = results['test_preds']
 
       # Estimate time-invariant cov mat from the residuals
-      Y_train = out['y']
-      Y_test = out['y_test']
+      Y_train = results['y']
+      Y_test = results['y_test']
       resids = np.repeat(np.expand_dims(Y_train, axis = 1), PREDS.shape[1], axis = 1) - PREDS
 
       # For experiments with more than 1 lag, get the ids of the 1st beta to plot
@@ -271,11 +286,13 @@ class Evaluation:
       BETAS_ALL_PLOT = self.BETAS_ALL[:, -self.test_size:,:,:,:]
       #coefs_tv_plot = coefs_tv[-test_size:, :, :] if is_simulation == True else None
 
+    n_hemis = BETAS_ALL_PLOT.shape[5]
     for i in self.exps_to_plot:
-      for hemi in range(2):
-        image_file = f'{self.image_folder_path}/betas_{i}_hemi_{hemi}.png'
-        self.plot_betas_all(BETAS_ALL_PLOT[i, :, :, :, :, hemi], self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i}, Hemisphere {hemi}', actual = None)
-      
+      if n_hemis > 1:
+        for hemi in range(n_hemis):
+          image_file = f'{self.image_folder_path}/betas_{i}_hemi_{hemi}.png'
+          self.plot_betas_all(BETAS_ALL_PLOT[i, :, :, :, :, hemi], self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i}, Hemisphere {hemi}', actual = None)
+        
       image_file = f'{self.image_folder_path}/betas_{i}_sum.png'
       self.plot_betas_all(np.sum(BETAS_ALL_PLOT[i, :, :, :, :,:], axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} Betas, Sum', actual = None)
 
@@ -449,8 +466,9 @@ class Evaluation:
         preds_median = np.nanmedian(self.PREDS_TEST_ALL[i,:,:,:], axis = 1)
         error = np.abs(self.Y_test - preds_median)
       
-      error = error[:-exclude_last, :]
-
+      if exclude_last != 0:
+        error = error[:-exclude_last, :]
+      
       for var in range(self.n_var):
         if i == 0:
           ax[var].set_title(self.var_names[var])
@@ -471,8 +489,9 @@ class Evaluation:
       y_repeated = np.repeat(np.expand_dims(self.Y_test, axis = 0), self.M_total, axis = 0)
 
     errors = np.abs(preds_median - y_repeated)
+    if exclude_last != 0:
+      errors = errors[:, :-exclude_last, :]
     cum_errors = np.nancumsum(errors, axis = 1)
-    cum_errors = cum_errors[:, :-exclude_last, :]
 
     # Choose the benchmark (fix as VAR whole)
     benchmark_cum_error = cum_errors[(self.M_varnn), :, :]
@@ -494,6 +513,17 @@ class Evaluation:
     plt.savefig(image_file)
 
     print(f'{data_sample} Cum Errors plotted at {image_file}')
+    
+
+  def evaluate_multi_forecasting(self):
+
+    # Load multi-forecasting results
+
+
+
+    pass
+    # Call the ForecastMulti object
+
 
   # Wrapper function to do all plots
   def plot_all(self):
@@ -503,10 +533,7 @@ class Evaluation:
     self.evaluate_TVPs()
     self.plot_predictions()
     self.plot_errors(data_sample='oob')
-    self.plot_errors(data_sample='test', exclude_last=20)
-
-  def evaluate_one_step_forecasts(results, benchmark_results):
-      return {}
+    self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
 
   def evaluate_multi_step_forecasts(results, benchmark_results):
       return {}

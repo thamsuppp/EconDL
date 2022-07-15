@@ -24,6 +24,14 @@ keys_to_keep = {'betas': 2,
 
 class Experiment:
   def __init__(self, run_name, experiment_id, nn_hyps, run_params, execution_params, extensions_params):
+
+    '''
+    Notes:
+    nn_hyps - contains run_params already (combined in Run)
+    run_params - 
+    execution_params - whether to run different extensions 
+    extensions_params - params for the different extensions
+    '''
     
     self.run_name = run_name
     self.experiment_id = experiment_id
@@ -49,17 +57,28 @@ class Experiment:
 
     self.load_results()
 
-
   def check_results_sizes(self):
     for k in keys_to_keep.keys():
       print(k, self.results[k].shape)
 
   def get_conditional_irfs(self):
+    if self.execution_params['conditional_irfs'] == False:
+      print('Unconditional IRFs turned off')
+      return 
+
     if self.is_trained == True:
       image_folder_path = self.run_params['image_folder_path']
       image_file = f'{image_folder_path}/irf_conditional_{self.experiment_id}.png'
+
+      conditional_irf_params = {
+        'n_var': self.nn_hyps['n_var'],
+        'var_names': self.nn_hyps['var_names'],
+        'n_lags': self.nn_hyps['n_lag_linear'],
+        'n_betas': self.nn_hyps['n_var'] * self.nn_hyps['n_lag_linear'] + 1,
+        'max_h': self.extensions_params['conditional_irfs']['max_h']
+      }
       
-      IRFConditionalObj = IRFConditional(self.results, self.extensions_params['conditional_irfs'])
+      IRFConditionalObj = IRFConditional(self.results, conditional_irf_params)
       IRFConditionalObj.plot_irfs(image_folder_path, self.experiment_id)
       self.evaluations['conditional_irf'] = IRFConditionalObj
 
@@ -80,7 +99,7 @@ class Experiment:
         'var_names': self.nn_hyps['variables'],
       }
 
-    IRFUnconditionalObj = IRFUnconditional(self.run_name, unconditional_irf_params, device)
+    IRFUnconditionalObj = IRFUnconditional(unconditional_irf_params, device)
     fcast, fcast_cov_mat, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, results)
 
     with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
@@ -111,11 +130,63 @@ class Experiment:
     
     # Benchmarks
     FCAST = ForecastMultiObj.conduct_multi_forecasting_wrapper(X_train, X_test, results, nn_hyps)
-    ForecastMultiObj.conduct_multi_forecasting_benchmarks()
 
     print('Done with Multiforecasting')
     with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
       np.savez(f, fcast = FCAST)
+
+
+
+
+  # @DEV: Don't pass in the dataset in the _init_() because if not then there will be multiple copies of
+  # the dataset sitting in each run.
+  def train(self, dataset, device):
+
+    if self.is_trained == True:
+      print('Trained already')
+    else:
+      X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, self.nn_hyps)
+      # For each repeat
+      for repeat_id in range(self.run_params['num_repeats']):
+
+        results = TrainVARNN.conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
+        
+        folder_path = self.run_params['folder_path']
+
+        results_saved = {
+            'betas': results['betas_draws'], 
+            'betas_in': results['betas_in_draws'], 
+            'sigmas': results['sigmas_draws'], 
+            'sigmas_in': results['sigmas_in_draws'],
+            'precision': results['precision_draws'], 
+            'precision_in': results['precision_in_draws'],
+            'cholesky': results['cholesky_draws'], 
+            'cholesky_in': results['cholesky_in_draws'],
+            'train_preds': results['pred_in_ensemble'] , 
+            'test_preds': results['pred_ensemble'], 
+            'y': Y_train, 
+            'y_test': Y_test, 
+            'params': nn_hyps
+        }
+
+        with open(f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
+          np.savez(f, results = results_saved)
+
+        self.results_uncompiled.append(results_saved)
+
+        print(f'Finished training repeat {repeat_id} of experiment {self.experiment_id} at {datetime.now()}')
+
+        self.get_unconditional_irfs(Y_train, Y_test, results, device = device, repeat_id = repeat_id)
+        self.get_multi_forecasts(X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id)
+
+      # After completing all repeats
+      self.is_trained = True
+
+      self._compile_results()
+
+    self._compile_unconditional_irf_results()
+    self._compile_multi_forecasting_results()
+    self.get_conditional_irfs()
 
   # Compile results if there are multiple repeats (in results)
   def _compile_results(self):
@@ -208,78 +279,22 @@ class Experiment:
 
     self.evaluations['unconditional_irf'] = IRFUnconditionalEvaluationObj
     
-      
-
-
-  # @DEV: Don't pass in the dataset in the _init_() because if not then there will be multiply copies of
-  # the dataset sitting in each run.
-  def train(self, dataset, device):
-
-    if self.is_trained == True:
-      print('Trained already')
-    else:
-      X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, self.nn_hyps)
-      # For each repeat
-      for repeat_id in range(self.run_params['num_repeats']):
-
-        print(nn_hyps)
-        results = TrainVARNN.conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
-        
-        folder_path = self.run_params['folder_path']
-
-        results_saved = {
-            'betas': results['betas_draws'], 
-            'betas_in': results['betas_in_draws'], 
-            'sigmas': results['sigmas_draws'], 
-            'sigmas_in': results['sigmas_in_draws'],
-            'precision': results['precision_draws'], 
-            'precision_in': results['precision_in_draws'],
-            'cholesky': results['cholesky_draws'], 
-            'cholesky_in': results['cholesky_in_draws'],
-            'train_preds': results['pred_in_ensemble'] , 
-            'test_preds': results['pred_ensemble'], 
-            'y': Y_train, 
-            'y_test': Y_test, 
-            'params': nn_hyps
-        }
-
-        with open(f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
-          np.savez(f, results = results_saved)
-
-        self.results_uncompiled.append(results_saved)
-
-        print(f'Finished training repeat {repeat_id} of experiment {self.experiment_id} at {datetime.now()}')
-
-        # Do unconditional IRFs and forecasting
-        
-        self.get_unconditional_irfs(Y_train, Y_test, results, device = device, repeat_id = repeat_id)
-        self.get_multi_forecasts(X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id)
-
-      # After completing all repeats
-      self.is_trained = True
-
-      self._compile_results()
-    self._compile_unconditional_irf_results()
-    self._compile_multi_forecasting_results()
-
-
   def load_results(self):
 
-    folder_path = self.run_params['folder_path']
     # Check if the results exist
-    if os.path.exists(f'{folder_path}/params_{self.experiment_id}_compiled.npz'):
+    if os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_compiled.npz'):
       self.is_trained = True
-      load_file = f'{folder_path}/params_{self.experiment_id}_compiled.npz'
+      load_file = f'{self.folder_path}/params_{self.experiment_id}_compiled.npz'
       results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
       self.results = results_loaded
       print(f'Loaded compiled results')
       return
 
-    elif os.path.exists(f'{folder_path}/params_{self.experiment_id}_repeat_0.npz'):
+    elif os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_0.npz'):
       repeat_id = 0
-      while os.path.exists(f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'):
+      while os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'):
         self.is_trained = True
-        load_file = f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'
+        load_file = f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'
         results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
         self.results_uncompiled.append(results_loaded)
 
@@ -290,7 +305,6 @@ class Experiment:
     else:
       print('Not trained yet')
 
-      
 
   def __str__(self):
     return f'''

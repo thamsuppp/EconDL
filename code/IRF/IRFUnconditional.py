@@ -11,9 +11,8 @@ from predict_nn import predict_nn_new, predict_nn_old
 
 class IRFUnconditional:
 
-  def __init__(self, experiment_name, irf_params, device = None):
+  def __init__(self, irf_params, device = None):
 
-    self.experiment_name = experiment_name
     self.n_lag_linear = irf_params['n_lag_linear']
     self.n_lag_d = irf_params['n_lag_d']
     self.n_var = irf_params['n_var']

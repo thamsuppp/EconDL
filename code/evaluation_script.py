@@ -39,10 +39,7 @@ irf_params = {
     'var_names': ['DGS3', 'inf', 'unrate']
 }
 
-# # Create an Evaluation instance
-# EvaluationObj = Evaluation(run_name, evaluation_params)
-# print(EvaluationObj.BETAS_ALL.shape)
-# print(EvaluationObj.check_results_sizes())
+
 
 # EvaluationObj.plot_all()
 
@@ -68,15 +65,18 @@ IRFUnconditionalObj.plot_irfs(image_folder_path)
 IRFUnconditionalObj.plot_cumulative_irfs(image_folder_path)
 
 
+# Create an Evaluation instance
+EvaluationObj = Evaluation(run_name, evaluation_params)
+print(EvaluationObj.BETAS_ALL.shape)
+print(EvaluationObj.check_results_sizes())
 
-
-# EvaluationObj.evaluate_TVPs()
-# EvaluationObj.evaluate_cholesky()
-# EvaluationObj.evaluate_precision()
-# EvaluationObj.evaluate_sigmas()
-# EvaluationObj.plot_predictions()
-# EvaluationObj.plot_errors(data_sample='oob')
-# EvaluationObj.plot_errors(data_sample='test', exclude_last=20)
+EvaluationObj.evaluate_TVPs()
+EvaluationObj.evaluate_cholesky()
+EvaluationObj.evaluate_precision()
+EvaluationObj.evaluate_sigmas()
+EvaluationObj.plot_predictions()
+EvaluationObj.plot_errors(data_sample='oob')
+EvaluationObj.plot_errors(data_sample='test', exclude_last=5)
 
 
 
