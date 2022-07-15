@@ -16,8 +16,8 @@ from datetime import datetime
 from statsmodels.tsa.api import VAR
 
 # Project imports
-from Models.VARNN import VARNN
-from utils import get_mse_weights, scale_data, invert_scaling, l1_reg_input, l0_reg_input
+from EconDL.Models.VARNN import VARNN
+from EconDL.utils import get_mse_weights, scale_data, invert_scaling, l1_reg_input, l0_reg_input
 
 # @title Training Loop (with New Loss)
 

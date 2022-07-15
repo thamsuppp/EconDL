@@ -1,6 +1,6 @@
 import numpy as np
 import torch 
-from utils import invert_scaling
+from EconDL.utils import invert_scaling
 
 # @title Predict NN Function (Joint Estimation)
 # Returns pred, cov

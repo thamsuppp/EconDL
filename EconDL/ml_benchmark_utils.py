@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 
-from utils import scale_data, invert_scaling
+from EconDL.utils import scale_data, invert_scaling
 
 
 def train_ml_model(X_train, X_test, Y_train, Y_test, nn_hyps, model = 'RF'):

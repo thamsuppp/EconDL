@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from Forecast.ForecastMultiEvaluation import ForecastMultiEvaluation
+from EconDL.Forecast.ForecastMultiEvaluation import ForecastMultiEvaluation
 
 class Evaluation:
   def __init__(self, Run):

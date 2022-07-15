@@ -1,5 +1,5 @@
 import numpy as np 
-from utils import get_bootstrap_indices
+from EconDL.utils import get_bootstrap_indices
 
 
 def process_data(data, nn_hyps, marx = True, test_size = 60, n_time_trends = 0, time_dummy_setting = 0, dummy_interval = 12):

@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 from functools import reduce
 
-from Models.FCN import FCN
-from Models.VariableSelection import GatedLinearUnit, GatedResidualNetwork, VSN
+from EconDL.Models.FCN import FCN
+from EconDL.Models.VariableSelection import GatedLinearUnit, GatedResidualNetwork, VSN
 
 class CancelOut(nn.Module):
     '''

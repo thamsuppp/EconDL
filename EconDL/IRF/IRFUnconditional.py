@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import random
 
-from utils import invert_scaling
-from predict_nn import predict_nn_new, predict_nn_old
+from EconDL.utils import invert_scaling
+from EconDL.predict_nn import predict_nn_new, predict_nn_old
 
 
 class IRFUnconditional:

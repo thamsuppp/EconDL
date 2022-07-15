@@ -2,17 +2,17 @@ from datetime import datetime
 import numpy as np
 import os
 
-import DataHelpers.DataProcesser as DataProcesser
-import TrainVARNN
-from IRF.IRFConditional import IRFConditional 
-from IRF.IRFUnconditional import IRFUnconditional
-from IRF.IRFUnconditionalEvaluation import IRFUnconditionalEvaluation
-from Forecast.ForecastMulti import ForecastMulti
-from constants import keys_to_keep
+import EconDL.DataHelpers.DataProcesser as DataProcesser
+import EconDL.TrainVARNN as TrainVARNN
+from EconDL.IRF.IRFConditional import IRFConditional 
+from EconDL.IRF.IRFUnconditional import IRFUnconditional
+from EconDL.IRF.IRFUnconditionalEvaluation import IRFUnconditionalEvaluation
+from EconDL.Forecast.ForecastMulti import ForecastMulti
+from EconDL.constants import keys_to_keep
 
 
 class Experiment:
-  def __init__(self, run_name, experiment_id, nn_hyps, run_params, execution_params, extensions_params):
+  def __init__(self, run_name, experiment_id, nn_hyps, run_params, execution_params, extensions_params, job_id = None):
 
     '''
     Notes:
@@ -24,6 +24,7 @@ class Experiment:
     
     self.run_name = run_name
     self.experiment_id = experiment_id
+    self.job_id = job_id
     
     self.nn_hyps = nn_hyps
     self.run_params = run_params # run_inner_bootstraps, num_repeats, default_nn_hyps
@@ -133,8 +134,14 @@ class Experiment:
       print('Trained already')
     else:
       X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, self.nn_hyps)
+      
+      repeat_ids = []
+      if self.job_id is not None:
+        repeat_ids = self.job_id
+      else:
+        repeat_ids = range(self.run_params['num_repeats'])
       # For each repeat
-      for repeat_id in range(self.run_params['num_repeats']):
+      for repeat_id in repeat_ids:
 
         results = TrainVARNN.conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device)
         
@@ -175,8 +182,20 @@ class Experiment:
     self._compile_multi_forecasting_results()
     self.compute_conditional_irfs()
 
+  # Used when compiling parallel-computed results
+  def compile_all(self):
+    self.load_results()
+    self._compile_results()
+    self._compile_multi_forecasting_results()
+    self._compile_unconditional_irf_results()
+
   # Compile results if there are multiple repeats (in results)
   def _compile_results(self):
+    
+    if self.job_id is not None:
+      print('Multiple Jobs, compiling turned off')
+      return
+
     num_repeats = self.run_params['num_repeats']
 
     repeat_id = 0
@@ -208,6 +227,9 @@ class Experiment:
     if self.execution_params['multi_forecasting'] == False:
       print('Multi Forecasting turned off')
       return 
+    if self.job_id is not None:
+      print('Multiple Jobs, compiling turned off')
+      return
     num_repeats = self.run_params['num_repeats']
     repeat_id = 0
     while repeat_id < num_repeats:
@@ -224,6 +246,9 @@ class Experiment:
 
   def _compile_unconditional_irf_results(self):
 
+    if self.job_id is not None:
+      print('Multiple Jobs, compiling turned off')
+      return
     if self.execution_params['unconditional_irfs'] == False:
       print('Unconditional IRFs turned off')
       return 

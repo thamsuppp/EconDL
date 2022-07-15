@@ -1,18 +1,19 @@
 # Run class
 import json
 import os
-from Experiment import Experiment
-from Benchmarks import Benchmarks
-import DataHelpers.DataLoader as DataLoader
-from Forecast.ForecastBenchmarks import ForecastBenchmarks
+from EconDL.Experiment import Experiment
+from EconDL.Benchmarks import Benchmarks
+import EconDL.DataHelpers.DataLoader as DataLoader
+from EconDL.Forecast.ForecastBenchmarks import ForecastBenchmarks
 
 
 class Run:
   
-  def __init__(self, run_name, device):
+  def __init__(self, run_name, device, job_id = None):
 
     self.run_name = run_name
     self.device = device
+    self.job_id = job_id
 
     self.dataset_name = None
     self.dataset = None
@@ -30,7 +31,7 @@ class Run:
     self._load_params()
 
     # Create folder to store results - that is where the results go into
-    self.folder_path = f'../results/{run_name}'
+    self.folder_path = f'results/{run_name}'
     if os.path.isdir(self.folder_path) == False:
       os.mkdir(self.folder_path)
       print(f'Folder made at {self.folder_path}')
@@ -54,7 +55,7 @@ class Run:
 
   
   def _load_params(self):
-    with open(f'../exp_config/{self.run_name}.json', 'r') as f:
+    with open(f'exp_config/{self.run_name}.json', 'r') as f:
       all_params = json.load(f)
     
     self.run_params = all_params['run_params']
@@ -71,7 +72,7 @@ class Run:
 
     # Load the default nn_hyps
     default_nn_hyps_path = self.run_params['default_nn_hyps']
-    with open(f'../exp_config/{default_nn_hyps_path}.json', 'r') as f:
+    with open(f'exp_config/{default_nn_hyps_path}.json', 'r') as f:
       default_nn_hyps = json.load(f)
 
     # Combine default_nn_hyps with the run_params
@@ -97,6 +98,14 @@ class Run:
     for experiment_id in experiment_ids:
       ExperimentObj = self.experiments[experiment_id]
       ExperimentObj.train(self.dataset, self.device)
+
+  def compile_experiments(self, experiment_ids = None):  
+    # If experiment_ids = None, then train all
+    experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
+    
+    for experiment_id in experiment_ids:
+      ExperimentObj = self.experiments[experiment_id]
+      ExperimentObj.compile_all()
 
   def train_benchmarks(self):
 

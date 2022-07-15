@@ -3,8 +3,8 @@ import numpy as np
 import random 
 from datetime import datetime
 
-from utils import invert_scaling
-from predict_nn import predict_nn_new, predict_nn_old, predict_ml_model
+from EconDL.utils import invert_scaling
+from EconDL.predict_nn import predict_nn_new, predict_nn_old, predict_ml_model
 
 # Repeat-level class to generate multi-period forecasts
 class ForecastMulti:
