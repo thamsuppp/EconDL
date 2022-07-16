@@ -5,6 +5,7 @@ from EconDL.Experiment import Experiment
 from EconDL.Benchmarks import Benchmarks
 import EconDL.DataHelpers.DataLoader as DataLoader
 from EconDL.Forecast.ForecastBenchmarks import ForecastBenchmarks
+from EconDL.MLExperiment import MLExperiment
 
 
 class Run:
@@ -27,6 +28,8 @@ class Run:
 
     self.experiments = []
     self.num_experiments = 0
+
+    self.ml_experiments = []
 
     self._load_params()
 
@@ -51,6 +54,7 @@ class Run:
       )
     
     self._init_experiments()
+    self._init_ml_experiments()
     self._load_data()
 
   
@@ -68,6 +72,25 @@ class Run:
     self.n_var = all_params['run_params']['n_var']
     self.var_names = all_params['run_params']['var_names']
 
+  def _init_ml_experiments(self):
+
+    # Load the default nn_hyps
+    default_nn_hyps_path = self.run_params['default_nn_hyps']
+    with open(f'exp_config/{default_nn_hyps_path}.json', 'r') as f:
+      default_nn_hyps = json.load(f)
+
+    # Combine default_nn_hyps with the run_params
+    default_nn_hyps.update(self.run_params)
+
+    for ml_model in self.extensions_params['ml_experiments']:
+      all_nn_hyps = default_nn_hyps.copy()
+      all_nn_hyps.update({'model': ml_model})
+
+      MLExperimentObj = MLExperiment(self.run_name, None, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params)
+      self.ml_experiments.append(MLExperimentObj)
+
+
+
   def _init_experiments(self): # Only if experiments are not already initialized
 
     # Load the default nn_hyps
@@ -83,7 +106,7 @@ class Run:
         # Combine the default nn_hyps with changed_nn_hyps
         all_nn_hyps = default_nn_hyps.copy()
         all_nn_hyps.update(changed_nn_hyps)
-        ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params)
+        ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id)
         self.experiments.append(ExperimentObj)
       
       self.num_experiments = len(self.experiments)
@@ -98,6 +121,10 @@ class Run:
     for experiment_id in experiment_ids:
       ExperimentObj = self.experiments[experiment_id]
       ExperimentObj.train(self.dataset, self.device)
+
+  def train_ml_experiments(self):
+    for MLExperiment in self.ml_experiments:
+      MLExperiment.train(self.dataset)
 
   def compile_experiments(self, experiment_ids = None):  
     # If experiment_ids = None, then train all

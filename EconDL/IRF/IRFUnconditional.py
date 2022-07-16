@@ -7,7 +7,7 @@ import random
 
 from EconDL.utils import invert_scaling
 from EconDL.predict_nn import predict_nn_new, predict_nn_old
-
+from EconDL.ml_benchmark_utils import predict_ml_model
 
 class IRFUnconditional:
 
@@ -23,7 +23,8 @@ class IRFUnconditional:
     self.start_shock_time = irf_params['start_shock_time']
     self.endh = irf_params['endh']
     self.forecast_method = irf_params['forecast_method']
-    
+
+    self.model = irf_params['model']
     self.device = device
 
     # Simulation time steps that the impulses are done
@@ -37,21 +38,16 @@ class IRFUnconditional:
   
 
 
-  # @title New IRF Simulation Wrapper Function (Joint)
+  # New IRF Simulation Wrapper Function (Joint Estimation)
   # Returns: fcast, fcast_cov_mat, sim_shocks
-  ## kk: variable to shock 
-  # k: response of shock
-  # Wrapper function that: 1) takes residuals from model predictions
-  # 2) Generates shocks, 3) Simulates path given shocks at specific random indices
-  # Returns fcast - 2000 time steps x 5 shock variables x 5 response variables x 2 shocks
+  ## kk: variable to shock , k: response of shock
   def simulate_irf_paths_new(self, Y_train, Y_test, results, device):
     n_var = self.n_var
 
-    # Get the residuals - resiudals are the average of the different bootstrap iterations
-    oos_res = Y_test - results['pred']
-    oob_res_save = Y_train - results['pred_in']
-    oob_res = oob_res_save[~np.isnan(oob_res_save).any(axis=1)]
-    oob_res = np.vstack([oob_res, oos_res])
+    # Store the average OOB predictions across all inner bootstraps
+    oob_preds = results['pred_in']
+    # oob_res: set of OOB error vectors to sample from for the iterated forecasts
+    oob_res = Y_train - results['pred_in']
 
     # Time periods where we create the impulses
     impulse_times = list(range(self.start_shock_time, self.num_simulations, self.endh))
@@ -140,20 +136,19 @@ class IRFUnconditional:
         
     return fcast, fcast_cov_mat, sim_shocks
 
-  # @title Old IRF Simulation Wrapper Function
+  # @title Old IRF Simulation Wrapper Function (without Joint Estimation - time-invariant covariance matrix)
   # Returns: fcast, None, sim_shocks
   def simulate_irf_paths_old(self, Y_train, Y_test, results, device):
 
     n_var = self.n_var
 
-    # Get the residuals - resiudals are the average of the different bootstrap iterations
-    oos_res = Y_test - results['pred']
-    oob_res_save = Y_train - results['pred_in']
-    oob_res = oob_res_save[~np.isnan(oob_res_save).any(axis=1)]
-    oob_res = np.vstack([oob_res, oos_res])
+    # Store the average OOB predictions across all inner bootstraps
+    oob_preds = results['pred_in']
+    # oob_res: set of OOB error vectors to sample from for the iterated forecasts
+    oob_res = Y_train - results['pred_in']
 
     # Time periods where we create the impulses
-    impulse_times = list(range(self.start_shock_time, self.n_simulations, self.endh))
+    impulse_times = list(range(self.start_shock_time, self.num_simulations, self.endh))
     impulse_times_all = []
 
     # Shock the system in plausible way (shock few days in a row)
@@ -171,15 +166,15 @@ class IRFUnconditional:
     oob_shocks = np.matmul(oob_res, np.linalg.inv(C.T))
 
     # Sample from the OOB shocks self.n_simulations times
-    simul_shocks = np.zeros((self.n_simulations, n_var))
+    simul_shocks = np.zeros((self.num_simulations, n_var))
     for k in range(n_var):
-      simul_ids = random.choices(list(range(oob_shocks.shape[0])), k = self.n_simulations)
+      simul_ids = random.choices(list(range(oob_shocks.shape[0])), k = self.num_simulations)
       simul_shocks[:, k] = oob_shocks[simul_ids, k]
 
     # Simul_shocks_old is the original 
     simul_shocks_old = simul_shocks.copy()
 
-    fcast = np.zeros((self.n_simulations, n_var, n_var, 3))
+    fcast = np.zeros((self.num_simulations, n_var, n_var, 3))
     fcast[:] = np.nan
 
     for kk in range(n_var):
@@ -224,9 +219,12 @@ class IRFUnconditional:
           new_data_all = np.expand_dims(new_data_all, axis = 0)
 
           if np.any(np.isnan(new_data_all)) == False and np.all(np.isfinite(new_data_all)) == True:
+            if self.model == 'VARNN':
             # Get the prediction (NEW USING predict_nn function)
-            pred = predict_nn_old(results, new_data_all, device)
-            print('pred', pred)
+              pred = predict_nn_old(results, new_data_all, device)
+            else: # ML model
+              pred = predict_ml_model(results, new_data_all)
+            
           else: 
             print(f'Exploded at simulation time step {f}')
             break
@@ -239,7 +237,7 @@ class IRFUnconditional:
   # Compute conditional IRFs for ONE repeat/ONE experiment - takes in VARNN estimation results
   def get_irfs_wrapper(self, Y_train, Y_test, results):
 
-    if self.forecast_method == 'old':
+    if self.forecast_method == 'old' or self.model != 'VARNN':
       fcast, fcast_cov_mat, sim_shocks = self.simulate_irf_paths_old(Y_train, Y_test, results, self.device)
     else:
       fcast, fcast_cov_mat, sim_shocks = self.simulate_irf_paths_new(Y_train, Y_test, results, self.device)

@@ -2,15 +2,16 @@
     "dataset": "monthly",
 
     "run_params": {
-        "num_inner_bootstraps": 40,
-        "num_repeats": 1,
+        "num_inner_bootstraps": 25,
+        "num_repeats": 4,
         "default_nn_hyps": "nn_hyps_default",
         
         "var_names": ["DGS3", "inf", "unrate"],
         "n_lag_linear": 3, 
         "n_lag_d": 6,
         "n_var": 3,
-        "test_size": 40
+        "test_size": 60,
+        "s_pos": [[0, 27]]
     },
 
     "execution_params": {
@@ -23,13 +24,15 @@
 
     "extensions_params": {
 
+        "ml_experiments": ["RF", "XGBoost"],
+
         "conditional_irfs": {
             "max_h": 10
         },
         "unconditional_irfs": {
             "num_simulations": 1000,
-            "endh": 40, 
-            "start_shock_time": 40,
+            "endh": 50, 
+            "start_shock_time": 50,
             "max_h": 20,
             "forecast_method": "new",
             "plot_all_bootstraps": false
@@ -39,8 +42,8 @@
             "reestimation_window": 1
         },
         "multi_forecasting": {
-            "forecast_horizons": 6,
-            "reestimation_window": 40,
+            "forecast_horizons": 3,
+            "reestimation_window": 60,
             "forecast_method": "new",
             "num_sim_bootstraps": 25,
             "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand"]
@@ -52,6 +55,21 @@
             "nodes": [200, 100, 50], 
             "actv": "nn.ReLU()", 
             "tvpl_archi": [5], 
+            "lr": 0.002, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 9]],
+            "joint_estimation": true, 
+            "name": "RELU"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
             "lr": 0.001, 
             "time_dummy_setting": 2, 
             "dropout_rate": 0.25, 
@@ -59,22 +77,7 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 27]],
-            "joint_estimation": true, 
-            "name": "RELU"
-        },
-        {
-            "nodes": [200, 100, 50], 
-            "actv": "nn.SELU()", 
-            "tvpl_archi": [5], 
-            "lr": 0.0005, 
-            "time_dummy_setting": 2, 
-            "dropout_rate": 0.25, 
-            "precision_lambda": 0.25, 
-            "lambda_temper_epochs": 50, 
-            "optimizer": "Adam",
-            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 27]],
+            "s_pos": [[0, 9]],
             "joint_estimation": true, 
             "name": "SELU"
         }
@@ -89,7 +92,7 @@
         "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole"],
         "experiments_to_load": [0, 1],
         "plot_all_bootstraps": false,
-        "exps_to_plot": [0, 1, 2],
+        "exps_to_plot": [0, 1],
         "test_exclude_last": 20
     }
 }

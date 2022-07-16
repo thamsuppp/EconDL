@@ -311,6 +311,8 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
   n_betas = len(x_pos_flat) + 1
   n_hemispheres = len(nn_hyps['s_pos'])
 
+  nn_hyps['neurons_weights'] = [nn_hyps['tvpl_archi'] for i in range(n_betas)]
+
   # Conduct prior shift
   if nn_hyps['prior_shift'] == True:
     x_pos_ps = sorted(list(itertools.chain(*nn_hyps['x_pos_ps'])))

@@ -87,6 +87,7 @@ class Experiment:
         'forecast_method': self.extensions_params['unconditional_irfs']['forecast_method'], # old or new
         'max_h': self.extensions_params['unconditional_irfs']['max_h'], 
         'var_names': self.nn_hyps['variables'],
+        'model': 'VARNN'
       }
 
     IRFUnconditionalObj = IRFUnconditional(unconditional_irf_params, device)
@@ -113,7 +114,8 @@ class Experiment:
       'n_lag_d': self.nn_hyps['n_lag_d'],
       'n_var': len(self.nn_hyps['variables']),
       'forecast_method': self.extensions_params['multi_forecasting']['forecast_method'], # old or new
-      'var_names': self.nn_hyps['variables']
+      'var_names': self.nn_hyps['variables'],
+      'model': 'VARNN'
     }
 
     ForecastMultiObj = ForecastMulti(self.run_name, Y_train, Y_test, multi_forecasting_params, device = device)

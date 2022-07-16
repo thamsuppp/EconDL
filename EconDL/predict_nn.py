@@ -113,7 +113,7 @@ def predict_nn_old(self, results, newx, device):
     pred_mat[:, i, :] = pred
 
   # Take mean BEFORE unscaling (REVISIT IF WE NEED TO FLIP ORDER)
-  pred = pred_mat.nanmedian(axis = 1)
+  pred = np.nanmedian(pred_mat, axis = 1)
 
   # Invert scaling of the prediction
   if results['standardize'] == True:

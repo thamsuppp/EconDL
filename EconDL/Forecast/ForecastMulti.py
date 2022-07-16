@@ -4,7 +4,8 @@ import random
 from datetime import datetime
 
 from EconDL.utils import invert_scaling
-from EconDL.predict_nn import predict_nn_new, predict_nn_old, predict_ml_model
+from EconDL.predict_nn import predict_nn_new, predict_nn_old
+from EconDL.ml_benchmark_utils import predict_ml_model
 
 # Repeat-level class to generate multi-period forecasts
 class ForecastMulti:
@@ -12,7 +13,8 @@ class ForecastMulti:
   def __init__(self, run_name, Y_train, Y_test, multi_forecasting_params, device = None):
 
     self.run_name = run_name
-    self.folder_path = f'../results/{self.run_name}'
+    self.folder_path = f'results/{self.run_name}'
+    self.model = multi_forecasting_params['model']
 
     self.Y_train = Y_train
     self.Y_test = Y_test
@@ -124,7 +126,7 @@ class ForecastMulti:
   # Shape of mat_x_d_all: first n_lag_linear x self.n_var, then n_lag_d x self.n_var (hence 3 + 24 = 27)
   # Base code: Make 0-h self.horizon predictions for 1 bootstrap, for 1 tiemstep
   # New for 14 Dec: input the error_ids so we can keep constant across different models
-  def predict_one_bootstrap_old(self, newx, results, nn_hyps, model = 'VARNN'):
+  def predict_one_bootstrap_old(self, newx, results, nn_hyps):
 
     Y_train = results['Y_train']
     n_lag_linear = nn_hyps['n_lag_linear']
@@ -177,7 +179,7 @@ class ForecastMulti:
       new_data_all = np.hstack([new_in_linear, new_data_marx, new_in_time])
       new_data_all = np.expand_dims(new_data_all, axis = 0)
       
-      if model in ['RF', 'XGBoost']:
+      if self.model in ['RF', 'XGBoost']:
         pred = predict_ml_model(results, new_data_all)
       else: # VARNN
       # Use estimated model to make prediction with the generated input vector
@@ -204,10 +206,10 @@ class ForecastMulti:
     #error_ids = np.array(random.choices(range(X_train.shape[0]), k = self.h * self.num_sim_bootstraps * self.test_size))
     #error_ids = error_ids.reshape((self.h, self.num_sim_bootstraps, self.test_size))
 
-    if self.forecast_method == 'new':
-        predict_fn = self.predict_one_bootstrap_new
+    if self.forecast_method == 'old' or self.model != 'VARNN':
+        predict_fn = self.predict_one_bootstrap_old
     else:
-      predict_fn = self.predict_one_bootstrap_old
+      predict_fn = self.predict_one_bootstrap_new
 
     results['Y_train'] = self.Y_train
     results['Y_test'] = self.Y_test

@@ -5,9 +5,10 @@ from xgboost import XGBRegressor
 from EconDL.utils import scale_data, invert_scaling
 
 
-def train_ml_model(X_train, X_test, Y_train, Y_test, nn_hyps, model = 'RF'):
+def train_ml_model(X_train, X_test, Y_train, Y_test, nn_hyps):
 
-  n_var = Y_train.shape[0]
+  n_var = Y_train.shape[1]
+  model = nn_hyps['model']
   if nn_hyps['standardize'] == True:
     print('Standardizing')
     scale_output = scale_data(X_train, Y_train, X_test, Y_test)
@@ -46,4 +47,30 @@ def train_ml_model(X_train, X_test, Y_train, Y_test, nn_hyps, model = 'RF'):
   return {'trained_model': models,
           'scale_output': scale_output,
           'standardize': nn_hyps['standardize'],
-          'pred_in': pred}
+          'pred_in': pred,
+          'n_var': n_var}
+
+
+def predict_ml_model(results, newx):
+  scale_output = results['scale_output']
+  n_var = results['n_var']
+
+  # Scale the new x
+  if results['standardize'] == True:
+    scaler_x = scale_output['scaler_x']
+    newx = scaler_x.transform(newx)
+
+  # Prediction matrix: n_observations x num_inner_bootstraps x n_vars
+  pred = np.zeros((newx.shape[0], n_var))
+  pred[:] = np.nan
+
+  # For every variable, make prediction using trained model for that variable
+  for var in range(n_var):
+    model_var = results['trained_model'][var]
+    pred[:, var] = model_var.predict(newx)
+
+  # Unstandardize the predictions
+  if results['standardize'] == True:
+    pred = invert_scaling(pred, scale_output['mu_y'], scale_output['sigma_y'])
+
+  return pred

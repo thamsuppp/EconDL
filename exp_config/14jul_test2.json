@@ -2,13 +2,13 @@
     "dataset": "monthly",
 
     "run_params": {
-        "num_inner_bootstraps": 10,
-        "num_repeats": 1,
+        "num_inner_bootstraps": 25,
+        "num_repeats": 4,
         "default_nn_hyps": "nn_hyps_default",
         
         "var_names": ["DGS3", "inf", "unrate"],
-        "n_lag_linear": 1, 
-        "n_lag_d": 2,
+        "n_lag_linear": 3, 
+        "n_lag_d": 6,
         "n_var": 3,
         "test_size": 60
     },
@@ -59,7 +59,7 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 9]],
+            "s_pos": [[0, 27]],
             "joint_estimation": true, 
             "name": "RELU"
         },
@@ -74,7 +74,7 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 9]],
+            "s_pos": [[0, 27]],
             "joint_estimation": true, 
             "name": "SELU"
         }
