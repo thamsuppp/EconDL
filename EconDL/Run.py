@@ -86,10 +86,8 @@ class Run:
       all_nn_hyps = default_nn_hyps.copy()
       all_nn_hyps.update({'model': ml_model})
 
-      MLExperimentObj = MLExperiment(self.run_name, None, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params)
+      MLExperimentObj = MLExperiment(self.run_name, None, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id)
       self.ml_experiments.append(MLExperimentObj)
-
-
 
   def _init_experiments(self): # Only if experiments are not already initialized
 
@@ -106,6 +104,8 @@ class Run:
         # Combine the default nn_hyps with changed_nn_hyps
         all_nn_hyps = default_nn_hyps.copy()
         all_nn_hyps.update(changed_nn_hyps)
+        all_nn_hyps['model'] = 'VARNN'
+        all_nn_hyps['variables'] = all_nn_hyps['var_names']
         ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id)
         self.experiments.append(ExperimentObj)
       
@@ -129,10 +129,13 @@ class Run:
   def compile_experiments(self, experiment_ids = None):  
     # If experiment_ids = None, then train all
     experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
-    
     for experiment_id in experiment_ids:
       ExperimentObj = self.experiments[experiment_id]
       ExperimentObj.compile_all()
+
+  def compile_ml_experiments(self):
+    for MLExperimentObj in self.ml_experiments:
+      MLExperimentObj.compile_all()
 
   def train_benchmarks(self):
 
@@ -186,6 +189,13 @@ class Run:
     ForecastBenchmarkObj.conduct_multi_forecasting_benchmarks()
 
     print('Multi-forecasting Benchmarks trained')
+
+  def compute_conditional_irfs(self, experiment_ids = None):
+    # If experiment_ids = None, then train all
+    experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
+    for experiment_id in experiment_ids:
+      ExperimentObj = self.experiments[experiment_id]
+      ExperimentObj.compute_conditional_irfs()
 
   # Wrapper function that trains experiments, benchmarks and multi-forecast benchmarks
   def train_all(self):

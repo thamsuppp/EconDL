@@ -42,99 +42,109 @@ class IRFUnconditional:
   # Returns: fcast, fcast_cov_mat, sim_shocks
   ## kk: variable to shock , k: response of shock
   def simulate_irf_paths_new(self, Y_train, Y_test, results, device):
-    n_var = self.n_var
 
-    # Store the average OOB predictions across all inner bootstraps
-    oob_preds = results['pred_in']
-    # oob_res: set of OOB error vectors to sample from for the iterated forecasts
-    oob_res = Y_train - results['pred_in']
+    try:
+      n_var = self.n_var
 
-    # Time periods where we create the impulses
-    impulse_times = list(range(self.start_shock_time, self.num_simulations, self.endh))
-    impulse_times_all = []
+      # Store the average OOB predictions across all inner bootstraps
+      oob_preds = results['pred_in']
+      # oob_res: set of OOB error vectors to sample from for the iterated forecasts
+      oob_res = Y_train - results['pred_in']
 
-    # Shock the system in plausible way (shock few days in a row)
-    for e in impulse_times:
-      for sj in [0]:
-        impulse_times_all.append(e + sj)
+      # Time periods where we create the impulses
+      impulse_times = list(range(self.start_shock_time, self.num_simulations, self.endh))
+      impulse_times_all = []
 
-    fcast = np.zeros((self.num_simulations, n_var, n_var, 3))
-    fcast[:] = np.nan
+      # Shock the system in plausible way (shock few days in a row)
+      for e in impulse_times:
+        for sj in [0]:
+          impulse_times_all.append(e + sj)
 
-    fcast_cov_mat = np.zeros((self.num_simulations, n_var, n_var, n_var, 3))
-    fcast_cov_mat[:] = np.nan
+      fcast = np.zeros((self.num_simulations, n_var, n_var, 3))
+      fcast[:] = np.nan
 
-    # sim_shocks: self.num_simulations x n_var
-    sim_shocks = np.random.multivariate_normal([0] * n_var, np.eye(n_var), size = self.num_simulations)
-    for simul in range(self.num_simulations):
-      sim_shocks[simul, :] = np.random.multivariate_normal([0] * n_var, np.eye(n_var), size = 1)
+      fcast_cov_mat = np.zeros((self.num_simulations, n_var, n_var, n_var, 3))
+      fcast_cov_mat[:] = np.nan
 
-    for kk in range(n_var): # Variable to shock
-      for shock_level in [0, 1]:
+      # sim_shocks: self.num_simulations x n_var
+      sim_shocks = np.random.multivariate_normal([0] * n_var, np.eye(n_var), size = self.num_simulations)
+      for simul in range(self.num_simulations):
+        sim_shocks[simul, :] = np.random.multivariate_normal([0] * n_var, np.eye(n_var), size = 1)
 
-        # Initialize new data at 0
-        new_in_linear = np.zeros(self.n_lag_linear * n_var)
-        new_in_nonlinear = np.zeros(self.n_lag_d * n_var)
-        fcast[0, :, kk, shock_level] = np.zeros((n_var))
+      for kk in range(n_var): # Variable to shock
+        for shock_level in [0, 1]:
 
-        # Start the simulation
-        f = 1
-        while f < self.num_simulations:
-          ### 1: Construct input
-          if f % 100 == 0:
-            print(f, datetime.now())
+          # Initialize new data at 0
+          new_in_linear = np.zeros(self.n_lag_linear * n_var)
+          new_in_nonlinear = np.zeros(self.n_lag_d * n_var)
+          fcast[0, :, kk, shock_level] = np.zeros((n_var))
 
-          # Add the newly observed data to the model (new variables become the L0, appended to front,
-          # while we drop the most lagged variables)
-          new_in_linear = np.hstack([fcast[f-1, :, kk, shock_level], new_in_linear[:(len(new_in_linear) - n_var)]])
-          new_in_nonlinear = np.hstack([fcast[f-1, :, kk, shock_level], new_in_nonlinear[:(len(new_in_nonlinear) - n_var)]])
+          # Start the simulation
+          f = 1
+          bootstraps_to_ignore = []
+          while f < self.num_simulations:
+            ### 1: Construct input
+            if f % 100 == 0:
+              print(f, datetime.now())
+
+            # Add the newly observed data to the model (new variables become the L0, appended to front,
+            # while we drop the most lagged variables)
+            new_in_linear = np.hstack([fcast[f-1, :, kk, shock_level], new_in_linear[:(len(new_in_linear) - n_var)]])
+            new_in_nonlinear = np.hstack([fcast[f-1, :, kk, shock_level], new_in_nonlinear[:(len(new_in_nonlinear) - n_var)]])
+            
+            # Generate MARX transformed variables - for that one new day
+            new_data_marx = new_in_nonlinear.copy()
+            for lag in range(2, self.n_lag_d + 1):
+              for var in range(n_var):
+                who_to_avg = list(range(var, n_var * (lag - 1) + var + 1, n_var))
+                new_data_marx[who_to_avg[-1]] = new_in_nonlinear[who_to_avg].mean()
+
+            # Combine the first n_lag_linear lags, with the MARX data, to get the full 325-dim input vector
+            new_data_all = np.hstack([new_in_linear, new_data_marx])
+            new_data_all = np.expand_dims(new_data_all, axis = 0)
+
+            ### 2: Call NN forward to get pred and cov mat (stop if the whole thing exploded)
+            if np.any(np.isnan(new_data_all)) == False and np.all(np.isfinite(new_data_all)) == True:
+              
+  #            print('new_data_all', new_data_all)
+              pred, cov, bootstraps_to_ignore = predict_nn_new(results, new_data_all, bootstraps_to_ignore, device)
+
+              # Cholesky the cov mat to get C matrix
+              cov = np.squeeze(cov, axis = 0)
+              c_t = np.linalg.cholesky(cov)
+
+              fcast_cov_mat[f, :, :, kk, shock_level] = cov
+
+              ### 3: Sample 1 shock from normal distribution
+              sim_shock = sim_shocks[f, :].copy()
+
+              # @DEV: We sample the shocks together to ensure that the [1] and [0] iteration have the same sshocks
+
+              if f in impulse_times:
+                # 4: Replace the shock for the kkth variable to be 0 or 1, for the observations in impulse_times vector
+                sim_shock[kk] = shock_level
+              
+              ### 5: Convert shock back into residual, add this to the series
+              sim_resid = np.matmul(sim_shock, c_t.T)
+              fcast[f, :, kk, shock_level] = pred + sim_resid
+
+              # print('pred', pred)
+              # print('sim_resid', sim_resid)
+
+              f = f+1  
+
+            else: 
+              print(f'Exploded at simulation time step {f}')
+              break
           
-          # Generate MARX transformed variables - for that one new day
-          new_data_marx = new_in_nonlinear.copy()
-          for lag in range(2, self.n_lag_d + 1):
-            for var in range(n_var):
-              who_to_avg = list(range(var, n_var * (lag - 1) + var + 1, n_var))
-              new_data_marx[who_to_avg[-1]] = new_in_nonlinear[who_to_avg].mean()
+      return fcast, fcast_cov_mat, sim_shocks
+    except np.linalg.LinAlgError as err:
+      if 'Matrix is not positive definite' in err.message:
+        print(f'Matrix not positive definite error, step {f}')
+        return fcast, fcast_cov_mat, sim_shocks
+      else: 
+        raise
 
-          # Combine the first n_lag_linear lags, with the MARX data, to get the full 325-dim input vector
-          new_data_all = np.hstack([new_in_linear, new_data_marx])
-          new_data_all = np.expand_dims(new_data_all, axis = 0)
-
-          ### 2: Call NN forward to get pred and cov mat (stop if the whole thing exploded)
-          if np.any(np.isnan(new_data_all)) == False and np.all(np.isfinite(new_data_all)) == True:
-            
-#            print('new_data_all', new_data_all)
-            pred, cov = predict_nn_new(results, new_data_all, device)
-
-            # Cholesky the cov mat to get C matrix
-            cov = np.squeeze(cov, axis = 0)
-            c_t = np.linalg.cholesky(cov)
-
-            fcast_cov_mat[f, :, :, kk, shock_level] = cov
-
-            ### 3: Sample 1 shock from normal distribution
-            sim_shock = sim_shocks[f, :].copy()
-
-            # @DEV: We sample the shocks together to ensure that the [1] and [0] iteration have the same sshocks
-
-            if f in impulse_times:
-              # 4: Replace the shock for the kkth variable to be 0 or 1, for the observations in impulse_times vector
-              sim_shock[kk] = shock_level
-            
-            ### 5: Convert shock back into residual, add this to the series
-            sim_resid = np.matmul(sim_shock, c_t.T)
-            fcast[f, :, kk, shock_level] = pred + sim_resid
-
-            # print('pred', pred)
-            # print('sim_resid', sim_resid)
-
-            f = f+1  
-
-          else: 
-            print(f'Exploded at simulation time step {f}')
-            break
-        
-    return fcast, fcast_cov_mat, sim_shocks
 
   # @title Old IRF Simulation Wrapper Function (without Joint Estimation - time-invariant covariance matrix)
   # Returns: fcast, None, sim_shocks

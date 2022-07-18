@@ -203,6 +203,8 @@ def training_loop(X_train, Y_train, model, criterion, optimizer, scheduler, trai
 
 def build_VARNN(X, Y, train_indices, nn_hyps, device):
 
+  print('X shape', X.shape)
+
   if nn_hyps['s_pos']:
     s_pos = list(itertools.chain(*nn_hyps['s_pos']))
     n_features = len(s_pos)

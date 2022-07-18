@@ -20,16 +20,15 @@ run_name = sys.argv[1]
 
 # If we are doing this in parallel, then we pass in the job_id parameter here
 RunObj = Run(run_name, device, job_id = None)
-RunObj.train_ml_experiments()
 
-# # Train all experiments within the run and store the experiments within the object
-# RunObj.train_all()
-# #RunObj.compile_experiments()
+# Train all experiments within the run and store the experiments within the object
+RunObj.train_all()
+#RunObj.compile_experiments()
 
-# # Runs evaluation for the trained run
-# EvaluationObj = Evaluation(RunObj)
-# print(EvaluationObj.check_results_sizes())
-# EvaluationObj.plot_all()
+# Runs evaluation for the trained run
+EvaluationObj = Evaluation(RunObj)
+print(EvaluationObj.check_results_sizes())
+EvaluationObj.plot_all()
 
 '''
 Note: 

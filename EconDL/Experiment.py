@@ -51,9 +51,13 @@ class Experiment:
     for k in keys_to_keep.keys():
       print(k, self.results[k].shape)
 
+  # Only done after all repeats are trained (called by Evaluation function)
   def compute_conditional_irfs(self):
-    if self.execution_params['conditional_irfs'] == False:
-      print('Unconditional IRFs turned off')
+    if self.execution_params['conditional_irfs'] == False or self.job_id is not None:
+      print('Experiment compute_conditional_irfs(): Conditional IRFs turned off')
+      return
+    if os.path.exists(f'{self.folder_path}/images/irf_conditional_{self.experiment_id}.png'):
+      print('Experiment compute_conditional_irfs(): Already plotted Conditional IRFs')
       return 
 
     if self.is_trained == True:
@@ -74,7 +78,7 @@ class Experiment:
 
   def compute_unconditional_irfs(self, Y_train, Y_test, results, device, repeat_id):
     if self.execution_params['unconditional_irfs'] == False:
-      print('Unconditional IRFs turned off')
+      print('Experiment: Unconditional IRFs turned off')
       return 
     # results contains the trained model
     unconditional_irf_params = {
@@ -99,7 +103,7 @@ class Experiment:
   def compute_multi_forecasts(self, X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id):
 
     if self.execution_params['multi_forecasting'] == False:
-      print('Multi Forecasting turned off')
+      print('Experiment compute_multi_forecasts(): Multi Forecasting turned off')
       return 
 
     multi_forecasting_params = {
@@ -123,7 +127,7 @@ class Experiment:
     # Benchmarks
     FCAST = ForecastMultiObj.conduct_multi_forecasting_wrapper(X_train, X_test, results, nn_hyps)
 
-    print('Done with Multiforecasting')
+    print('Experiment compute_multi_forecasts(): Done with Multiforecasting')
     with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
       np.savez(f, fcast = FCAST)
 
@@ -133,13 +137,13 @@ class Experiment:
   def train(self, dataset, device):
 
     if self.is_trained == True:
-      print('Trained already')
+      print('Experiment train(): Trained already')
     else:
       X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, self.nn_hyps)
       
       repeat_ids = []
       if self.job_id is not None:
-        repeat_ids = self.job_id
+        repeat_ids = [self.job_id]
       else:
         repeat_ids = range(self.run_params['num_repeats'])
       # For each repeat
@@ -170,7 +174,7 @@ class Experiment:
 
         self.results_uncompiled.append(results_saved)
 
-        print(f'Finished training repeat {repeat_id} of experiment {self.experiment_id} at {datetime.now()}')
+        print(f'Experiment train(): Finished training repeat {repeat_id} of experiment {self.experiment_id} at {datetime.now()}')
 
         self.compute_unconditional_irfs(Y_train, Y_test, results, device = device, repeat_id = repeat_id)
         self.compute_multi_forecasts(X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id)
@@ -178,15 +182,16 @@ class Experiment:
       # After completing all repeats
       self.is_trained = True
 
-      self._compile_results()
+    #   self._compile_results()
 
-    self._compile_unconditional_irf_results()
-    self._compile_multi_forecasting_results()
-    self.compute_conditional_irfs()
+    # self._compile_unconditional_irf_results()
+    # self._compile_multi_forecasting_results()
+    # self.compute_conditional_irfs()
 
-  # Used when compiling parallel-computed results
+
+
+  # Used at Evaluation time (called by evaluation object)
   def compile_all(self):
-    self.load_results()
     self._compile_results()
     self._compile_multi_forecasting_results()
     self._compile_unconditional_irf_results()
@@ -195,15 +200,15 @@ class Experiment:
   def _compile_results(self):
     
     if self.job_id is not None:
-      print('Multiple Jobs, compiling turned off')
+      print('Experiment _compile_results(): Multiple Jobs, compiling turned off')
       return
-
-    num_repeats = self.run_params['num_repeats']
+    if self.is_compiled == True:
+      print('Experiment _compile_results(): Compiled results already')
+      return
 
     repeat_id = 0
     # While there are more repeats to process, stack the fields
-    while repeat_id < num_repeats:
-
+    while repeat_id < len(self.results_uncompiled):
       results_repeat = self.results_uncompiled[repeat_id]
 
       if repeat_id == 0:
@@ -227,10 +232,10 @@ class Experiment:
   def _compile_multi_forecasting_results(self):
 
     if self.execution_params['multi_forecasting'] == False:
-      print('Multi Forecasting turned off')
+      print('Experiment _compile_multi_forecasting_results(): Multi Forecasting turned off')
       return 
     if self.job_id is not None:
-      print('Multiple Jobs, compiling turned off')
+      print('Experiment _compile_multi_forecasting_results(): Multiple Jobs, compiling turned off')
       return
     num_repeats = self.run_params['num_repeats']
     repeat_id = 0
@@ -249,10 +254,10 @@ class Experiment:
   def _compile_unconditional_irf_results(self):
 
     if self.job_id is not None:
-      print('Multiple Jobs, compiling turned off')
+      print('Experiment _compile_unconditional_irf_results(): Multiple Jobs, compiling turned off')
       return
     if self.execution_params['unconditional_irfs'] == False:
-      print('Unconditional IRFs turned off')
+      print('Experiment _compile_unconditional_irf_results(): Unconditional IRFs turned off')
       return 
       
     num_repeats = self.run_params['num_repeats']
@@ -261,7 +266,7 @@ class Experiment:
 
       out_repeat = np.load(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)
       fcast = out_repeat['fcast']
-      fcast_cov_mat = out_repeat['fcast_cov_mat']
+      #fcast_cov_mat = out_repeat['fcast_cov_mat']
       if repeat_id == 0:
         fcast_all = np.zeros((num_repeats, fcast.shape[0], fcast.shape[1], fcast.shape[2], fcast.shape[3]))
         #fcast_cov_mat_all = np.zeros((num_repeats, fcast_cov_mat.shape[0], fcast_cov_mat.shape[1], fcast_cov_mat.shape[2], fcast_cov_mat.shape[3], fcast_cov_mat.shape[4]))
@@ -293,18 +298,22 @@ class Experiment:
 
     self.evaluations['unconditional_irf'] = IRFUnconditionalEvaluationObj
     
-  def load_results(self):
 
-    # Check if the results exist
+
+  def load_results(self):
+    print(f'Experiment load_results(): Loading results for Experiment id {self.experiment_id}')
+    # Check if the compiled results exist
     if os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_compiled.npz'):
       self.is_trained = True
       load_file = f'{self.folder_path}/params_{self.experiment_id}_compiled.npz'
       results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
       self.results = results_loaded
-      print(f'Loaded compiled results')
+      self.is_compiled = True
+      print(f'Experiment load_results(): Loaded compiled results')
       return
 
-    elif os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_0.npz'):
+    # Check if results for this repeat exist
+    elif os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{self.job_id if self.job_id else 0}.npz'):
       repeat_id = 0
       while os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'):
         self.is_trained = True
@@ -312,12 +321,12 @@ class Experiment:
         results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
         self.results_uncompiled.append(results_loaded)
 
-        print(f'Loaded results for repeat {repeat_id}')
+        print(f'Experiment load_results(): Loaded results for repeat {repeat_id}')
         repeat_id += 1
 
       return
     else:
-      print('Not trained yet')
+      print('Experiment load_results(): Not trained yet')
 
   def __str__(self):
     return f'''

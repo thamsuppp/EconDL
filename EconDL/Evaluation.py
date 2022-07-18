@@ -69,6 +69,7 @@ class Evaluation:
 
 
     # Load the results and params
+    self.compile_results()
     self.load_results()
 
   def check_results_sizes(self):
@@ -85,6 +86,16 @@ class Evaluation:
       'PREDS_TEST_ALL': self.PREDS_TEST_ALL.shape
     }
 
+  def compile_results(self):
+    if self.need_to_combine == True:
+      self.Run.compile_experiments()
+      self.Run.compile_ml_experiments()
+    else:
+      print('Need to combine off, no need to compile')
+
+
+
+  # Assumes results have already been compiled
   def load_results(self):
 
     # Load VARNN results
@@ -95,13 +106,14 @@ class Evaluation:
       dataset_text = f'_dataset_{self.sim_dataset}' if self.multiple_datasets == True else ''
       load_file = f'{self.folder_path}/params_{experiment}{dataset_text}_{compiled_text}.npz'
 
+      print(f'Evaluation load_results(): load_file: {load_file}')
+
       results = np.load(load_file, allow_pickle = True)['results'].item()
       params = results['params']
       self.params.append(params)
 
       n_lag_linear = params['n_lag_linear']
       num_bootstraps = params['num_bootstrap']
-      self.num_bootstraps = num_bootstraps
       
       self.experiment_names.append(params['name'])
       BETAS = results['betas']
@@ -122,39 +134,40 @@ class Evaluation:
 
       # For experiments with more than 1 lag, get the ids of the 1st beta to plot
       beta_ids_to_keep = [0] + list(range(1, BETAS_IN.shape[1], n_lag_linear))
-      print(beta_ids_to_keep)
       BETAS_IN = BETAS_IN[:, beta_ids_to_keep, :,:,:]
       BETAS = BETAS[:, beta_ids_to_keep, :,:,:]
 
       if i == 0:
-        BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], num_bootstraps, BETAS.shape[3], BETAS.shape[4]))
+        BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], BETAS.shape[4]))
         BETAS_ALL[:] = np.nan
         # n_models x n_obs x n_betas x n_bootstraps x n_vars x n_hemispheres
-        BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], num_bootstraps, BETAS_IN.shape[3], BETAS_IN.shape[4]))
+        BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], BETAS.shape[2], BETAS_IN.shape[3], BETAS_IN.shape[4]))
         BETAS_IN_ALL[:] = np.nan 
 
         # n_models x n_obs x n_vars x n_vars x n_bootstraps
-        SIGMAS_ALL = np.zeros((self.M_total, SIGMAS.shape[0], SIGMAS.shape[1], SIGMAS.shape[2], num_bootstraps))
+        SIGMAS_ALL = np.zeros((self.M_total, SIGMAS.shape[0], SIGMAS.shape[1], SIGMAS.shape[2], SIGMAS.shape[3]))
         SIGMAS_ALL[:] = np.nan
         PRECISION_ALL = np.zeros_like(SIGMAS_ALL)
         PRECISION_ALL[:] = np.nan
-        CHOLESKY_ALL = np.zeros((self.M_total, SIGMAS.shape[0], SIGMAS.shape[1], SIGMAS.shape[2], 2, num_bootstraps))
+        CHOLESKY_ALL = np.zeros((self.M_total, SIGMAS.shape[0], SIGMAS.shape[1], SIGMAS.shape[2], 2, SIGMAS.shape[3]))
         CHOLESKY_ALL[:] = np.nan 
 
-        SIGMAS_IN_ALL = np.zeros((self.M_total, SIGMAS_IN.shape[0], SIGMAS_IN.shape[1], SIGMAS_IN.shape[2], num_bootstraps))
+        SIGMAS_IN_ALL = np.zeros((self.M_total, SIGMAS_IN.shape[0], SIGMAS_IN.shape[1], SIGMAS_IN.shape[2], SIGMAS_IN.shape[3]))
         SIGMAS_IN_ALL[:] = np.nan 
         PRECISION_IN_ALL = np.zeros_like(SIGMAS_IN_ALL)
         PRECISION_IN_ALL[:] = np.nan
         CHOLESKY_IN_ALL = np.zeros_like(CHOLESKY_ALL)
         CHOLESKY_IN_ALL[:] = np.nan
 
-        SIGMAS_CONS_ALL = np.zeros((self.M_total, SIGMAS.shape[1], SIGMAS.shape[2], num_bootstraps))
+        SIGMAS_CONS_ALL = np.zeros((self.M_total, SIGMAS.shape[1], SIGMAS.shape[2], SIGMAS.shape[3]))
         SIGMAS_CONS_ALL[:] = np.nan
 
-        PREDS_ALL = np.zeros((self.M_total, PREDS.shape[0], num_bootstraps, PREDS.shape[2]))
+        PREDS_ALL = np.zeros((self.M_total, PREDS.shape[0], PREDS.shape[1], PREDS.shape[2]))
         PREDS_ALL[:] = np.nan
-        PREDS_TEST_ALL = np.zeros((self.M_total, PREDS_TEST.shape[0], num_bootstraps, PREDS_TEST.shape[2]))
+        PREDS_TEST_ALL = np.zeros((self.M_total, PREDS_TEST.shape[0], PREDS_TEST.shape[1], PREDS_TEST.shape[2]))
         PREDS_TEST_ALL[:] = np.nan 
+
+        self.num_bootstraps = BETAS.shape[2]
 
       # If >1 hemis, Demean the time hemisphere and add the mean to the endogenous hemisphere
       # (note: the means are the in-sample means, not the oob ones)
@@ -166,8 +179,8 @@ class Evaluation:
         # BETAS[:, :, :, :, 0] = BETAS[:, :, :, :, 0] + time_hemi_means_expand
         # BETAS[:, :, :, :, 1] = BETAS[:, :, :, :, 1] - time_hemi_means_expand
 
-      BETAS_ALL[i,:,:,:BETAS_IN.shape[2],:, :BETAS_IN.shape[4]] = BETAS
-      BETAS_IN_ALL[i,:,:,:BETAS_IN.shape[2],:, :BETAS_IN.shape[4]] = BETAS_IN
+      BETAS_ALL[i,:,:,:,:, :] = BETAS
+      BETAS_IN_ALL[i,:,:,:,:, :] = BETAS_IN
       SIGMAS_ALL[i, :,:,:,:] = SIGMAS
       SIGMAS_IN_ALL[i, :,:,:,:] = SIGMAS_IN
       PRECISION_ALL[i, :,:,:,:] = PRECISION

@@ -3,15 +3,15 @@
 
     "run_params": {
         "num_inner_bootstraps": 50,
-        "num_repeats": 4,
+        "num_repeats": 1,
         "default_nn_hyps": "nn_hyps_default",
         
         "var_names": ["DGS3", "inf", "unrate"],
-        "n_lag_linear": 3, 
-        "n_lag_d": 6,
+        "n_lag_linear": 6, 
+        "n_lag_d": 12,
         "n_var": 3,
-        "test_size": 60,
-        "s_pos": [[0, 27]]
+        "test_size": 90,
+        "s_pos": [[0, 54]]
     },
 
     "execution_params": {
@@ -42,8 +42,8 @@
             "reestimation_window": 1
         },
         "multi_forecasting": {
-            "forecast_horizons": 3,
-            "reestimation_window": 60,
+            "forecast_horizons": 12,
+            "reestimation_window": 90,
             "forecast_method": "new",
             "num_sim_bootstraps": 25,
             "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand"]
@@ -62,10 +62,12 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 27]],
+            "s_pos": [[0, 54]],
             "joint_estimation": true, 
-            "name": "RELU"
+            "name": "DGS3-inf-unrate",
+            "var_names": ["DGS3", "inf", "unrate"]
         },
+
         {
             "nodes": [200, 100, 50], 
             "actv": "nn.ReLU()", 
@@ -77,14 +79,16 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 27]],
+            "s_pos": [[0, 54]],
             "joint_estimation": true, 
-            "name": "SELU"
+            "name": "DGS3-unrate-inf",
+            "var_names": ["DGS3", "unrate", "inf"]
         },
+
         {
             "nodes": [200, 100, 50], 
             "actv": "nn.ReLU()", 
-            "tvpl_archi": [2], 
+            "tvpl_archi": [5], 
             "lr": 0.001, 
             "time_dummy_setting": 2, 
             "dropout_rate": 0.25, 
@@ -92,9 +96,61 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 27]],
+            "s_pos": [[0, 54]],
             "joint_estimation": true, 
-            "name": "RELU TVPL2"
+            "name": "inf-DGS3-unrate",
+            "var_names": ["inf", "DGS3", "unrate"]
+        },
+
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 54]],
+            "joint_estimation": true, 
+            "name": "inf-unrate-DGS3",
+            "var_names": ["inf", "unrate", "DGS3"]
+        },
+
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 54]],
+            "joint_estimation": true, 
+            "name": "unrate-DGS3-inf",
+            "var_names": ["unrate", "DGS3", "inf"]
+        },
+
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 54]],
+            "joint_estimation": true, 
+            "name": "unrate-inf-DGS3",
+            "var_names": ["unrate", "inf", "DGS3"]
         }
     ],
 

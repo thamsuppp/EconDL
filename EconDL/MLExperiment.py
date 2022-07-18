@@ -13,6 +13,11 @@ class MLExperiment(Experiment):
     
     self.extensions_params = extensions_params
     self.model = nn_hyps['model']
+    self.experiment_id = nn_hyps['model']
+
+  def compile_all(self):
+    self._compile_multi_forecasting_results()
+    self._compile_unconditional_irf_results()
 
   def compute_unconditional_irfs(self, Y_train, Y_test, results, repeat_id):
     unconditional_irf_params = {
@@ -31,7 +36,7 @@ class MLExperiment(Experiment):
     IRFUnconditionalObj = IRFUnconditional(unconditional_irf_params, None)
     fcast, _, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, results)
 
-    with open(f'{self.folder_path}/fcast_benchmark_{self.model}_repeat_{repeat_id}.npz', 'wb') as f:
+    with open(f'{self.folder_path}/fcast_params_{self.model}_repeat_{repeat_id}.npz', 'wb') as f:
       np.savez(f, fcast = fcast)
 
   def compute_multi_forecasts(self, X_train, X_test, Y_train, Y_test, results, nn_hyps, repeat_id):
@@ -55,7 +60,7 @@ class MLExperiment(Experiment):
     FCAST = ForecastMultiObj.conduct_multi_forecasting_wrapper(X_train, X_test, results, nn_hyps)
 
     print('Done with Multiforecasting')
-    with open(f'{self.folder_path}/multi_fcast_benchmark_{self.model}_repeat_{repeat_id}.npz', 'wb') as f:
+    with open(f'{self.folder_path}/multi_fcast_params_{self.model}_repeat_{repeat_id}.npz', 'wb') as f:
       np.savez(f, fcast = FCAST)
 
   def train(self, dataset):
@@ -69,7 +74,7 @@ class MLExperiment(Experiment):
       
       repeat_ids = []
       if self.job_id is not None:
-        repeat_ids = self.job_id
+        repeat_ids = [self.job_id]
       else:
         repeat_ids = range(self.run_params['num_repeats'])
 
@@ -85,6 +90,5 @@ class MLExperiment(Experiment):
       self.is_trained = True
 
       #self._compile_results()
-
-    self._compile_unconditional_irf_results()
-    self._compile_multi_forecasting_results()
+    # self._compile_unconditional_irf_results()
+    # self._compile_multi_forecasting_results()

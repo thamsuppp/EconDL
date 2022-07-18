@@ -44,82 +44,92 @@ class ForecastMulti:
   # Base code: Make 0-h self.horizon predictions for 1 bootstrap, for 1 tiemstep
   # New for 14 Dec: input the error_ids so we can keep constant across different models
   def predict_one_bootstrap_new(self, newx, results, nn_hyps):
-    
-    Y_train = results['Y_train']
-    n_lag_linear = nn_hyps['n_lag_linear']
-    n_lag_d = nn_hyps['n_lag_d']
-    # Input dim of newx: 1 dimensional
 
-    # Store the average OOB predictions across all inner bootstraps
-    oob_preds = results['pred_in']
-    # oob_res: set of OOB error vectors to sample from for the iterated forecasts
-    oob_res = Y_train - results['pred_in']
-
-    # Remove all NA values so that we don't sample NAs
-    a = pd.DataFrame(oob_res)
-    oob_res = np.array(a.dropna())
-
-    # Create array to store the predictions for each bootstrap
-    fcast = np.zeros((self.h+1, self.n_var))
-    fcast[:] = np.nan
-
-    fcast_cov_mat = np.zeros((self.h+1, self.n_var, self.n_var))
-    fcast_cov_mat[:] = np.nan
-
-    # Create vectors to store the 3 segments of the x input: linear, nonlinear and time
-    new_in_linear = np.zeros(n_lag_linear * self.n_var)
-    new_in_nonlinear = np.zeros(n_lag_d * self.n_var)
-    new_in_time = np.zeros(newx.shape[0] - (n_lag_linear + n_lag_d) * self.n_var)
-
-    # Start with the initial input
-    new_in_linear = newx[0:(n_lag_linear * self.n_var)]
-    new_in_nonlinear = newx[(n_lag_linear * self.n_var):((n_lag_linear + n_lag_d) * self.n_var)]
-    new_in_time = newx[((n_lag_linear + n_lag_d) * self.n_var):]
-
-    for period in range(1, self.h + 1):
-
-      if period != 1: # Excluding first period (i.e. there are forecasts)
-        # Update simulated prediction for previous period to the current period's newx data
-        if n_lag_linear == 1:
-          new_in_linear = fcast[period-1, :]
-        else:
-          new_in_linear = np.hstack([fcast[period-1, :], new_in_linear[:(len(new_in_linear) - self.n_var)]])
-
-        new_in_nonlinear = np.hstack([fcast[period-1, :], new_in_nonlinear[:(len(new_in_nonlinear) - self.n_var)]])
-
-      # Conduct MARX transformation on the nonlinear layer
-      new_data_marx = new_in_nonlinear.copy()
-      for lag in range(2, n_lag_d + 1):
-        for var in range(self.n_var):
-          who_to_avg = list(range(var, self.n_var * (lag - 1) + var + 1, self.n_var))
-          new_data_marx[who_to_avg[-1]] = new_in_nonlinear[who_to_avg].mean()
+    try:
       
-      # Combine the first n_lag_linear lags, with the MARX data, to get the full input vector
-      new_data_all = np.hstack([new_in_linear, new_data_marx, new_in_time])
-      new_data_all = np.expand_dims(new_data_all, axis = 0)
+      Y_train = results['Y_train']
+      n_lag_linear = nn_hyps['n_lag_linear']
+      n_lag_d = nn_hyps['n_lag_d']
+      # Input dim of newx: 1 dimensional
 
-      # Now we self.have new_data_all
-      
-      # Use estimated model to make prediction with the generated input vector
-      pred, cov = predict_nn_new(results, new_data_all, self.device)
+      # Store the average OOB predictions across all inner bootstraps
+      oob_preds = results['pred_in']
+      # oob_res: set of OOB error vectors to sample from for the iterated forecasts
+      oob_res = Y_train - results['pred_in']
 
-      # Cholesky the cov mat to get C matrix
-      cov = np.squeeze(cov, axis = 0)
-      fcast_cov_mat[period, :, :] = cov
-      c_t = np.linalg.cholesky(cov)
-      
-      if period != self.h:
-        # Sample 1 shock from normal distribution
-        sim_shock = np.random.multivariate_normal([0] * self.n_var, np.eye(self.n_var), size = 1)
+      # Remove all NA values so that we don't sample NAs
+      a = pd.DataFrame(oob_res)
+      oob_res = np.array(a.dropna())
 
-        # Convert the shock back into residual, add this to the series
-        sim_resid = np.matmul(sim_shock, c_t.T)
+      # Create array to store the predictions for each bootstrap
+      fcast = np.zeros((self.h+1, self.n_var))
+      fcast[:] = np.nan
+
+      fcast_cov_mat = np.zeros((self.h+1, self.n_var, self.n_var))
+      fcast_cov_mat[:] = np.nan
+
+      # Create vectors to store the 3 segments of the x input: linear, nonlinear and time
+      new_in_linear = np.zeros(n_lag_linear * self.n_var)
+      new_in_nonlinear = np.zeros(n_lag_d * self.n_var)
+      new_in_time = np.zeros(newx.shape[0] - (n_lag_linear + n_lag_d) * self.n_var)
+
+      # Start with the initial input
+      new_in_linear = newx[0:(n_lag_linear * self.n_var)]
+      new_in_nonlinear = newx[(n_lag_linear * self.n_var):((n_lag_linear + n_lag_d) * self.n_var)]
+      new_in_time = newx[((n_lag_linear + n_lag_d) * self.n_var):]
+
+
+      bootstraps_to_ignore = []
+      for period in range(1, self.h + 1):
+
+        if period != 1: # Excluding first period (i.e. there are forecasts)
+          # Update simulated prediction for previous period to the current period's newx data
+          if n_lag_linear == 1:
+            new_in_linear = fcast[period-1, :]
+          else:
+            new_in_linear = np.hstack([fcast[period-1, :], new_in_linear[:(len(new_in_linear) - self.n_var)]])
+
+          new_in_nonlinear = np.hstack([fcast[period-1, :], new_in_nonlinear[:(len(new_in_nonlinear) - self.n_var)]])
+
+        # Conduct MARX transformation on the nonlinear layer
+        new_data_marx = new_in_nonlinear.copy()
+        for lag in range(2, n_lag_d + 1):
+          for var in range(self.n_var):
+            who_to_avg = list(range(var, self.n_var * (lag - 1) + var + 1, self.n_var))
+            new_data_marx[who_to_avg[-1]] = new_in_nonlinear[who_to_avg].mean()
         
-        fcast[period, :] = pred + sim_resid
-      else: # if last period (h) - then no need to add any sampled errors
-        fcast[period, :] = pred
-      
-    return fcast 
+        # Combine the first n_lag_linear lags, with the MARX data, to get the full input vector
+        new_data_all = np.hstack([new_in_linear, new_data_marx, new_in_time])
+        new_data_all = np.expand_dims(new_data_all, axis = 0)
+
+        # Now we self.have new_data_all
+        
+        # Use estimated model to make prediction with the generated input vector
+        pred, cov, bootstraps_to_ignore = predict_nn_new(results, new_data_all, bootstraps_to_ignore, self.device)
+
+        # Cholesky the cov mat to get C matrix
+        cov = np.squeeze(cov, axis = 0)
+        fcast_cov_mat[period, :, :] = cov
+        c_t = np.linalg.cholesky(cov)
+        
+        if period != self.h:
+          # Sample 1 shock from normal distribution
+          sim_shock = np.random.multivariate_normal([0] * self.n_var, np.eye(self.n_var), size = 1)
+
+          # Convert the shock back into residual, add this to the series
+          sim_resid = np.matmul(sim_shock, c_t.T)
+          
+          fcast[period, :] = pred + sim_resid
+        else: # if last period (h) - then no need to add any sampled errors
+          fcast[period, :] = pred
+        
+      return fcast 
+    except np.linalg.LinAlgError as err:
+      if 'Matrix is not positive definite' in err.message:
+        print(f'Matrix not positive definite error, period {period}')
+        return fcast
+      else: 
+        raise
 
   # @title Bootstrap Forecasting Function (Old Method - works for ML models)
 

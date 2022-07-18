@@ -1,10 +1,11 @@
+from ensurepip import bootstrap
 import numpy as np
 import torch 
 from EconDL.utils import invert_scaling
 
 # @title Predict NN Function (Joint Estimation)
 # Returns pred, cov
-def predict_nn_new(results, newx, device):
+def predict_nn_new(results, newx, bootstraps_to_ignore = [], device = None):
 
   scale_output = results['scale_output']
   if results['prior_shift'] == True:
@@ -60,9 +61,9 @@ def predict_nn_new(results, newx, device):
     if sigma[0, 0 , 0] > 0:
       cov_mat[:, i, :, :] = sigma
     else:
-      print(f'Non-PSD cov mat found at bootstrap {i}: ', sigma)
-      print('Precision', precision)
-      print('Pred', pred)
+      print(f'Non-PSD cov mat found at bootstrap {i}')
+      if i not in bootstraps_to_ignore:
+        bootstraps_to_ignore.append(i)
 
     #print(f'Bootstrap {i} Cov Mat: ', sigma)
 
@@ -71,9 +72,9 @@ def predict_nn_new(results, newx, device):
   # Add back the oos adj
 
   pred = pred + pred_oos_adj
-
   cov = np.nanmedian(cov_mat, axis = 1)
-  return pred, cov
+
+  return pred, cov, bootstraps_to_ignore
 
 # @title Predict NN Function OLD (Non-Joint Estimation)
 # Returns: pred
