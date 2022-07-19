@@ -1,6 +1,8 @@
 import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as colors
 
 class IRFConditional:
 
@@ -10,6 +12,7 @@ class IRFConditional:
     self.n_var = irf_params['n_var']
     self.max_h = irf_params['max_h']
     self.var_names = irf_params['var_names']
+    self.test_exclude_last = irf_params['test_exclude_last']
 
     # Sum hemis to get BETAS: (n_obs, n_betas, n_bootstraps, n_var)
     self.BETAS = np.sum(results['betas'], axis = -1)
@@ -135,6 +138,40 @@ class IRFConditional:
     image_path = f'{image_folder_path}/irf_conditional_{experiment_id}.png'
     plt.savefig(image_path)
 
-    print(f'Conditional IRF saved at {image_path}')
+    print(f'Conditional IRF plotted at {image_path}')
+
+  # Compare the IRFs over all time periods for each horizon
+  # normalize: normalize by the 0th shock being 1
+  def plot_irfs_over_time(self, image_folder_path, experiment_id, normalize = True):
+
+    # Take the median 
+    IRFS_median = np.nanmedian(self.IRFS, axis = 1)
+    # Exclude last samples if relevant
+    if self.test_exclude_last != 0:
+      IRFS_median = IRFS_median[:-self.test_exclude_last, :, :, :]
+
+    cmap = plt.cm.Reds(np.linspace(1,0,6))
+    fig, ax = plt.subplots(self.n_var, self.n_var, constrained_layout = True, figsize = (6 * self.n_var, 4 * self.n_var))
+
+    for k in range(self.n_var):
+      for kk in range(self.n_var):
+        for h in [0,1,2,3,4]:
+          irf_df = IRFS_median[:, k, kk, h]
+          if normalize == True:
+            irf_df = irf_df / IRFS_median[:, k, k, 0] # Divide IRF by the time-0 of 
+          ax[kk, k].plot(irf_df, label = f'h={h}', color = cmap[h], lw = 1)
+
+          #irf_actual_df = IRFS_actual[:, k, kk, h]
+          #ax[kk, k].plot(irf_actual_df, label = f'h={h} Actual', color = 'black')
+          ax[kk, k].set_xlabel('Horizon')
+          ax[kk, k].set_ylabel('Impulse Response')
+          ax[kk, k].axhline(y = 0, color = 'black', ls = '--')
+          ax[kk, k].set_title(f'{self.var_names[k]} -> {self.var_names[kk]}')
+        if k == 0 and kk == 0:
+          ax[kk, k].legend()
+
+    image_file = f'{image_folder_path}/irf_conditional_over_time_{experiment_id}.png'
+    plt.savefig(image_file)
+    print(f'Conditional IRF over time plotted at {image_file}')
 
 

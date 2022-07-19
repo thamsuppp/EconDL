@@ -125,11 +125,8 @@ class ForecastMulti:
         
       return fcast 
     except np.linalg.LinAlgError as err:
-      if 'Matrix is not positive definite' in err.message:
-        print(f'Matrix not positive definite error, period {period}')
-        return fcast
-      else: 
-        raise
+      print(f'LinAlgError at period {period}')
+      return fcast
 
   # @title Bootstrap Forecasting Function (Old Method - works for ML models)
 

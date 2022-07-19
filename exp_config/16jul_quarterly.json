@@ -1,16 +1,16 @@
 {
-    "dataset": "financial",
+    "dataset": "quarterly",
 
     "run_params": {
         "num_inner_bootstraps": 50,
         "num_repeats": 1,
         "default_nn_hyps": "nn_hyps_default",
         
-        "var_names": ["S&P", "NASDAQ", "VIX", "DJIA"],
-        "n_lag_linear": 10, 
-        "n_lag_d": 100,
-        "n_var": 4,
-        "test_size": 100,
+        "var_names": ["oil", "Ex", "SPY", "DGS3", "inf", "unrate", "house_starts"],
+        "n_lag_linear": 3, 
+        "n_lag_d": 6,
+        "n_var": 7,
+        "test_size": 60,
         "constant_tvpl": 50,
 
         "time_dummy_setting": 2, 
@@ -19,7 +19,7 @@
         "lambda_temper_epochs": 50, 
         "optimizer": "Adam",
         "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-        "s_pos": [[0, 440]]
+        "s_pos": [[0, 63]]
     },
 
     "execution_params": {
@@ -35,25 +35,25 @@
         "ml_experiments": ["RF", "XGBoost"],
 
         "conditional_irfs": {
-            "max_h": 40,
+            "max_h": 10,
             "normalize_time_plot": true,
             "test_exclude_last": 0
         },
         "unconditional_irfs": {
-            "num_simulations": 3000,
-            "endh": 100, 
-            "start_shock_time": 100,
-            "max_h": 40,
+            "num_simulations": 1000,
+            "endh": 25, 
+            "start_shock_time": 50,
+            "max_h": 20,
             "forecast_method": "new",
             "plot_all_bootstraps": false
         },
         "benchmarks": {
-            "window_length": 100,
+            "window_length": 40,
             "reestimation_window": 1
         },
         "multi_forecasting": {
-            "forecast_horizons": 10,
-            "reestimation_window": 100,
+            "forecast_horizons": 4,
+            "reestimation_window": 60,
             "forecast_method": "new",
             "num_sim_bootstraps": 25,
             "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand"]
@@ -111,9 +111,27 @@
             "actv": "nn.ReLU()", 
             "constant_tvpl": [5],
             "tvpl_archi": [5], 
-            "lr": 0.00025, 
+            "lr": 0.001, 
             "joint_estimation": true, 
             "name": "RELU TVPL Constant 5"
+        },
+        {
+            "nodes": [100, 50, 25], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "joint_estimation": true, 
+            "name": "RELU Small"
+        },
+        {
+            "nodes": [100, 50, 25], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "joint_estimation": true, 
+            "name": "SELU Small"
         },
         {
             "nodes": [400, 200, 100], 
@@ -146,6 +164,8 @@
         "plot_all_bootstraps": false,
         "exps_to_plot": [0, 1],
         "repeats_to_include": null,
-        "test_exclude_last": 0
+        "test_exclude_last": 8
     }
 }
+
+

@@ -23,6 +23,7 @@ nn_hyps_default = {
     # Hyperparamters of interest - but not changed in this experiment
     'nodes': [200, 100, 50],
     'tvpl_archi': [5],
+    'constant_tvpl': [20],
     'patience': 50,
     'lr': 0.0005,
     'lr_multiple': 0.9975,
@@ -49,7 +50,7 @@ nn_hyps_default = {
     'lambda_temper_epochs': 25,
     'optimizer': 'Adam',
     'n_lag_d': 2, 'n_lag_linear': 1, 'n_lag_ps': 1,
-    'variables': ['DGS3', 'inf', 'unrate'],
+    'var_names': ['DGS3', 'inf', 'unrate'],
 
     's_pos_setting': {'is_hemi': True, 'n_times': 123}, 'joint_estimation': True, 
     's_pos': [list(range(9)), list(range(9, 70))], 

@@ -106,7 +106,6 @@ class IRFUnconditional:
             ### 2: Call NN forward to get pred and cov mat (stop if the whole thing exploded)
             if np.any(np.isnan(new_data_all)) == False and np.all(np.isfinite(new_data_all)) == True:
               
-  #            print('new_data_all', new_data_all)
               pred, cov, bootstraps_to_ignore = predict_nn_new(results, new_data_all, bootstraps_to_ignore, device)
 
               # Cholesky the cov mat to get C matrix
@@ -128,9 +127,6 @@ class IRFUnconditional:
               sim_resid = np.matmul(sim_shock, c_t.T)
               fcast[f, :, kk, shock_level] = pred + sim_resid
 
-              # print('pred', pred)
-              # print('sim_resid', sim_resid)
-
               f = f+1  
 
             else: 
@@ -139,11 +135,8 @@ class IRFUnconditional:
           
       return fcast, fcast_cov_mat, sim_shocks
     except np.linalg.LinAlgError as err:
-      if 'Matrix is not positive definite' in err.message:
-        print(f'Matrix not positive definite error, step {f}')
-        return fcast, fcast_cov_mat, sim_shocks
-      else: 
-        raise
+      print(f'LinAlgError at time {f}')
+      return fcast, fcast_cov_mat, sim_shocks
 
 
   # @title Old IRF Simulation Wrapper Function (without Joint Estimation - time-invariant covariance matrix)

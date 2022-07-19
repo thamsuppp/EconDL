@@ -11,6 +11,7 @@
         "n_lag_d": 12,
         "n_var": 3,
         "test_size": 90,
+        "constant_tvpl": 25,
         "s_pos": [[0, 54]]
     },
 
@@ -27,7 +28,9 @@
         "ml_experiments": ["RF", "XGBoost"],
 
         "conditional_irfs": {
-            "max_h": 10
+            "max_h": 10,
+            "normalize_time_plot": true,
+            "test_exclude_last": 0
         },
         "unconditional_irfs": {
             "num_simulations": 1000,
@@ -164,6 +167,7 @@
         "experiments_to_load": [0, 1],
         "plot_all_bootstraps": false,
         "exps_to_plot": [0, 1],
+        "repeats_to_include": null,
         "test_exclude_last": 20
     }
 }

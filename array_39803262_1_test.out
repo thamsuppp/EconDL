@@ -1,0 +1,86 @@
+/project/6065746/pgc/VARNN-Isaac-New/EconDL/EconDL/DataHelpers/DataLoader.py:11: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  x_d_all['L0_HOUST'] = x_d_all['L0_HOUST'].diff()
+Device cuda
+Folder at results/18jul_test already exists
+Experiment Initialized: experiment 0, repeat None
+{'show_train': 3, 'opt_bootstrap': 2, 'epochs': 400, 'num_bootstrap': 20, 'sampling_rate': 0.75, 'block_size': 12, 'cancel_out': False, 'standardize': True, 'prior_shift': False, 'prior_shift_strength': 0, 'oob_loss_multiple_threshold': 5, 'save_models': False, 'exog': None, 'tol': 0.0001, 'nodes': [200, 100, 50], 'tvpl_archi': [5], 'patience': 50, 'lr': 0.002, 'lr_multiple': 0.9975, 'dropout_rate': 0.25, 'actv': 'nn.ReLU()', 'time_dummy_setting': 2, 'marx': True, 'dummy_interval': 12, 'l1_input_lambda': 0, 'l0_input_lambda': 0, 'input_dropout_rate': 0, 'vsn': False, 'fcn': False, 'eqn_by_eqn': False, 'time_hemi_prior_variance': 1, 'fix_bootstrap': False, 'loss_weight_param': 0.5, 'log_det_multiple': 1, 'precision_lambda': 0.25, 'end_precision_lambda': 0.01, 'lambda_temper_epochs': 50, 'optimizer': 'Adam', 'n_lag_d': 2, 'n_lag_linear': 1, 'n_lag_ps': 1, 'variables': ['DGS3', 'inf', 'unrate'], 's_pos_setting': {'is_hemi': False, 'n_times': 30}, 'joint_estimation': True, 's_pos': [[0, 9]], 'name': 'RELU', 'test_size': 40, 'num_inner_bootstraps': 20, 'num_repeats': 1, 'default_nn_hyps': 'nn_hyps_default', 'var_names': ['DGS3', 'inf', 'unrate'], 'n_var': 3, 'constant_tvpl': [20], 'folder_path': 'results/18jul_test', 'image_folder_path': 'results/18jul_test/images', 'model': 'VARNN'}
+Experiment load_results(): Loading results for Experiment id 0, repeats_to_include: None
+Experiment load_results(): Not trained yet
+Experiment Initialized: experiment 1, repeat None
+{'show_train': 3, 'opt_bootstrap': 2, 'epochs': 400, 'num_bootstrap': 20, 'sampling_rate': 0.75, 'block_size': 12, 'cancel_out': False, 'standardize': True, 'prior_shift': False, 'prior_shift_strength': 0, 'oob_loss_multiple_threshold': 5, 'save_models': False, 'exog': None, 'tol': 0.0001, 'nodes': [200, 100, 50], 'tvpl_archi': [5], 'patience': 50, 'lr': 0.001, 'lr_multiple': 0.9975, 'dropout_rate': 0.25, 'actv': 'nn.ReLU()', 'time_dummy_setting': 2, 'marx': True, 'dummy_interval': 12, 'l1_input_lambda': 0, 'l0_input_lambda': 0, 'input_dropout_rate': 0, 'vsn': False, 'fcn': False, 'eqn_by_eqn': False, 'time_hemi_prior_variance': 1, 'fix_bootstrap': False, 'loss_weight_param': 0.5, 'log_det_multiple': 1, 'precision_lambda': 0.25, 'end_precision_lambda': 0.01, 'lambda_temper_epochs': 50, 'optimizer': 'Adam', 'n_lag_d': 2, 'n_lag_linear': 1, 'n_lag_ps': 1, 'variables': ['DGS3', 'inf', 'unrate'], 's_pos_setting': {'is_hemi': False, 'n_times': 30}, 'joint_estimation': True, 's_pos': [[0, 9]], 'name': 'SELU', 'test_size': 40, 'num_inner_bootstraps': 20, 'num_repeats': 1, 'default_nn_hyps': 'nn_hyps_default', 'var_names': ['DGS3', 'inf', 'unrate'], 'n_var': 3, 'constant_tvpl': [20], 'folder_path': 'results/18jul_test', 'image_folder_path': 'results/18jul_test/images', 'model': 'VARNN'}
+Experiment load_results(): Loading results for Experiment id 1, repeats_to_include: None
+Experiment load_results(): Not trained yet
+Experiment Initialized: experiment None, repeat None
+{'show_train': 3, 'opt_bootstrap': 2, 'epochs': 400, 'num_bootstrap': 20, 'sampling_rate': 0.75, 'block_size': 12, 'cancel_out': False, 'standardize': True, 'prior_shift': False, 'prior_shift_strength': 0, 'oob_loss_multiple_threshold': 5, 'save_models': False, 'exog': None, 'tol': 0.0001, 'nodes': [200, 100, 50], 'tvpl_archi': [5], 'patience': 50, 'lr': 0.0005, 'lr_multiple': 0.9975, 'dropout_rate': 0.25, 'actv': 'nn.ReLU()', 'time_dummy_setting': 2, 'marx': True, 'dummy_interval': 12, 'l1_input_lambda': 0, 'l0_input_lambda': 0, 'input_dropout_rate': 0, 'vsn': False, 'fcn': False, 'eqn_by_eqn': False, 'time_hemi_prior_variance': 1, 'fix_bootstrap': False, 'loss_weight_param': 0.5, 'log_det_multiple': 1, 'precision_lambda': 0.05, 'end_precision_lambda': 0.01, 'lambda_temper_epochs': 25, 'optimizer': 'Adam', 'n_lag_d': 2, 'n_lag_linear': 1, 'n_lag_ps': 1, 'variables': ['DGS3', 'inf', 'unrate'], 's_pos_setting': {'is_hemi': True, 'n_times': 123}, 'joint_estimation': True, 's_pos': [[0, 9]], 'name': 'Baseline', 'test_size': 40, 'num_inner_bootstraps': 20, 'num_repeats': 1, 'default_nn_hyps': 'nn_hyps_default', 'var_names': ['DGS3', 'inf', 'unrate'], 'n_var': 3, 'constant_tvpl': [20], 'folder_path': 'results/18jul_test', 'image_folder_path': 'results/18jul_test/images', 'model': 'RF'}
+Experiment load_results(): Loading results for Experiment id None, repeats_to_include: None
+Experiment load_results(): Not trained yet
+Experiment Initialized: experiment None, repeat None
+{'show_train': 3, 'opt_bootstrap': 2, 'epochs': 400, 'num_bootstrap': 20, 'sampling_rate': 0.75, 'block_size': 12, 'cancel_out': False, 'standardize': True, 'prior_shift': False, 'prior_shift_strength': 0, 'oob_loss_multiple_threshold': 5, 'save_models': False, 'exog': None, 'tol': 0.0001, 'nodes': [200, 100, 50], 'tvpl_archi': [5], 'patience': 50, 'lr': 0.0005, 'lr_multiple': 0.9975, 'dropout_rate': 0.25, 'actv': 'nn.ReLU()', 'time_dummy_setting': 2, 'marx': True, 'dummy_interval': 12, 'l1_input_lambda': 0, 'l0_input_lambda': 0, 'input_dropout_rate': 0, 'vsn': False, 'fcn': False, 'eqn_by_eqn': False, 'time_hemi_prior_variance': 1, 'fix_bootstrap': False, 'loss_weight_param': 0.5, 'log_det_multiple': 1, 'precision_lambda': 0.05, 'end_precision_lambda': 0.01, 'lambda_temper_epochs': 25, 'optimizer': 'Adam', 'n_lag_d': 2, 'n_lag_linear': 1, 'n_lag_ps': 1, 'variables': ['DGS3', 'inf', 'unrate'], 's_pos_setting': {'is_hemi': True, 'n_times': 123}, 'joint_estimation': True, 's_pos': [[0, 9]], 'name': 'Baseline', 'test_size': 40, 'num_inner_bootstraps': 20, 'num_repeats': 1, 'default_nn_hyps': 'nn_hyps_default', 'var_names': ['DGS3', 'inf', 'unrate'], 'n_var': 3, 'constant_tvpl': [20], 'folder_path': 'results/18jul_test', 'image_folder_path': 'results/18jul_test/images', 'model': 'XGBoost'}
+Experiment load_results(): Loading results for Experiment id None, repeats_to_include: None
+Experiment load_results(): Not trained yet
+DataLoader: Loaded dataset monthly
+Evaluation compile_results: Repeats_to_include [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+Run compile_experiments(): repeats_to_include [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+Experiment load_results(): Loading results for Experiment id 0, repeats_to_include: [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+Experiment load_results(): Loaded results for repeat 1
+Experiment load_results(): Loaded results for repeat 3
+Experiment load_results(): Loaded results for repeat 4
+Experiment load_results(): Loaded results for repeat 5
+Experiment load_results(): Loaded results for repeat 6
+Experiment load_results(): Loaded results for repeat 7
+Experiment load_results(): Loaded results for repeat 8
+Experiment load_results(): Loaded results for repeat 9
+Experiment load_results(): Loaded results for repeat 10
+Experiment load_results(): Loaded results for repeat 11
+Experiment load_results(): Loaded results for repeat 12
+Experiment load_results(): Loaded results for repeat 13
+Experiment load_results(): Loaded results for repeat 14
+Experiment load_results(): Loaded results for repeat 15
+Experiment load_results(): Loaded results for repeat 16
+Experiment load_results(): Loaded results for repeat 17
+Experiment load_results(): Loaded results for repeat 18
+Experiment load_results(): Loaded results for repeat 19
+Unconditional IRFs plotted at results/18jul_test/images/irf_0.png
+Cumulative Unconditional IRFs plotted at results/18jul_test/images/cumulative_irf_0.png
+Experiment load_results(): Loading results for Experiment id 1, repeats_to_include: [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+Experiment load_results(): Loaded results for repeat 1
+Experiment load_results(): Loaded results for repeat 3
+Experiment load_results(): Loaded results for repeat 4
+Experiment load_results(): Loaded results for repeat 5
+Experiment load_results(): Loaded results for repeat 6
+Experiment load_results(): Loaded results for repeat 7
+Experiment load_results(): Loaded results for repeat 8
+Experiment load_results(): Loaded results for repeat 9
+Experiment load_results(): Loaded results for repeat 10
+Experiment load_results(): Loaded results for repeat 11
+Experiment load_results(): Loaded results for repeat 12
+Experiment load_results(): Loaded results for repeat 13
+Experiment load_results(): Loaded results for repeat 14
+Experiment load_results(): Loaded results for repeat 15
+Experiment load_results(): Loaded results for repeat 16
+Experiment load_results(): Loaded results for repeat 17
+Experiment load_results(): Loaded results for repeat 18
+Experiment load_results(): Loaded results for repeat 19
+Exploding:  11 440
+Unconditional IRFs plotted at results/18jul_test/images/irf_1.png
+Cumulative Unconditional IRFs plotted at results/18jul_test/images/cumulative_irf_1.png
+Traceback (most recent call last):
+  File "evaluation_script.py", line 14, in <module>
+    EvaluationObj = Evaluation(RunObj)
+  File "/project/6065746/pgc/VARNN-Isaac-New/EconDL/EconDL/Evaluation.py", line 74, in __init__
+    self.compile_results()
+  File "/project/6065746/pgc/VARNN-Isaac-New/EconDL/EconDL/Evaluation.py", line 95, in compile_results
+    self.Run.compile_ml_experiments()
+  File "/project/6065746/pgc/VARNN-Isaac-New/EconDL/EconDL/Run.py", line 155, in compile_ml_experiments
+    MLExperimentObj.compile_all()
+  File "/project/6065746/pgc/VARNN-Isaac-New/EconDL/EconDL/MLExperiment.py", line 19, in compile_all
+    self._compile_multi_forecasting_results(repeats_to_include = repeats_to_include)
+  File "/project/6065746/pgc/VARNN-Isaac-New/EconDL/EconDL/Experiment.py", line 252, in _compile_multi_forecasting_results
+    fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)['fcast']
+  File "/project/6065746/pgc/VARNN-Isaac-New/ENV/lib/python3.7/site-packages/numpy/lib/npyio.py", line 417, in load
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+FileNotFoundError: [Errno 2] No such file or directory: 'results/18jul_test/multi_fcast_params_RF_repeat_0.npz'

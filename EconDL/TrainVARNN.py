@@ -1,3 +1,4 @@
+from nntplib import NNTP_PORT
 import numpy as np
 from tqdm.auto import tqdm
 from tqdm.notebook import tqdm, trange
@@ -107,6 +108,7 @@ def training_loop(X_train, Y_train, model, criterion, optimizer, scheduler, trai
         else:
           precision_lambda = (1 - epoch/nn_hyps['lambda_temper_epochs']) * nn_hyps['precision_lambda']
 
+      precision_lambda += nn_hyps['end_precision_lambda']
       Y_pred, precision, betas, alphas, v = model(X_train[train_indices, :])
 
       # Get the residuals
@@ -119,7 +121,7 @@ def training_loop(X_train, Y_train, model, criterion, optimizer, scheduler, trai
       det_p = torch.linalg.det(precision).to(device)
       temp = torch.bmm(residuals.unsqueeze(1), precision)
       out = torch.bmm(temp, residuals.unsqueeze(2))
-      mean_log_det_p = torch.mean(torch.log(det_p))
+      mean_log_det_p = torch.nanmean(torch.log(det_p))
       loss = -nn_hyps['log_det_multiple'] * mean_log_det_p + torch.mean(out.squeeze())
 
       mse = torch.mean(torch.bmm(residuals.unsqueeze(1), residuals.unsqueeze(2)))
@@ -140,7 +142,7 @@ def training_loop(X_train, Y_train, model, criterion, optimizer, scheduler, trai
       det_p = torch.linalg.det(precision).to(device)
       temp = torch.bmm(residuals.unsqueeze(1), precision)
       out = torch.bmm(temp, residuals.unsqueeze(2))
-      mean_log_det_p = torch.mean(torch.log(det_p))
+      mean_log_det_p = torch.nanmean(torch.log(det_p))
       loss_oob = -nn_hyps['log_det_multiple'] * mean_log_det_p + torch.mean(out.squeeze())
       
       mse = torch.mean(torch.bmm(residuals.unsqueeze(1), residuals.unsqueeze(2)))
@@ -156,7 +158,8 @@ def training_loop(X_train, Y_train, model, criterion, optimizer, scheduler, trai
 
     ## Early Stopping
 
-    pct_change = (best_loss - loss_oob) / loss_oob 
+    #pct_change = (best_loss - loss_oob) / loss_oob 
+    loss_change = best_loss - loss_oob
     # If current epoch improved on the best OOB loss, update best_loss, best_epoch and best_model to current
     if best_loss > loss_oob or epoch == 0:
       best_loss = loss_oob
@@ -164,7 +167,7 @@ def training_loop(X_train, Y_train, model, criterion, optimizer, scheduler, trai
       best_model = copy.deepcopy(model)
 
       # If model improved more than tol, set wait to 0
-      if pct_change > nn_hyps['tol'] or epoch == 0:
+      if loss_change > nn_hyps['tol'] or epoch == 0:
         wait = 0
       else: # If model improve less than tol, increment wait
         wait = wait + 1
@@ -313,7 +316,7 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
   n_betas = len(x_pos_flat) + 1
   n_hemispheres = len(nn_hyps['s_pos'])
 
-  nn_hyps['neurons_weights'] = [nn_hyps['tvpl_archi'] for i in range(n_betas)]
+  nn_hyps['neurons_weights'] = [nn_hyps['constant_tvpl']] + [nn_hyps['tvpl_archi'] for i in range(len(x_pos_flat))]
 
   # Conduct prior shift
   if nn_hyps['prior_shift'] == True:
@@ -518,9 +521,13 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
       test_precision = test_precision.detach().cpu().numpy()
       
       if nn_hyps['lambda_temper_epochs'] == False:
-        in_precision = in_precision + nn_hyps['precision_lambda'] * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), in_precision.shape[0], axis = 0)
-        oob_precision = oob_precision + nn_hyps['precision_lambda'] * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), oob_precision.shape[0], axis = 0)
-        test_precision = test_precision + nn_hyps['precision_lambda'] * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), test_precision.shape[0], axis = 0)
+        in_precision = in_precision + (nn_hyps['precision_lambda'] + nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), in_precision.shape[0], axis = 0)
+        oob_precision = oob_precision + (nn_hyps['precision_lambda'] + nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), oob_precision.shape[0], axis = 0)
+        test_precision = test_precision + (nn_hyps['precision_lambda'] + nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), test_precision.shape[0], axis = 0)
+      else:
+        in_precision = in_precision + (nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), in_precision.shape[0], axis = 0)
+        oob_precision = oob_precision + (nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), oob_precision.shape[0], axis = 0)
+        test_precision = test_precision + (nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), test_precision.shape[0], axis = 0)
 
       # Save covariance matrices by inverting precision matrix
       sigmas_in_draws[boot, :, :, j] = np.linalg.inv(in_precision)

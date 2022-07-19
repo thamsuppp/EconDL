@@ -10,11 +10,12 @@ from EconDL.MLExperiment import MLExperiment
 
 class Run:
   
-  def __init__(self, run_name, device, job_id = None):
+  def __init__(self, run_name, device, experiment_id = None, job_id = None):
 
     self.run_name = run_name
     self.device = device
     self.job_id = job_id
+    self.experiment_id = experiment_id
 
     self.dataset_name = None
     self.dataset = None
@@ -72,6 +73,12 @@ class Run:
     self.n_var = all_params['run_params']['n_var']
     self.var_names = all_params['run_params']['var_names']
 
+    # If specific experiment ID is specified, filter for that experiment params
+    if self.experiment_id is not None:
+      self.experiment_params = [self.experiment_params[self.experiment_id]]
+
+      print(f'Run _load_params(): Load params for only Expeirment {self.experiment_id}')
+
   def _init_ml_experiments(self):
 
     # Load the default nn_hyps
@@ -99,13 +106,21 @@ class Run:
     # Combine default_nn_hyps with the run_params
     default_nn_hyps.update(self.run_params)
 
+    # If this run is initialized with a specific Experiment ID
+    if self.experiment_id is not None:
+      all_nn_hyps = default_nn_hyps.copy()
+      all_nn_hyps.update(self.experiment_params[0])
+      all_nn_hyps['model'] = 'VARNN'
+      ExperimentObj = Experiment(self.run_name, self.experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id)
+      self.experiments.append(ExperimentObj)
+      self.num_experiments = 1
+
     if self.experiments == []:
       for experiment_id, changed_nn_hyps in enumerate(self.experiment_params):
         # Combine the default nn_hyps with changed_nn_hyps
         all_nn_hyps = default_nn_hyps.copy()
         all_nn_hyps.update(changed_nn_hyps)
         all_nn_hyps['model'] = 'VARNN'
-        all_nn_hyps['variables'] = all_nn_hyps['var_names']
         ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id)
         self.experiments.append(ExperimentObj)
       
@@ -126,12 +141,14 @@ class Run:
     for MLExperiment in self.ml_experiments:
       MLExperiment.train(self.dataset)
 
-  def compile_experiments(self, experiment_ids = None):  
+  def compile_experiments(self, experiment_ids = None, repeats_to_include = None):  
     # If experiment_ids = None, then train all
+    print(f'Run compile_experiments(): repeats_to_include {repeats_to_include}')
     experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
     for experiment_id in experiment_ids:
       ExperimentObj = self.experiments[experiment_id]
-      ExperimentObj.compile_all()
+      ExperimentObj.load_results(repeats_to_include = repeats_to_include)
+      ExperimentObj.compile_all(repeats_to_include = repeats_to_include)
 
   def compile_ml_experiments(self):
     for MLExperimentObj in self.ml_experiments:

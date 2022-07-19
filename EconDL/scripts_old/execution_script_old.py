@@ -87,13 +87,13 @@ for repeat_id in range(num_repeats):
       unconditional_irf_params = {
         'n_lag_linear': nn_hyps['n_lag_linear'],
         'n_lag_d': nn_hyps['n_lag_d'],
-        'n_var': len(nn_hyps['variables']),
+        'n_var': len(nn_hyps['var_names']),
         'num_simulations': 600,
         'endh': 40,
         'start_shock_time': 40,
         'forecast_method': 'new', # old or new
         'max_h': 20, 
-        'var_names': nn_hyps['variables'],
+        'var_names': nn_hyps['var_names'],
         'plot_all_bootstraps': False
       }
 
@@ -114,9 +114,9 @@ for repeat_id in range(num_repeats):
 
         'n_lag_linear': nn_hyps['n_lag_linear'],
         'n_lag_d': nn_hyps['n_lag_d'],
-        'n_var': len(nn_hyps['variables']),
+        'n_var': len(nn_hyps['var_names']),
         'forecast_method': 'new', # old or new
-        'var_names': nn_hyps['variables'],
+        'var_names': nn_hyps['var_names'],
       }
 
 

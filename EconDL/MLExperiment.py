@@ -15,9 +15,9 @@ class MLExperiment(Experiment):
     self.model = nn_hyps['model']
     self.experiment_id = nn_hyps['model']
 
-  def compile_all(self):
-    self._compile_multi_forecasting_results()
-    self._compile_unconditional_irf_results()
+  def compile_all(self, repeats_to_include = None):
+    self._compile_multi_forecasting_results(repeats_to_include = repeats_to_include)
+    self._compile_unconditional_irf_results(repeats_to_include = repeats_to_include)
 
   def compute_unconditional_irfs(self, Y_train, Y_test, results, repeat_id):
     unconditional_irf_params = {
@@ -29,7 +29,7 @@ class MLExperiment(Experiment):
         'start_shock_time': self.extensions_params['unconditional_irfs']['start_shock_time'],
         'forecast_method': self.extensions_params['unconditional_irfs']['forecast_method'], # old or new
         'max_h': self.extensions_params['unconditional_irfs']['max_h'], 
-        'var_names': self.nn_hyps['variables'],
+        'var_names': self.nn_hyps['var_names'],
         'model': self.model
       }
 
@@ -52,7 +52,7 @@ class MLExperiment(Experiment):
       'n_lag_d': self.nn_hyps['n_lag_d'],
       'n_var': self.nn_hyps['n_var'],
       'forecast_method': self.extensions_params['multi_forecasting']['forecast_method'], # old or new
-      'var_names': self.nn_hyps['variables'],
+      'var_names': self.nn_hyps['var_names'],
       'model': self.model
     }
 

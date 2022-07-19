@@ -11,6 +11,14 @@
         "n_lag_d": 12,
         "n_var": 7,
         "test_size": 90,
+        "constant_tvpl": 50,
+
+        "time_dummy_setting": 2, 
+        "dropout_rate": 0.25, 
+        "precision_lambda": 0.25, 
+        "lambda_temper_epochs": 50, 
+        "optimizer": "Adam",
+        "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
         "s_pos": [[0, 126]]
     },
 
@@ -33,7 +41,7 @@
             "num_simulations": 1000,
             "endh": 50, 
             "start_shock_time": 50,
-            "max_h": 20,
+            "max_h": 24,
             "forecast_method": "new",
             "plot_all_bootstraps": false
         },
@@ -54,32 +62,92 @@
         {
             "nodes": [400, 200, 100], 
             "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
             "tvpl_archi": [5], 
             "lr": 0.001, 
-            "time_dummy_setting": 2, 
-            "dropout_rate": 0.25, 
-            "precision_lambda": 0.25, 
-            "lambda_temper_epochs": 50, 
-            "optimizer": "Adam",
-            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "RELU"
         },
         {
-            "nodes": [200, 100, 50], 
-            "actv": "nn.ReLU()", 
+            "nodes": [400, 200, 100], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [50],
             "tvpl_archi": [5], 
             "lr": 0.001, 
-            "time_dummy_setting": 2, 
-            "dropout_rate": 0.25, 
-            "precision_lambda": 0.25, 
-            "lambda_temper_epochs": 50, 
-            "optimizer": "Adam",
-            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "SELU"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [2], 
+            "lr": 0.001, 
+            "joint_estimation": true, 
+            "name": "RELU TVPL2"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [2], 
+            "lr": 0.001, 
+            "joint_estimation": true, 
+            "name": "SELU TVPL2"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.005, 
+            "joint_estimation": true, 
+            "name": "RELU High LR"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [5],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "joint_estimation": true, 
+            "name": "RELU TVPL Constant 5"
+        },
+        {
+            "nodes": [100, 50, 25], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "joint_estimation": true, 
+            "name": "RELU Small"
+        },
+        {
+            "nodes": [100, 50, 25], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "joint_estimation": true, 
+            "name": "SELU Small"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "joint_estimation": false, 
+            "name": "RELU Joint Off"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "joint_estimation": false, 
+            "name": "SELU Joint Off"
         }
     ],
 
@@ -93,6 +161,7 @@
         "experiments_to_load": [0, 1],
         "plot_all_bootstraps": false,
         "exps_to_plot": [0, 1],
+        "repeats_to_include": null,
         "test_exclude_last": 20
     }
 }

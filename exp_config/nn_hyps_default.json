@@ -38,6 +38,7 @@
     
     "log_det_multiple": 1,
     "precision_lambda": 0.05, 
+    "end_precision_lambda": 0.01,
     "lambda_temper_epochs": 25,
     "optimizer": "Adam",
     "n_lag_d": 2, "n_lag_linear": 1, "n_lag_ps": 1,

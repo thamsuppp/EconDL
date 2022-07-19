@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from statsmodels.tsa.api import VAR
 from EconDL.Forecast.ForecastMultiEvaluation import ForecastMultiEvaluation
 
 class Evaluation:
@@ -29,6 +30,7 @@ class Evaluation:
     self.exps_to_plot = evaluation_params['exps_to_plot']
     self.need_to_combine = evaluation_params['need_to_combine']
     self.is_simulation = evaluation_params['is_simulation']
+    self.repeats_to_include = evaluation_params['repeats_to_include']
     self.is_test = evaluation_params['is_test']
     self.multiple_datasets = evaluation_params['multiple_datasets']
     self.plot_all_bootstraps = evaluation_params['plot_all_bootstraps']
@@ -87,8 +89,9 @@ class Evaluation:
     }
 
   def compile_results(self):
+    print(f'Evaluation compile_results: Repeats_to_include {self.repeats_to_include}')
     if self.need_to_combine == True:
-      self.Run.compile_experiments()
+      self.Run.compile_experiments(repeats_to_include = self.repeats_to_include)
       self.Run.compile_ml_experiments()
     else:
       print('Need to combine off, no need to compile')
@@ -226,8 +229,21 @@ class Evaluation:
       preds_test = np.repeat(np.expand_dims(preds_test, axis = 1), self.num_bootstraps, axis = 1)
       self.PREDS_ALL[self.M_varnn + i, :,:,:] = preds
       self.PREDS_TEST_ALL[self.M_varnn + i,:,:,:] = preds_test
-    
 
+  
+  # Estimate and plot VAR benchmark IRFs
+  def plot_VAR_irfs(self):
+    var_model = VAR(self.Y_train)
+    var_results = var_model.fit(self.Run.run_params['n_lag_linear'])
+    max_h = self.Run.extensions_params['unconditional_irfs']['max_h']
+    irf = var_results.irf(max_h)
+
+    # Plot the IRFs
+    irf_plot = irf.plot(orth = True)
+    plt.savefig(f'{self.image_folder_path}/irf_VAR.png')
+    irf_plot = irf.plot_cum_effects(orth = True)
+    plt.savefig(f'{self.image_folder_path}/cumulative_irf_VAR.png')
+    
   # Helper function to plot betas
   def plot_betas_all(self, BETAS, var_names, beta_names, image_file, q = 0.16, title = '', actual = None):
 
@@ -529,6 +545,7 @@ class Evaluation:
 
   # Wrapper function to do all plots
   def plot_all(self):
+    self.plot_VAR_irfs()
     self.plot_cholesky()
     self.plot_precision()
     self.plot_sigmas()

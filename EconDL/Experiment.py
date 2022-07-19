@@ -45,6 +45,8 @@ class Experiment:
       'multi_forecasting': None
     }
 
+    print(f'Experiment Initialized: experiment {self.experiment_id}, repeat {self.job_id}')
+    print(self.nn_hyps)
     self.load_results()
 
   def check_results_sizes(self):
@@ -69,11 +71,13 @@ class Experiment:
         'var_names': self.nn_hyps['var_names'],
         'n_lags': self.nn_hyps['n_lag_linear'],
         'n_betas': self.nn_hyps['n_var'] * self.nn_hyps['n_lag_linear'] + 1,
-        'max_h': self.extensions_params['conditional_irfs']['max_h']
+        'max_h': self.extensions_params['conditional_irfs']['max_h'],
+        'test_exclude_last': self.extensions_params['conditional_irfs']['test_exclude_last']
       }
       
       IRFConditionalObj = IRFConditional(self.results, conditional_irf_params)
       IRFConditionalObj.plot_irfs(image_folder_path, self.experiment_id)
+      IRFConditionalObj.plot_irfs_over_time(image_folder_path, self.experiment_id, normalize = self.extensions_params['conditional_irfs']['normalize_time_plot'])
       self.evaluations['conditional_irf'] = IRFConditionalObj
 
   def compute_unconditional_irfs(self, Y_train, Y_test, results, device, repeat_id):
@@ -84,13 +88,13 @@ class Experiment:
     unconditional_irf_params = {
         'n_lag_linear': self.nn_hyps['n_lag_linear'],
         'n_lag_d': self.nn_hyps['n_lag_d'],
-        'n_var': len(self.nn_hyps['variables']),
+        'n_var': len(self.nn_hyps['var_names']),
         'num_simulations': self.extensions_params['unconditional_irfs']['num_simulations'],
         'endh': self.extensions_params['unconditional_irfs']['endh'],
         'start_shock_time': self.extensions_params['unconditional_irfs']['start_shock_time'],
         'forecast_method': self.extensions_params['unconditional_irfs']['forecast_method'], # old or new
         'max_h': self.extensions_params['unconditional_irfs']['max_h'], 
-        'var_names': self.nn_hyps['variables'],
+        'var_names': self.nn_hyps['var_names'],
         'model': 'VARNN'
       }
 
@@ -116,9 +120,9 @@ class Experiment:
 
       'n_lag_linear': self.nn_hyps['n_lag_linear'],
       'n_lag_d': self.nn_hyps['n_lag_d'],
-      'n_var': len(self.nn_hyps['variables']),
+      'n_var': len(self.nn_hyps['var_names']),
       'forecast_method': self.extensions_params['multi_forecasting']['forecast_method'], # old or new
-      'var_names': self.nn_hyps['variables'],
+      'var_names': self.nn_hyps['var_names'],
       'model': 'VARNN'
     }
 
@@ -191,10 +195,11 @@ class Experiment:
 
 
   # Used at Evaluation time (called by evaluation object)
-  def compile_all(self):
+  # If repeats_to_include is None, then call all
+  def compile_all(self, repeats_to_include = None):
     self._compile_results()
-    self._compile_multi_forecasting_results()
-    self._compile_unconditional_irf_results()
+    self._compile_multi_forecasting_results(repeats_to_include)
+    self._compile_unconditional_irf_results(repeats_to_include)
 
   # Compile results if there are multiple repeats (in results)
   def _compile_results(self):
@@ -229,7 +234,7 @@ class Experiment:
     with open(f'{self.folder_path}/params_{self.experiment_id}_compiled.npz', 'wb') as f:
       np.savez(f, results = self.results)
 
-  def _compile_multi_forecasting_results(self):
+  def _compile_multi_forecasting_results(self, repeats_to_include = None):
 
     if self.execution_params['multi_forecasting'] == False:
       print('Experiment _compile_multi_forecasting_results(): Multi Forecasting turned off')
@@ -237,21 +242,32 @@ class Experiment:
     if self.job_id is not None:
       print('Experiment _compile_multi_forecasting_results(): Multiple Jobs, compiling turned off')
       return
-    num_repeats = self.run_params['num_repeats']
-    repeat_id = 0
-    while repeat_id < num_repeats:
 
-      fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)['fcast']
-      if repeat_id == 0:
-        fcast_all = fcast_repeat # horizons x variables x bootstraps x time x reestimation_window
-      if repeat_id == 0:
-        fcast_all = np.concatenate([fcast_all, fcast_repeat], axis = 2)
-      repeat_id += 1
+    if repeats_to_include is None:
+        
+      num_repeats = self.run_params['num_repeats']
+      repeat_id = 0
+      while repeat_id < num_repeats:
+
+        fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)['fcast']
+        if repeat_id == 0:
+          fcast_all = fcast_repeat # horizons x variables x bootstraps x time x reestimation_window
+        else:
+          fcast_all = np.concatenate([fcast_all, fcast_repeat], axis = 2)
+        repeat_id += 1
     
+    else:
+      for i, repeat_id in enumerate(repeats_to_include):
+        fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)['fcast']
+        if i == 0:
+          fcast_all = fcast_repeat # horizons x variables x bootstraps x time x reestimation_window
+        else:
+          fcast_all = np.concatenate([fcast_all, fcast_repeat], axis = 2)
+            
     with open(f'{self.folder_path}/multi_fcast_{self.experiment_id}_compiled.npz', 'wb') as f:
       np.savez(f, fcast = fcast_all)
 
-  def _compile_unconditional_irf_results(self):
+  def _compile_unconditional_irf_results(self, repeats_to_include = None):
 
     if self.job_id is not None:
       print('Experiment _compile_unconditional_irf_results(): Multiple Jobs, compiling turned off')
@@ -260,20 +276,32 @@ class Experiment:
       print('Experiment _compile_unconditional_irf_results(): Unconditional IRFs turned off')
       return 
       
-    num_repeats = self.run_params['num_repeats']
-    repeat_id = 0
-    while repeat_id < num_repeats:
+    if repeats_to_include is None:
+        
+      num_repeats = self.run_params['num_repeats']
+      repeat_id = 0
+      while repeat_id < num_repeats:
 
-      out_repeat = np.load(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)
-      fcast = out_repeat['fcast']
-      #fcast_cov_mat = out_repeat['fcast_cov_mat']
-      if repeat_id == 0:
-        fcast_all = np.zeros((num_repeats, fcast.shape[0], fcast.shape[1], fcast.shape[2], fcast.shape[3]))
-        #fcast_cov_mat_all = np.zeros((num_repeats, fcast_cov_mat.shape[0], fcast_cov_mat.shape[1], fcast_cov_mat.shape[2], fcast_cov_mat.shape[3], fcast_cov_mat.shape[4]))
-        fcast_cov_mat_all = None
-      fcast_all[repeat_id, :,:,:,:] = fcast
-      #fcast_cov_mat_all[repeat_id, :,:,:,:,:] = fcast_cov_mat
-      repeat_id += 1
+        out_repeat = np.load(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)
+        fcast = out_repeat['fcast']
+        #fcast_cov_mat = out_repeat['fcast_cov_mat']
+        if repeat_id == 0:
+          fcast_all = np.zeros((num_repeats, fcast.shape[0], fcast.shape[1], fcast.shape[2], fcast.shape[3]))
+          #fcast_cov_mat_all = np.zeros((num_repeats, fcast_cov_mat.shape[0], fcast_cov_mat.shape[1], fcast_cov_mat.shape[2], fcast_cov_mat.shape[3], fcast_cov_mat.shape[4]))
+          fcast_cov_mat_all = None
+        fcast_all[repeat_id, :,:,:,:] = fcast
+        #fcast_cov_mat_all[repeat_id, :,:,:,:,:] = fcast_cov_mat
+        repeat_id += 1
+    else:
+      for i, repeat_id in enumerate(repeats_to_include):
+        out_repeat = np.load(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)
+        fcast = out_repeat['fcast']
+        if i == 0:
+          fcast_all = np.zeros((len(repeats_to_include), fcast.shape[0], fcast.shape[1], fcast.shape[2], fcast.shape[3]))
+          #fcast_cov_mat_all = np.zeros((num_repeats, fcast_cov_mat.shape[0], fcast_cov_mat.shape[1], fcast_cov_mat.shape[2], fcast_cov_mat.shape[3], fcast_cov_mat.shape[4]))
+          fcast_cov_mat_all = None
+        fcast_all[i, :,:,:,:] = fcast
+
     
     with open(f'{self.folder_path}/fcast_{self.experiment_id}_compiled.npz', 'wb') as f:
       np.savez(f, fcast = fcast_all)
@@ -281,13 +309,13 @@ class Experiment:
     unconditional_irf_params = {
         'n_lag_linear': self.nn_hyps['n_lag_linear'],
         'n_lag_d': self.nn_hyps['n_lag_d'],
-        'n_var': len(self.nn_hyps['variables']),
+        'n_var': len(self.nn_hyps['var_names']),
         'num_simulations': self.extensions_params['unconditional_irfs']['num_simulations'],
         'endh': self.extensions_params['unconditional_irfs']['endh'],
         'start_shock_time': self.extensions_params['unconditional_irfs']['start_shock_time'],
         'forecast_method': self.extensions_params['unconditional_irfs']['forecast_method'], # old or new
         'max_h': self.extensions_params['unconditional_irfs']['max_h'], 
-        'var_names': self.nn_hyps['variables'],
+        'var_names': self.nn_hyps['var_names'],
         'plot_all_bootstraps': self.extensions_params['unconditional_irfs']['plot_all_bootstraps']
       }
 
@@ -300,8 +328,8 @@ class Experiment:
     
 
 
-  def load_results(self):
-    print(f'Experiment load_results(): Loading results for Experiment id {self.experiment_id}')
+  def load_results(self, repeats_to_include = None):
+    print(f'Experiment load_results(): Loading results for Experiment id {self.experiment_id}, repeats_to_include: {repeats_to_include}')
     # Check if the compiled results exist
     if os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_compiled.npz'):
       self.is_trained = True
@@ -313,7 +341,10 @@ class Experiment:
       return
 
     # Check if results for this repeat exist
-    elif os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{self.job_id if self.job_id else 0}.npz'):
+    elif repeats_to_include == None and os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{self.job_id if self.job_id else 0}.npz'):
+      
+      self.results_uncompiled = []
+      # Print the repeats that are done:
       repeat_id = 0
       while os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'):
         self.is_trained = True
@@ -325,6 +356,18 @@ class Experiment:
         repeat_id += 1
 
       return
+
+    elif repeats_to_include is not None and os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeats_to_include[0]}.npz'):
+
+      self.results_uncompiled = []
+      self.is_trained = True
+      for repeat_id in repeats_to_include:
+        load_file = f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'
+        results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
+        self.results_uncompiled.append(results_loaded)
+
+        print(f'Experiment load_results(): Loaded results for repeat {repeat_id}')
+
     else:
       print('Experiment load_results(): Not trained yet')
 

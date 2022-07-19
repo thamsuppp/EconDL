@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from statsmodels.tsa.api import VAR
 
 ### Experiment-level class to evaluate unconditional IRFs
 class IRFUnconditionalEvaluation:
@@ -35,7 +36,6 @@ class IRFUnconditionalEvaluation:
 
     self.FCAST = FCAST
     self.FCAST_COV_MAT = FCAST_COV_MAT
-
 
   # @DEV: Meant to be called from outside passing in saved IRF results from multiple outer bootstraps
   # Even though the IRFUnconditional class is meant to generate only one outer bootstrap. See in the future if we need to refactor to reconcile this inconsistency

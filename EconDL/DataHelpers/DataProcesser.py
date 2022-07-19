@@ -160,7 +160,7 @@ def process_data_wrapper(data, nn_hyps):
     # nn_hyps needed: test_size, variables, num_bootstrap, time_dummy_setting, marx, dummy_interval, s_pos, s_pos_setting, model
 
     test_size = nn_hyps['test_size']
-    variable_list = nn_hyps['variables']
+    variable_list = nn_hyps['var_names']
 
     # Subset variables
     x_d = data[variable_list]
