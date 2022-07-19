@@ -150,9 +150,9 @@ class Run:
       ExperimentObj.load_results(repeats_to_include = repeats_to_include)
       ExperimentObj.compile_all(repeats_to_include = repeats_to_include)
 
-  def compile_ml_experiments(self):
+  def compile_ml_experiments(self, repeats_to_include = None):
     for MLExperimentObj in self.ml_experiments:
-      MLExperimentObj.compile_all()
+      MLExperimentObj.compile_all(repeats_to_include = repeats_to_include)
 
   def train_benchmarks(self):
 

@@ -15,16 +15,17 @@ class IRFConditional:
     self.test_exclude_last = irf_params['test_exclude_last']
 
     # Sum hemis to get BETAS: (n_obs, n_betas, n_bootstraps, n_var)
-    self.BETAS = np.sum(results['betas'], axis = -1)
+    self.BETAS = np.nansum(results['betas'], axis = -1)
     self.SIGMAS = results['sigmas']
     self.IRFS = None
-
+    
     # Computes the IRFs
     self.get_irfs()
 
   # @title Function to get IRF for One Draw
   def _get_irf_draw(self, beta_draw, cov_mat_draw = None):
-
+    
+    #try:
     # Rearranging the betas so they fit into A matrix
     constant = beta_draw[:, 0]
 
@@ -50,7 +51,12 @@ class IRFConditional:
       cov_mat_draw = np.identity(self.n_var)
 
     # Do Cholesky decomposition
-    C = np.linalg.cholesky(cov_mat_draw)
+    if np.isnan(cov_mat_draw[0, 0]) == True:
+      irf_draw = np.zeros((self.n_var, self.n_var, self.max_h))
+      irf_draw[:] = np.nan
+      return irf_draw
+    else:
+      C = np.linalg.cholesky(cov_mat_draw)
 
     # Construct the companion C matrix
     C_mat = np.zeros((p*k, p*k))
@@ -70,6 +76,10 @@ class IRFConditional:
     irf_draw = irf_draw[:, 0:(self.n_var), :]
 
     return irf_draw
+    # except:
+    #   # Linalg error
+    #   print('cov_mat_draw non PSD', cov_mat_draw)
+    #   return np.zeros((self.n_var, self.n_var, self.max_h))
 
   # @title Computes the conditional IRFs for all bootstrap draws, updates self.IRFS
   # Note: If you want to use estimated covariance matrix, then change cov_mat_draw parameter to cov_mat_draw, otherwise None makes it identity matrix
@@ -85,10 +95,15 @@ class IRFConditional:
     IRFS = np.zeros((n_obs, n_bootstraps, n_var, n_var, self.max_h))
     IRFS[:] = np.nan
 
+
     for t in range(n_obs):
       if t % 100 == 0:
         print(f'Simulation timestep {t} at {datetime.now()}')
       for boot in range(n_bootstraps):
+
+        if t == 0 and boot == 0:
+          print('beta_draw at 0', BETAS[t, :, boot, :])
+          print('cov_mat_draw at 0', SIGMAS[t, :, :, boot])
           
         # Can change BETAS_IN or BETAS
         beta_draw = BETAS[t, :, boot, :].T

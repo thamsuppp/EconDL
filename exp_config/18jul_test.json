@@ -96,7 +96,7 @@
         "experiments_to_load": [0, 1],
         "plot_all_bootstraps": false,
         "exps_to_plot": [0, 1],
-        "repeats_to_include": [0, 1],
+        "repeats_to_include": [1,2],
         "test_exclude_last": 0
     }
 }

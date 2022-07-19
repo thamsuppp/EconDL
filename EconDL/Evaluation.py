@@ -92,7 +92,7 @@ class Evaluation:
     print(f'Evaluation compile_results: Repeats_to_include {self.repeats_to_include}')
     if self.need_to_combine == True:
       self.Run.compile_experiments(repeats_to_include = self.repeats_to_include)
-      self.Run.compile_ml_experiments()
+      self.Run.compile_ml_experiments(repeats_to_include = self.repeats_to_include)
     else:
       print('Need to combine off, no need to compile')
 

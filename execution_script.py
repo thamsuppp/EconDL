@@ -28,10 +28,10 @@ task_id = int(os.environ.get('SLURM_ARRAY_TASK_ID')) - 1
 
 # If we are doing this in parallel, then we pass in the job_id parameter here
 
-repeat = task_id % num_experiments
-experiment_id = int(task_id / num_experiments)
+experiment_id = task_id % num_experiments
+repeat = int(task_id / num_experiments)
 
-print(f'Experiment {experiment_id}, repeat {repeat}')
+print(f'Task ID {task_id}, Experiment {experiment_id}, repeat {repeat}')
 # Train the specific experiment_id and speciifc repeat_id
 RunObj = Run(run_name, device, experiment_id = experiment_id, job_id = repeat)
 RunObj.train_all()

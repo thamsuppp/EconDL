@@ -163,6 +163,7 @@ class IRFUnconditional:
     # Get covariance matrix of OOB residuals
     cov_mat = np.cov(oob_res.T)
     # Cholesky decomposition of the cov mat into orthogonal shocks
+
     C = np.linalg.cholesky(cov_mat)
     # Generate orthogonal shocks for each variable
 
