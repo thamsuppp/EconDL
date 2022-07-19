@@ -118,12 +118,6 @@ class IRFConditional:
 
     self.IRFS = IRFS
 
-    # # Get the median of the IRF draws
-    # IRFS_median = np.nanmedian(IRFS, axis = 1)
-    
-    # return IRFS_median
-
-
   def plot_irfs(self, image_folder_path, experiment_id):
 
     # Take the median 

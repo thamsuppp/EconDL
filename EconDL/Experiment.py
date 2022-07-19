@@ -135,9 +135,9 @@ class Experiment:
     with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
       np.savez(f, fcast = FCAST)
 
-
   # @DEV: Don't pass in the dataset in the _init_() because if not then there will be multiple copies of
   # the dataset sitting in each run.
+  # Results are now only compiled during evaluation
   def train(self, dataset, device):
 
     if self.is_trained == True:
@@ -185,14 +185,6 @@ class Experiment:
 
       # After completing all repeats
       self.is_trained = True
-
-    #   self._compile_results()
-
-    # self._compile_unconditional_irf_results()
-    # self._compile_multi_forecasting_results()
-    # self.compute_conditional_irfs()
-
-
 
   # Used at Evaluation time (called by evaluation object)
   # If repeats_to_include is None, then call all
@@ -326,8 +318,6 @@ class Experiment:
 
     self.evaluations['unconditional_irf'] = IRFUnconditionalEvaluationObj
     
-
-
   def load_results(self, repeats_to_include = None):
     print(f'Experiment load_results(): Loading results for Experiment id {self.experiment_id}, repeats_to_include: {repeats_to_include}')
     # Check if the compiled results exist

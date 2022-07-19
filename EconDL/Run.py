@@ -7,7 +7,6 @@ import EconDL.DataHelpers.DataLoader as DataLoader
 from EconDL.Forecast.ForecastBenchmarks import ForecastBenchmarks
 from EconDL.MLExperiment import MLExperiment
 
-
 class Run:
   
   def __init__(self, run_name, device, experiment_id = None, job_id = None):
@@ -58,7 +57,6 @@ class Run:
     self._init_ml_experiments()
     self._load_data()
 
-  
   def _load_params(self):
     with open(f'exp_config/{self.run_name}.json', 'r') as f:
       all_params = json.load(f)

@@ -1,7 +1,5 @@
 # EconDL v1.0 (19 Jul 2022)
 
-
-
 ## Instructions:
 
 - Change your experiment parameters by creating a new json file like `{run_name}.json` in the `exp_config` folder. Make sure not to leave out any parameters (look at the example, `18jul_test.json`)
@@ -18,6 +16,35 @@
 ## Parameters to Note
 
 - `constant_tvpl` - number of neurons in the TVPL layer for the constant. Must be wrapped by a list i.e. [40] (added 7/18)
+
+## Sequence of Events
+
+**Training (execution_script.py)**
+
+- For each run:
+    - train_experiments() - For each experiment
+        - For each repeat:
+            - train_experiment()
+            - compute_unconditional_irf()
+            - compute_multi_forecasting()
+    - train_multi_forecasting_benchmarks()
+    - train_benchmarks()
+    - For each ML experiment:
+        - For each repeat:
+            - train_experiment()
+            - compute_unconditional_irf()
+            - compute_multi_forecasting()
+
+**Evaluation (evaluation_script.py)**
+
+- For each experiment:
+    - load_results - loads uncompiled results into `self.results_uncompiled` (only repeats specified in ‘repeats_to_include)
+    - compile_results:
+        - For VARNN Experiments: results, unconditional IRF **- and plots it**, multi forecasting
+        - For ML Experiments: unconditional IRF **- and plots it**, multi forecasting
+    - compute_conditional_irf (needs compiled results) - computes and **plots conditional IRF results**
+    - plot_all() - plots VAR IRFs, cholesky, precision, sigmas, betas, one-step predictions, OOB and test errors, multi-step forecasts
+
 
 ## Version History
 

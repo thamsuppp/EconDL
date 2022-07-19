@@ -88,6 +88,7 @@ class Evaluation:
       'PREDS_TEST_ALL': self.PREDS_TEST_ALL.shape
     }
 
+  # Compiles all experiments' results from different repeats
   def compile_results(self):
     print(f'Evaluation compile_results: Repeats_to_include {self.repeats_to_include}')
     if self.need_to_combine == True:
@@ -96,9 +97,7 @@ class Evaluation:
     else:
       print('Need to combine off, no need to compile')
 
-
-
-  # Assumes results have already been compiled
+  # Loads the compiled results and benchmarks into the object
   def load_results(self):
 
     # Load VARNN results
@@ -230,7 +229,6 @@ class Evaluation:
       self.PREDS_ALL[self.M_varnn + i, :,:,:] = preds
       self.PREDS_TEST_ALL[self.M_varnn + i,:,:,:] = preds_test
 
-  
   # Estimate and plot VAR benchmark IRFs
   def plot_VAR_irfs(self):
     var_model = VAR(self.Y_train)
@@ -243,9 +241,10 @@ class Evaluation:
     plt.savefig(f'{self.image_folder_path}/irf_VAR.png')
     irf_plot = irf.plot_cum_effects(orth = True)
     plt.savefig(f'{self.image_folder_path}/cumulative_irf_VAR.png')
+    plt.close()
     
   # Helper function to plot betas
-  def plot_betas_all(self, BETAS, var_names, beta_names, image_file, q = 0.16, title = '', actual = None):
+  def _plot_betas_inner(self, BETAS, var_names, beta_names, image_file, q = 0.16, title = '', actual = None):
 
     n_obs = BETAS.shape[0]
     n_betas = BETAS.shape[1]
@@ -302,6 +301,7 @@ class Evaluation:
 
     fig.suptitle(title, fontsize=16)
     plt.savefig(image_file)
+    plt.close()
 
     print(f'Betas plotted at {image_file}')
 
@@ -319,10 +319,10 @@ class Evaluation:
       if n_hemis > 1:
         for hemi in range(n_hemis):
           image_file = f'{self.image_folder_path}/betas_{i}_hemi_{hemi}.png'
-          self.plot_betas_all(BETAS_ALL_PLOT[i, :, :, :, :, hemi], self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i}, Hemisphere {hemi}', actual = None)
+          self._plot_betas_inner(BETAS_ALL_PLOT[i, :, :, :, :, hemi], self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i}, Hemisphere {hemi}', actual = None)
         
       image_file = f'{self.image_folder_path}/betas_{i}_sum.png'
-      self.plot_betas_all(np.sum(BETAS_ALL_PLOT[i, :, :, :, :,:], axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} Betas, Sum', actual = None)
+      self._plot_betas_inner(np.sum(BETAS_ALL_PLOT[i, :, :, :, :,:], axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} Betas, Sum', actual = None)
 
   def plot_precision(self):
 
@@ -361,11 +361,11 @@ class Evaluation:
       fig.suptitle(f'Experiment {i} Precision', fontsize=16)
       image_file = f'{self.image_folder_path}/precision_{i}.png'
       plt.savefig(image_file)
+      plt.close()
 
       print(f'Precision plotted at {image_file}')
 
   def plot_cholesky(self):
-    # Don't show test (change this code to show in-sample)
     if self.is_test == False:
       CHOLESKY_ALL_PLOT = self.CHOLESKY_ALL[:, :-self.test_size,:,:,:,:]
     else:
@@ -402,6 +402,7 @@ class Evaluation:
       fig.suptitle(f'Experiment {i} Cholesky', fontsize=16)
       image_file = f'{self.image_folder_path}/cholesky_{i}.png'
       plt.savefig(image_file)
+      plt.close()
 
       print(f'Cholesky plotted at {image_file}')
 
@@ -453,6 +454,7 @@ class Evaluation:
       fig.suptitle(f'Experiment {i} Sigma', fontsize=16)
       image_file = f'{self.image_folder_path}/sigmas_{i}.png'
       plt.savefig(image_file)
+      plt.close()
 
       print(f'Cov Mat plotted at {image_file}')
 
@@ -478,10 +480,10 @@ class Evaluation:
 
     image_file = f'{self.image_folder_path}/preds.png'
     plt.savefig(image_file)
+    plt.close()
 
     print(f'Predictions plotted at {image_file}')
 
-  # type = oob or test
   def plot_errors(self, data_sample = 'oob', exclude_last = 0):
         
     fig, ax = plt.subplots(1, self.n_var, figsize = (6 * self.n_var, 4), constrained_layout = True)
@@ -505,6 +507,7 @@ class Evaluation:
           ax[var].legend()
 
     plt.savefig(f'{self.image_folder_path}/error_{data_sample}.png')
+    plt.close()
 
     fig, ax = plt.subplots(1, self.n_var, figsize = (6 * self.n_var, 4), constrained_layout = True)
 
@@ -539,10 +542,10 @@ class Evaluation:
 
     image_file = f'{self.image_folder_path}/cum_errors_{data_sample}.png'
     plt.savefig(image_file)
+    plt.close()
 
     print(f'{data_sample} Cum Errors plotted at {image_file}')
     
-
   # Wrapper function to do all plots
   def plot_all(self):
     self.plot_VAR_irfs()

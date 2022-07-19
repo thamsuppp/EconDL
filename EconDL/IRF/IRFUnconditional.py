@@ -37,7 +37,6 @@ class IRFUnconditional:
     self.irf_cum_mat = None
   
 
-
   # New IRF Simulation Wrapper Function (Joint Estimation)
   # Returns: fcast, fcast_cov_mat, sim_shocks
   ## kk: variable to shock , k: response of shock
@@ -137,7 +136,6 @@ class IRFUnconditional:
     except np.linalg.LinAlgError as err:
       print(f'LinAlgError at time {f}')
       return fcast, fcast_cov_mat, sim_shocks
-
 
   # @title Old IRF Simulation Wrapper Function (without Joint Estimation - time-invariant covariance matrix)
   # Returns: fcast, None, sim_shocks

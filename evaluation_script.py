@@ -7,8 +7,7 @@ from EconDL.Evaluation import Evaluation
 run_name = sys.argv[1]
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print('Device', device)
-# If we are doing this in parallel, then we pass in the job_id parameter here
+
 RunObj = Run(run_name, device)
 
 EvaluationObj = Evaluation(RunObj)
