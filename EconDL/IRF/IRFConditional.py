@@ -13,6 +13,7 @@ class IRFConditional:
     self.max_h = irf_params['max_h']
     self.var_names = irf_params['var_names']
     self.test_exclude_last = irf_params['test_exclude_last']
+    self.dataset_name = irf_params['dataset']
 
     # Sum hemis to get BETAS: (n_obs, n_betas, n_bootstraps, n_var)
     self.BETAS = np.nansum(results['betas'], axis = -1)
@@ -123,8 +124,16 @@ class IRFConditional:
     # Take the median 
     IRFS_median = np.nanmedian(self.IRFS, axis = 1)
 
-    times_to_draw = [90, 210, 330, 450]
-    times_to_draw_labels = [1968, 1978, 1988, 1998]
+    if self.dataset_name == 'monthly':
+      times_to_draw = [90, 210, 330, 450]
+      times_to_draw_labels = [1968, 1978, 1988, 1998]
+    elif self.dataset_name == 'quarterly':
+      times_to_draw = [30, 70, 110, 150]
+      times_to_draw_labels = [1968, 1978, 1988, 1998]
+    else:
+      times_to_draw = list(np.linspace(0, self.IRF.shape[0], 6, dtype = int)[1:-1])
+      times_to_draw_labels = times_to_draw
+
     cmap = plt.cm.tab10
 
     fig, ax = plt.subplots(self.n_var, self.n_var, constrained_layout = True, figsize = (4 * self.n_var, 4 * self.n_var))

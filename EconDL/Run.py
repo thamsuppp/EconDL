@@ -66,7 +66,7 @@ class Run:
     self.experiment_params = all_params['nn_hyps']
     self.extensions_params = all_params['extensions_params']
     self.evaluation_params = all_params['evaluation_params']
-    self.dataset_name = all_params['dataset']
+    self.dataset_name = all_params['run_params']['dataset']
 
     self.n_var = all_params['run_params']['n_var']
     self.var_names = all_params['run_params']['var_names']

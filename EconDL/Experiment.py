@@ -72,7 +72,8 @@ class Experiment:
         'n_lags': self.nn_hyps['n_lag_linear'],
         'n_betas': self.nn_hyps['n_var'] * self.nn_hyps['n_lag_linear'] + 1,
         'max_h': self.extensions_params['conditional_irfs']['max_h'],
-        'test_exclude_last': self.extensions_params['conditional_irfs']['test_exclude_last']
+        'test_exclude_last': self.extensions_params['conditional_irfs']['test_exclude_last'],
+        'dataset': self.run_params['dataset']
       }
       
       IRFConditionalObj = IRFConditional(self.results, conditional_irf_params)

@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.api import VAR
+import os
 from EconDL.Forecast.ForecastMultiEvaluation import ForecastMultiEvaluation
 
 class Evaluation:
@@ -64,6 +65,12 @@ class Evaluation:
     else:
       self.M_varnn = len(evaluation_params['experiments_to_load'])
       self.experiments_to_load = evaluation_params['experiments_to_load']
+
+      self.Run.num_experiments = self.M_varnn
+      experiments = []
+      for i in self.experiments_to_load:
+        experiments.append(self.Run.experiments[i])
+      self.Run.experiments = experiments
 
     self.M_benchmarks = len(self.benchmark_names)
     self.M_total = self.M_varnn + self.M_benchmarks
@@ -216,7 +223,12 @@ class Evaluation:
     self.all_names = self.experiment_names + self.benchmark_names
 
   def _load_benchmarks(self):
+    
     benchmark_folder_path = f'{self.folder_path}/benchmarks'
+
+    if os.path.isdir(benchmark_folder_path) == False:
+      print('Evaluation _load_benchmarks(): No benchmarks folder')
+      return
 
     for i in range(self.M_benchmarks):
       out = np.load(f'{benchmark_folder_path}/benchmark_{self.benchmark_names[i]}.npz')

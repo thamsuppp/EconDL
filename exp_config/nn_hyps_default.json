@@ -16,6 +16,7 @@
 
     "nodes": [200, 100, 50],
     "tvpl_archi": [5],
+    "constant_tvpl": [50],
     "patience": 50,
     "lr": 0.0005,
     "lr_multiple": 0.9975,

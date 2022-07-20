@@ -11,7 +11,7 @@
         "n_lag_d": 100,
         "n_var": 4,
         "test_size": 100,
-        "constant_tvpl": 50,
+        "constant_tvpl": [50],
 
         "time_dummy_setting": 2, 
         "dropout_rate": 0.25, 

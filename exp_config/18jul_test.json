@@ -1,7 +1,8 @@
 {
-    "dataset": "monthly",
 
     "run_params": {
+
+        "dataset": "monthly",
         "num_inner_bootstraps": 20,
         "num_repeats": 1,
         "default_nn_hyps": "nn_hyps_default",
@@ -25,7 +26,7 @@
 
     "extensions_params": {
 
-        "ml_experiments": ["RF", "XGBoost"],
+        "ml_experiments": [],
 
         "conditional_irfs": {
             "max_h": 10,
@@ -93,9 +94,9 @@
         "multiple_datasets": false,
         "sim_dataset": 2,
         "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole"],
-        "experiments_to_load": [0, 1],
+        "experiments_to_load": [1],
         "plot_all_bootstraps": false,
-        "exps_to_plot": [0, 1],
+        "exps_to_plot": [1],
         "repeats_to_include": [1,2],
         "test_exclude_last": 0
     }
