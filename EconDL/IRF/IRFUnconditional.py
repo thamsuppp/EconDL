@@ -71,8 +71,9 @@ class IRFUnconditional:
         sim_shocks[simul, :] = np.random.multivariate_normal([0] * n_var, np.eye(n_var), size = 1)
 
       for kk in range(n_var): # Variable to shock
-        for shock_level in [0, 1]:
 
+        bootstraps_to_ignore = []
+        for shock_level in [0, 1]:
           # Initialize new data at 0
           new_in_linear = np.zeros(self.n_lag_linear * n_var)
           new_in_nonlinear = np.zeros(self.n_lag_d * n_var)
@@ -80,11 +81,11 @@ class IRFUnconditional:
 
           # Start the simulation
           f = 1
-          bootstraps_to_ignore = []
+          
           while f < self.num_simulations:
             ### 1: Construct input
             if f % 100 == 0:
-              print(f, datetime.now())
+              print(f, datetime.now(), f'Bootstraps to ignore: {bootstraps_to_ignore}')
 
             # Add the newly observed data to the model (new variables become the L0, appended to front,
             # while we drop the most lagged variables)
@@ -180,6 +181,8 @@ class IRFUnconditional:
     fcast[:] = np.nan
 
     for kk in range(n_var):
+
+      bootstraps_to_ignore = []
       for shock_level in [0, 1]:
         simul_shocks = simul_shocks_old.copy()
 
@@ -223,7 +226,7 @@ class IRFUnconditional:
           if np.any(np.isnan(new_data_all)) == False and np.all(np.isfinite(new_data_all)) == True:
             if self.model == 'VARNN':
             # Get the prediction (NEW USING predict_nn function)
-              pred = predict_nn_old(results, new_data_all, device)
+              pred, bootstraps_to_ignore = predict_nn_old(results, new_data_all, bootstraps_to_ignore, device)
             else: # ML model
               pred = predict_ml_model(results, new_data_all)
             

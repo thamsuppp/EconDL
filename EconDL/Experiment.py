@@ -83,7 +83,7 @@ class Experiment:
 
   def compute_unconditional_irfs(self, Y_train, Y_test, results, device, repeat_id):
     if self.execution_params['unconditional_irfs'] == False:
-      print('Experiment: Unconditional IRFs turned off')
+      print('Experiment compute_unconditional_irfs(): Unconditional IRFs turned off')
       return 
     # results contains the trained model
     unconditional_irf_params = {
@@ -98,6 +98,15 @@ class Experiment:
         'var_names': self.nn_hyps['var_names'],
         'model': 'VARNN'
       }
+
+    # Check if multiple hemispheres
+    if len(self.nn_hyps['s_pos']) > 1:
+      print('Experiment compute_unconditional_irfs(): Experiment has multiple hemispheres, not training unconditional IRFs')
+      fcast = np.zeros((self.extensions_params['unconditional_irfs']['num_simulations'], len(self.nn_hyps['var_names']), len(self.nn_hyps['var_names']), 3))
+      fcast[:] = np.nan
+      with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
+        np.savez(f, fcast = fcast, fcast_cov_mat = None)
+
 
     IRFUnconditionalObj = IRFUnconditional(unconditional_irf_params, device)
     fcast, fcast_cov_mat, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, results)
@@ -268,9 +277,12 @@ class Experiment:
     if self.execution_params['unconditional_irfs'] == False:
       print('Experiment _compile_unconditional_irf_results(): Unconditional IRFs turned off')
       return 
+    if len(self.nn_hyps['s_pos']) > 1:
+      print('Experiment _compile_unconditional_irf_results(): Experiment has multiple hemispheres, not training unconditional IRFs')
+      return
       
     if repeats_to_include is None:
-        
+      
       num_repeats = self.run_params['num_repeats']
       repeat_id = 0
       while repeat_id < num_repeats:
