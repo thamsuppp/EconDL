@@ -1,4 +1,4 @@
-# EconDL v1.0 (19 Jul 2022)
+# EconDL v1.1 (20 Jul 2022)
 
 ## Instructions:
 
@@ -48,8 +48,9 @@
 
 ## Version History
 
+- v1.1 (7/20/22): Self-tuning ML Benchmarks, Running experiments w multiple hemispheres
 - v1.0 (7/19/22): Experiment and Evaluation code works - verified with 18 Jul example.
-- What doesn't work/not implemented: Self-tuning ML Benchmarks, Running experiments w multiple hemispheres, prior shift, simulations evaluation, VSN 
+- What doesn't work/not implemented: prior shift, simulations evaluation, VSN 
 
 ## File Structure
 
