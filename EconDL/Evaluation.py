@@ -28,7 +28,7 @@ class Evaluation:
     self.beta_names = ['Constant'] + self.var_names
     self.test_size = self.Run.run_params['test_size']
 
-    self.exps_to_plot = evaluation_params['exps_to_plot']
+    self.exps_to_plot = evaluation_params['exps_to_plot'] if evaluation_params['exps_to_plot'] is not None else list(range(self.Run.num_experiments))
     self.need_to_combine = evaluation_params['need_to_combine']
     self.is_simulation = evaluation_params['is_simulation']
     self.repeats_to_include = evaluation_params['repeats_to_include']
@@ -303,8 +303,8 @@ class Evaluation:
 
         #Set the y-axis limits to be at the min 10% LCL and max 10% UCL
         axs[var, beta].set_ylim(
-            np.nanmin(np.nanquantile(BETAS[:, beta, :, var], axis = -1, q = 0.14)),
-            np.nanmax(np.nanquantile(BETAS[:, beta, :, var], axis = -1, q = 0.86))
+            np.nanmin(np.nanquantile(BETAS[:, beta, :, var], axis = -1, q = 0.1)),
+            np.nanmax(np.nanquantile(BETAS[:, beta, :, var], axis = -1, q = 0.9))
         )
 
         axs[var, beta].set_title(f'{var_names[var]}, {beta_names[beta]}')
@@ -353,7 +353,7 @@ class Evaluation:
           # Plot every bootstrap's value
           if self.plot_all_bootstraps == True:
             for b in range(PRECISION_ALL_PLOT.shape[4]):
-              axs[row, col].plot(PRECISION_ALL_PLOT[i, :, row, col, b], lw = 0.5, alpha = 0.15, label = i)
+              axs[row, col].plot(PRECISION_ALL_PLOT[i, :, row, col, b], lw = 0.5, alpha = 0.25, label = i)
 
           axs[row, col].plot(np.nanmedian(PRECISION_ALL_PLOT[i, :, row, col, :], axis = -1), color = 'black')
           axs[row, col].set_title(f'{self.var_names[row]}, {self.var_names[col]}')
@@ -365,10 +365,10 @@ class Evaluation:
           axs[row, col].fill_between(list(range(PRECISION_ALL_PLOT.shape[1])), sigmas_lcl, sigmas_ucl, alpha = 0.8)
 
           # Set the y-axis limits to be at the min 10% LCL and max 10% UCL
-          # axs[row, col].set_ylim(
-          #     np.nanmin(np.nanquantile(PRECISION_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.1)),
-          #     np.nanmax(np.nanquantile(PRECISION_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.9))
-          # )
+          axs[row, col].set_ylim(
+              np.nanmin(np.nanquantile(PRECISION_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.1)),
+              np.nanmax(np.nanquantile(PRECISION_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.9))
+          )
 
       fig.suptitle(f'Experiment {i} Precision', fontsize=16)
       image_file = f'{self.image_folder_path}/precision_{i}.png'
@@ -391,9 +391,9 @@ class Evaluation:
           for hemi in range(CHOLESKY_ALL_PLOT.shape[-2]):
             
             # Plot every bootstrap's value
-            if self.plot_all_bootstraps == True:
-              for b in range(CHOLESKY_ALL_PLOT.shape[4]):
-                axs[row, col].plot(CHOLESKY_ALL_PLOT[i, :, row, col, b], lw = 0.5, alpha = 0.15, label = i)
+            # if self.plot_all_bootstraps == True:
+            #   for b in range(CHOLESKY_ALL_PLOT.shape[4]):
+            #     axs[row, col].plot(CHOLESKY_ALL_PLOT[i, :, row, col, b], lw = 0.5, alpha = 0.25)
 
             axs[row, col].plot(np.nanmedian(CHOLESKY_ALL_PLOT[i, :, row, col, hemi, :], axis = -1), label = f'Hemi {hemi}')
             axs[row, col].set_title(f'{self.var_names[row]}, {self.var_names[col]}')
@@ -438,7 +438,7 @@ class Evaluation:
           # Plot every bootstrap's value 
           if self.plot_all_bootstraps == True:
             for b in range(self.SIGMAS_IN_ALL.shape[4]):
-              axs[row, col].plot(SIGMAS_ALL_PLOT[i, :, row, col, b], lw = 0.5, alpha = 0.15, label = i)
+              axs[row, col].plot(SIGMAS_ALL_PLOT[i, :, row, col, b], lw = 0.5, alpha = 0.25, label = i)
 
           axs[row, col].plot(np.nanmedian(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1))
           axs[row, col].set_title(f'{self.var_names[row]}, {self.var_names[col]}')
@@ -455,8 +455,8 @@ class Evaluation:
 
           # Set the y-axis limits to be at the min 10% LCL and max 10% UCL
           axs[row, col].set_ylim(
-              np.nanmin(np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.1)),
-              np.nanmax(np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.9))
+              np.nanmin(np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.25)),
+              np.nanmax(np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.75))
           )
           # Plot the time-invariant covariance matrix
           axs[row, col].axhline(y = np.nanmedian(self.SIGMAS_CONS_ALL[i, row, col, :]), color = 'red', label = 'Time-Invariant')

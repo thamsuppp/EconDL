@@ -108,6 +108,7 @@ class IRFUnconditionalEvaluation:
 
     for shock_var in range(self.n_var):
       for response_var in range(self.n_var):
+        num_proper_bootstraps = 0
         # Plot median
         axs[response_var, shock_var].plot(self.irf_mat[shock_var, response_var, :self.max_h, 1], lw = 1.5, color = 'black')
 
@@ -115,19 +116,28 @@ class IRFUnconditionalEvaluation:
         if self.plot_all_bootstraps == True:
           for b in range(num_outer_bootstraps):
             for r in range(len(self.randoms) - 1):
+              diff = self.DIFF[b, r, :self.max_h, response_var, shock_var]
+              if np.isnan(diff).any() == False:
+                num_proper_bootstraps += 1
               axs[response_var, shock_var].plot(self.DIFF[b, r, :self.max_h, response_var, shock_var], lw = 0.5, alpha = 0.2)
 
         # Plot confidence bands
         #axs[response_var, shock_var].fill_between(range(h), irf_mat[shock_var, response_var, :h, 0], irf_mat[shock_var, response_var, :h, 2], alpha = 0.5)
 
         # Plot confidence bands
-        axs[response_var, shock_var].plot(self.irf_mat[shock_var, response_var, :self.max_h, 0], lw = 1.5, color = 'black', ls = '--')
-        axs[response_var, shock_var].plot(self.irf_mat[shock_var, response_var, :self.max_h, 2], lw = 1.5, color = 'black', ls = '--')
+        lcl = self.irf_mat[shock_var, response_var, :self.max_h, 0]
+        ucl = self.irf_mat[shock_var, response_var, :self.max_h, 2]
+        axs[response_var, shock_var].plot(lcl, lw = 1.5, color = 'black', ls = '--')
+        axs[response_var, shock_var].plot(ucl, lw = 1.5, color = 'black', ls = '--')
 
-        axs[response_var, shock_var].set_title(f'Shock: {self.var_names[shock_var]}, Response: {self.var_names[response_var]}')
+        axs[response_var, shock_var].set_title(f'Shock: {self.var_names[shock_var]}, Response: {self.var_names[response_var]} ({num_proper_bootstraps})')
         axs[response_var, shock_var].set_xlabel('Periods')
         axs[response_var, shock_var].set_ylabel('Impulse Response')
-        #axs[response_var, shock_var].set_ylim((-0.5, 1))
+        
+        axs[response_var, shock_var].set_ylim((
+          np.nanmin(np.nanquantile(self.DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.25)),
+          np.nanmax(np.nanquantile(self.DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.75)),
+        ))
 
     image_file = f'{image_folder_path}/irf_{experiment_id}.png'
     plt.savefig(image_file)
@@ -160,6 +170,11 @@ class IRFUnconditionalEvaluation:
         axs[response_var, shock_var].set_title(f'Shock: {self.var_names[shock_var]}, Response: {self.var_names[response_var]}')
         axs[response_var, shock_var].set_xlabel('Periods')
         axs[response_var, shock_var].set_ylabel('Impulse Response')
+
+        axs[response_var, shock_var].set_ylim((
+          np.nanmin(np.nanquantile(self.CUM_DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.25)),
+          np.nanmax(np.nanquantile(self.CUM_DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.75)),
+        ))
 
     image_file = f'{image_folder_path}/cumulative_irf_{experiment_id}.png'
     plt.savefig(image_file)

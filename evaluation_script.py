@@ -18,3 +18,5 @@ EvaluationObj.Run.compute_conditional_irfs()
 
 print(EvaluationObj.check_results_sizes())
 EvaluationObj.plot_all()
+
+EvaluationObj.plot_sigmas()

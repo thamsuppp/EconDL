@@ -46,7 +46,6 @@ class Experiment:
     }
 
     print(f'Experiment Initialized: experiment {self.experiment_id}, repeat {self.job_id}')
-    print(self.nn_hyps)
     self.load_results()
 
   def check_results_sizes(self):
@@ -107,12 +106,13 @@ class Experiment:
       with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
         np.savez(f, fcast = fcast, fcast_cov_mat = None)
 
+    else:
 
-    IRFUnconditionalObj = IRFUnconditional(unconditional_irf_params, device)
-    fcast, fcast_cov_mat, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, results)
+      IRFUnconditionalObj = IRFUnconditional(unconditional_irf_params, device)
+      fcast, fcast_cov_mat, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, results)
 
-    with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
-      np.savez(f, fcast = fcast, fcast_cov_mat = fcast_cov_mat)
+      with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
+        np.savez(f, fcast = fcast, fcast_cov_mat = fcast_cov_mat)
 
   def compute_multi_forecasts(self, X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id):
 

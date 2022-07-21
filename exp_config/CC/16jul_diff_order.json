@@ -5,6 +5,7 @@
         "num_inner_bootstraps": 50,
         "num_repeats": 1,
         "default_nn_hyps": "nn_hyps_default",
+        "dataset": "monthly",
         
         "var_names": ["DGS3", "inf", "unrate"],
         "n_lag_linear": 6, 
