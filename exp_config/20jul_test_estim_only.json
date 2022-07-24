@@ -15,7 +15,7 @@
         "n_lag_d": 4,
         "n_var": 3,
         "test_size": 40,
-        "constant_tvpl": [40],
+        "constant_tvpl": [50],
         "s_pos": [[0, 18]],
 
         "optimizer": "Adam",
@@ -96,8 +96,8 @@
             "tvpl_archi": [2], 
             "lr": 0.001,         
             "s_pos": [[0, 18], [18, 38]],
-            "joint_estimation": true, 
-            "name": "RELU 2 Hemis"
+            "joint_estimation": false, 
+            "name": "RELU 2 Hemis Joint Off"
         },
         {
             "nodes": [200, 100, 50], 
@@ -142,8 +142,8 @@
             "tvpl_archi": [2], 
             "lr": 0.001,         
             "s_pos": [[0, 18], [18, 38]],
-            "joint_estimation": true, 
-            "name": "SELU 2 Hemis"
+            "joint_estimation": false, 
+            "name": "SELU 2 Hemis Joint Off"
         },
         {
             "nodes": [200, 100, 50], 

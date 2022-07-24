@@ -117,7 +117,7 @@ class IRFUnconditionalEvaluation:
           for b in range(num_outer_bootstraps):
             for r in range(len(self.randoms) - 1):
               diff = self.DIFF[b, r, :self.max_h, response_var, shock_var]
-              if np.isnan(diff).any() == False:
+              if np.isnan(diff[1:10]).any() == False:
                 num_proper_bootstraps += 1
               axs[response_var, shock_var].plot(self.DIFF[b, r, :self.max_h, response_var, shock_var], lw = 0.5, alpha = 0.2)
 
@@ -134,10 +134,13 @@ class IRFUnconditionalEvaluation:
         axs[response_var, shock_var].set_xlabel('Periods')
         axs[response_var, shock_var].set_ylabel('Impulse Response')
         
-        axs[response_var, shock_var].set_ylim((
-          np.nanmin(np.nanquantile(self.DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.25)),
-          np.nanmax(np.nanquantile(self.DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.75)),
-        ))
+        if np.isnan(self.DIFF[:, :, :self.max_h, response_var, shock_var]).all():
+          pass
+        else:
+          axs[response_var, shock_var].set_ylim((
+            np.nanmin(np.nanquantile(self.DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.25)),
+            np.nanmax(np.nanquantile(self.DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.75)),
+          ))
 
     image_file = f'{image_folder_path}/irf_{experiment_id}.png'
     plt.savefig(image_file)
@@ -171,10 +174,13 @@ class IRFUnconditionalEvaluation:
         axs[response_var, shock_var].set_xlabel('Periods')
         axs[response_var, shock_var].set_ylabel('Impulse Response')
 
-        axs[response_var, shock_var].set_ylim((
-          np.nanmin(np.nanquantile(self.CUM_DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.25)),
-          np.nanmax(np.nanquantile(self.CUM_DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.75)),
-        ))
+        if np.isnan(self.CUM_DIFF[:, :, :self.max_h, response_var, shock_var]).all():
+          pass
+        else:
+          axs[response_var, shock_var].set_ylim((
+            np.nanmin(np.nanquantile(self.CUM_DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.25)),
+            np.nanmax(np.nanquantile(self.CUM_DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.75)),
+          ))
 
     image_file = f'{image_folder_path}/cumulative_irf_{experiment_id}.png'
     plt.savefig(image_file)

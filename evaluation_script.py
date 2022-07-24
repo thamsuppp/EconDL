@@ -10,13 +10,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 RunObj = Run(run_name, device)
 
-# RunObj.train_benchmarks()
-# RunObj.train_multi_forecast_benchmarks()
-
 EvaluationObj = Evaluation(RunObj)
 EvaluationObj.Run.compute_conditional_irfs()
 
 print(EvaluationObj.check_results_sizes())
 EvaluationObj.plot_all()
-
-EvaluationObj.plot_sigmas()

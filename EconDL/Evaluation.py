@@ -147,10 +147,12 @@ class Evaluation:
       BETAS = BETAS[:, beta_ids_to_keep, :,:,:]
 
       if i == 0:
-        BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], BETAS.shape[4]))
+        BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], 2))
+        #BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], BETAS.shape[4]))
         BETAS_ALL[:] = np.nan
         # n_models x n_obs x n_betas x n_bootstraps x n_vars x n_hemispheres
-        BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], BETAS.shape[2], BETAS_IN.shape[3], BETAS_IN.shape[4]))
+        BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], BETAS.shape[2], BETAS_IN.shape[3], 2))
+        #BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], BETAS.shape[2], BETAS_IN.shape[3], BETAS_IN.shape[4]))
         BETAS_IN_ALL[:] = np.nan 
 
         # n_models x n_obs x n_vars x n_vars x n_bootstraps
@@ -455,8 +457,8 @@ class Evaluation:
 
           # Set the y-axis limits to be at the min 10% LCL and max 10% UCL
           axs[row, col].set_ylim(
-              np.nanmin(np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.25)),
-              np.nanmax(np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.75))
+              np.nanmin(np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.35)),
+              np.nanmax(np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.65))
           )
           # Plot the time-invariant covariance matrix
           axs[row, col].axhline(y = np.nanmedian(self.SIGMAS_CONS_ALL[i, row, col, :]), color = 'red', label = 'Time-Invariant')
@@ -498,7 +500,7 @@ class Evaluation:
 
   def plot_errors(self, data_sample = 'oob', exclude_last = 0):
         
-    fig, ax = plt.subplots(1, self.n_var, figsize = (6 * self.n_var, 4), constrained_layout = True)
+    fig, ax = plt.subplots(1, self.n_var, figsize = (6 * self.n_var, 6), constrained_layout = True)
     for i in range(self.M_total):
       
       if data_sample == 'oob':
@@ -521,7 +523,7 @@ class Evaluation:
     plt.savefig(f'{self.image_folder_path}/error_{data_sample}.png')
     plt.close()
 
-    fig, ax = plt.subplots(1, self.n_var, figsize = (6 * self.n_var, 4), constrained_layout = True)
+    fig, ax = plt.subplots(1, self.n_var, figsize = (6 * self.n_var, 6), constrained_layout = True)
 
     # Calculating errors
     if data_sample == 'oob':

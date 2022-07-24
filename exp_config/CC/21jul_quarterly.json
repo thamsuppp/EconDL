@@ -163,7 +163,7 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 63], [63, 80]],
+            "s_pos": [[0, 63], [63, 83]],
             "joint_estimation": true, 
             "name": "RELU 2 Hemis"
         },
@@ -179,7 +179,7 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 63], [63, 80]],
+            "s_pos": [[0, 63], [63, 83]],
             "joint_estimation": true, 
             "name": "SELU 2 Hemis"
         }

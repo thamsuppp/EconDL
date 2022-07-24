@@ -1,0 +1,216 @@
+{
+
+    "run_params": {
+
+        "dataset": "monthly",
+        "num_inner_bootstraps": 25,
+        "num_repeats": 1,
+        "default_nn_hyps": "nn_hyps_default",
+        "time_dummy_setting": 2,
+        "dummy_interval": 12,
+
+        "precision_lambda": 0.25, 
+        "lambda_temper_epochs": 40, 
+        
+        "var_names": ["oil", "Ex", "SPY", "DGS3", "inf", "unrate", "house_starts"],
+        "n_lag_linear": 6, 
+        "n_lag_d": 12,
+        "n_var": 7,
+        "test_size": 180,
+        "constant_tvpl": [50],
+        "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+        "s_pos": [[0, 126]]
+    },
+
+    "execution_params": {
+        "benchmarks": true,
+        "varnn_estimation": true,
+        "conditional_irfs": false,
+        "unconditional_irfs": false,
+        "multi_forecasting": false
+    },
+
+    "extensions_params": {
+
+        "ml_experiments": ["RF", "XGBoost"],
+
+        "conditional_irfs": {
+            "max_h": 10,
+            "normalize_time_plot": true,
+            "test_exclude_last": 0
+        },
+        "unconditional_irfs": {
+            "num_simulations": 600,
+            "endh": 40, 
+            "start_shock_time": 40,
+            "max_h": 20,
+            "forecast_method": "new",
+            "plot_all_bootstraps": true
+        },
+        "benchmarks": {
+            "window_length": 40,
+            "reestimation_window": 1
+        },
+        "multi_forecasting": {
+            "forecast_horizons": 3,
+            "reestimation_window": 10,
+            "forecast_method": "new",
+            "num_sim_bootstraps": 20,
+            "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand"]
+        }
+    },
+
+    "nn_hyps": [
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "optimizer": "Adam",
+            "s_pos": [[0, 126]],
+            "joint_estimation": true, 
+            "name": "RELU Endog"
+        },
+        {
+            "nodes": [100, 50, 25], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "optimizer": "Adam",
+            "s_pos": [[0, 126]],
+            "joint_estimation": true, 
+            "name": "RELU Endog 100-25"
+        },
+        {
+            "nodes": [400, 400, 400], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "optimizer": "Adam",
+            "s_pos": [[0, 126]],
+            "joint_estimation": true, 
+            "name": "RELU Endog 400x3"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [2], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "optimizer": "Adam",
+            "s_pos": [[0, 126]],
+            "joint_estimation": true, 
+            "name": "RELU Endog TVPL2"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50, 50],
+            "tvpl_archi": [5, 5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "optimizer": "Adam",
+            "s_pos": [[0, 126]],
+            "joint_estimation": true, 
+            "name": "RELU Endog TVPL5x2"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.005, 
+            "dropout_rate": 0.25, 
+            "optimizer": "Adam",
+            "s_pos": [[0, 126]],
+            "joint_estimation": true, 
+            "name": "RELU Endog High LR"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.0002, 
+            "dropout_rate": 0.25, 
+            "optimizer": "Adam",
+            "s_pos": [[0, 126]],
+            "joint_estimation": true, 
+            "name": "RELU Endog Low LR"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "time_dummy_setting": 0,
+            "optimizer": "Adam",
+            "s_pos": [[0, 126], [126, 156]],
+            "joint_estimation": true, 
+            "name": "RELU 2Hemis Linear Time"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "time_dummy_setting": 0,
+            "optimizer": "Adam",
+            "s_pos": [[0, 126], [126, 186]],
+            "joint_estimation": true, 
+            "name": "RELU 2Hemis Dummies"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "time_dummy_setting": 0,
+            "optimizer": "Adam",
+            "s_pos": [[0, 126]],
+            "joint_estimation": true, 
+            "name": "RELU Joint off"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "time_dummy_setting": 0,
+            "optimizer": "Adam",
+            "s_pos": [[0, 126], [126, 186]],
+            "joint_estimation": true, 
+            "name": "RELU Joint off 2Hemis Dummies"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.SELU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "optimizer": "Adam",
+            "s_pos": [[0, 126]],
+            "joint_estimation": true, 
+            "name": "SELU"
+        }
+    ],
+
+    "evaluation_params": {
+        "is_test": false,
+        "need_to_combine": true,
+        "is_simulation": false,
+        "multiple_datasets": false,
+        "sim_dataset": 2,
+        "benchmarks": ["VAR_whole", "AR_whole","AR_roll", "VAR_expand", "AR_expand", "RF_whole"],
+        "experiments_to_load": [0,1,2,3,4,5,6,7,8,9,10,11],
+        "plot_all_bootstraps": true,
+        "exps_to_plot": [0,1,2,3,4,5,6,7,8,9,10,11],
+        "repeats_to_include": null,
+        "test_exclude_last": 24
+    }
+}

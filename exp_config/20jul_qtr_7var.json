@@ -1,0 +1,122 @@
+{
+
+    "run_params": {
+
+        "dataset": "quarterly",
+        "num_inner_bootstraps": 20,
+        "num_repeats": 1,
+        "default_nn_hyps": "nn_hyps_default",
+        "time_dummy_setting": 2,
+        "dummy_interval": 6,
+        
+        "var_names": ["oil", "Ex", "SPY", "DGS3", "inf", "unrate", "house_starts"],
+        "n_lag_linear": 2, 
+        "n_lag_d": 4,
+        "n_var": 7,
+        "test_size": 40,
+        "constant_tvpl": [25],
+        "s_pos": [[0, 42]]
+    },
+
+    "execution_params": {
+        "benchmarks": true,
+        "varnn_estimation": true,
+        "conditional_irfs": true,
+        "unconditional_irfs": true,
+        "multi_forecasting": false
+    },
+
+    "extensions_params": {
+
+        "ml_experiments": ["RF", "XGBoost"],
+
+        "conditional_irfs": {
+            "max_h": 10,
+            "normalize_time_plot": true,
+            "test_exclude_last": 0
+        },
+        "unconditional_irfs": {
+            "num_simulations": 600,
+            "endh": 40, 
+            "start_shock_time": 40,
+            "max_h": 20,
+            "forecast_method": "new",
+            "plot_all_bootstraps": true
+        },
+        "benchmarks": {
+            "window_length": 40,
+            "reestimation_window": 1
+        },
+        "multi_forecasting": {
+            "forecast_horizons": 3,
+            "reestimation_window": 10,
+            "forecast_method": "new",
+            "num_sim_bootstraps": 20,
+            "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand"]
+        }
+    },
+
+    "nn_hyps": [
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.0005, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 42]],
+            "joint_estimation": true, 
+            "name": "RELU Endog"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.SELU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.0005, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 42]],
+            "joint_estimation": true, 
+            "name": "SELU Endog"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 42], [42, 72]],
+            "joint_estimation": true, 
+            "name": "RELU 2 Hemis"
+        }
+        
+    ],
+
+    "evaluation_params": {
+        "is_test": false,
+        "need_to_combine": true,
+        "is_simulation": false,
+        "multiple_datasets": false,
+        "sim_dataset": 2,
+        "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole"],
+        "experiments_to_load": [0,1,2],
+        "plot_all_bootstraps": true,
+        "exps_to_plot": [0,1,2],
+        "repeats_to_include": [0,1,2,3,4],
+        "test_exclude_last": 8
+    }
+}
+

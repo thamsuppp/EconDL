@@ -31,8 +31,10 @@ else:
 
 
 for repeat in range(num_repeats):
-  for experiment_id in range(num_experiments):
 
+  for experiment_id in range(num_experiments):
+    
+    
     print(f'Experiment {experiment_id}, repeat {repeat}')
     # Train the specific experiment_id and speciifc repeat_id
     RunObj = Run(run_name, device, experiment_id = experiment_id, job_id = repeat)
