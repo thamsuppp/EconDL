@@ -322,6 +322,13 @@ class Experiment:
     with open(f'{self.folder_path}/fcast_{self.experiment_id}_compiled.npz', 'wb') as f:
       np.savez(f, fcast = fcast_all)
 
+
+  def evaluate_unconditional_irf_results(self, Y_train):
+
+    results = np.load(f'{self.folder_path}/fcast_{self.experiment_id}_compiled.npz', allow_pickle = True)
+    fcast_all = results['fcast']
+    fcast_cov_mat_all = None
+
     unconditional_irf_params = {
         'n_lag_linear': self.nn_hyps['n_lag_linear'],
         'n_lag_d': self.nn_hyps['n_lag_d'],
@@ -337,7 +344,7 @@ class Experiment:
         'experiment_name': self.nn_hyps['name']
       }
 
-    IRFUnconditionalEvaluationObj = IRFUnconditionalEvaluation(fcast_all, fcast_cov_mat_all, unconditional_irf_params)
+    IRFUnconditionalEvaluationObj = IRFUnconditionalEvaluation(fcast_all, fcast_cov_mat_all, unconditional_irf_params, Y_train)
     IRFUnconditionalEvaluationObj.evaluate_unconditional_irfs()
     IRFUnconditionalEvaluationObj.plot_irfs(self.run_params['image_folder_path'], self.experiment_id)
     IRFUnconditionalEvaluationObj.plot_cumulative_irfs(self.run_params['image_folder_path'], self.experiment_id)

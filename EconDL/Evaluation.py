@@ -243,19 +243,19 @@ class Evaluation:
       self.PREDS_ALL[self.M_varnn + i, :,:,:] = preds
       self.PREDS_TEST_ALL[self.M_varnn + i,:,:,:] = preds_test
 
-  # Estimate and plot VAR benchmark IRFs
-  def plot_VAR_irfs(self):
-    var_model = VAR(self.Y_train)
-    var_results = var_model.fit(self.Run.run_params['n_lag_linear'])
-    max_h = self.Run.extensions_params['unconditional_irfs']['max_h']
-    irf = var_results.irf(max_h)
+  # # Estimate and plot VAR benchmark IRFs
+  # def plot_VAR_irfs(self):
+  #   var_model = VAR(self.Y_train)
+  #   var_results = var_model.fit(self.Run.run_params['n_lag_linear'])
+  #   max_h = self.Run.extensions_params['unconditional_irfs']['max_h']
+  #   irf = var_results.irf(max_h)
 
-    # Plot the IRFs
-    irf_plot = irf.plot(orth = True)
-    plt.savefig(f'{self.image_folder_path}/irf_VAR.png')
-    irf_plot = irf.plot_cum_effects(orth = True)
-    plt.savefig(f'{self.image_folder_path}/cumulative_irf_VAR.png')
-    plt.close()
+  #   # Plot the IRFs
+  #   irf_plot = irf.plot(orth = True)
+  #   plt.savefig(f'{self.image_folder_path}/irf_VAR.png')
+  #   irf_plot = irf.plot_cum_effects(orth = True)
+  #   plt.savefig(f'{self.image_folder_path}/cumulative_irf_VAR.png')
+  #   plt.close()
     
   # Helper function to plot betas
   def _plot_betas_inner(self, BETAS, var_names, beta_names, image_file, q = 0.16, title = '', actual = None):
@@ -562,7 +562,8 @@ class Evaluation:
     
   # Wrapper function to do all plots
   def plot_all(self):
-    self.plot_VAR_irfs()
+    
+    self.Run.evaluate_unconditional_irfs(self.Y_train)
     self.plot_cholesky()
     self.plot_precision()
     self.plot_sigmas()

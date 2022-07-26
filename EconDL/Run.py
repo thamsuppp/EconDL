@@ -212,6 +212,13 @@ class Run:
       ExperimentObj = self.experiments[experiment_id]
       ExperimentObj.compute_conditional_irfs()
 
+  def evaluate_unconditional_irfs(self, Y_train, experiment_ids = None):
+    # If experiment_ids = None, then train all
+    experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
+    for experiment_id in experiment_ids:
+      ExperimentObj = self.experiments[experiment_id]
+      ExperimentObj.evaluate_unconditional_irf_results(Y_train)
+
   # Wrapper function that trains experiments, benchmarks and multi-forecast benchmarks
   def train_all(self):
     self.train_experiments()
