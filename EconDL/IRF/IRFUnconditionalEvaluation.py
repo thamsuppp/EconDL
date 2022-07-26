@@ -22,6 +22,9 @@ class IRFUnconditionalEvaluation:
     self.endh = irf_params['endh']
     self.randoms = list(range(self.start_shock_time, self.num_simulations, self.endh))
     self.plot_all_bootstraps = irf_params['plot_all_bootstraps']
+
+    self.experiment_id = irf_params['experiment_id']
+    self.experiment_name = irf_params['experiment_name']
   
   def load_results(self, file_name):
 
@@ -142,6 +145,7 @@ class IRFUnconditionalEvaluation:
             np.nanmax(np.nanquantile(self.DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.75)),
           ))
 
+    fig.suptitle(f'Experiment {self.experiment_id} ({self.experiment_name}) IRFs', fontsize = 16)
     image_file = f'{image_folder_path}/irf_{experiment_id}.png'
     plt.savefig(image_file)
 
@@ -182,6 +186,7 @@ class IRFUnconditionalEvaluation:
             np.nanmax(np.nanquantile(self.CUM_DIFF[:, :, :self.max_h, response_var, shock_var], axis = [0,1], q = 0.75)),
           ))
 
+    fig.suptitle(f'Experiment {self.experiment_id} ({self.experiment_name}) Cumulative IRFs', fontsize = 16)
     image_file = f'{image_folder_path}/cumulative_irf_{experiment_id}.png'
     plt.savefig(image_file)
 

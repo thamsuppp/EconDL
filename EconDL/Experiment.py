@@ -72,12 +72,14 @@ class Experiment:
         'n_betas': self.nn_hyps['n_var'] * self.nn_hyps['n_lag_linear'] + 1,
         'max_h': self.extensions_params['conditional_irfs']['max_h'],
         'test_exclude_last': self.extensions_params['conditional_irfs']['test_exclude_last'],
-        'dataset': self.run_params['dataset']
+        'dataset': self.run_params['dataset'],
+        'experiment_id': self.experiment_id,
+        'experiment_name': self.nn_hyps['name']
       }
       
       IRFConditionalObj = IRFConditional(self.results, conditional_irf_params)
-      IRFConditionalObj.plot_irfs(image_folder_path, self.experiment_id)
-      IRFConditionalObj.plot_irfs_over_time(image_folder_path, self.experiment_id, normalize = self.extensions_params['conditional_irfs']['normalize_time_plot'])
+      IRFConditionalObj.plot_irfs(image_folder_path)
+      IRFConditionalObj.plot_irfs_over_time(image_folder_path, normalize = self.extensions_params['conditional_irfs']['normalize_time_plot'])
       self.evaluations['conditional_irf'] = IRFConditionalObj
 
   def compute_unconditional_irfs(self, Y_train, Y_test, results, device, repeat_id):
@@ -249,6 +251,11 @@ class Experiment:
         
       num_repeats = self.run_params['num_repeats']
       repeat_id = 0
+
+      if os.path.exists(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_0.npz') == False:
+        print('Experiment _compile_multi_forecasting_results(): No Multi-forecasting results')
+        return
+
       while repeat_id < num_repeats:
 
         fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)['fcast']
@@ -259,6 +266,10 @@ class Experiment:
         repeat_id += 1
     
     else:
+      if os.path.exists(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeats_to_include[0]}.npz') == False:
+        print('Experiment _compile_multi_forecasting_results(): No Multi-forecasting results')
+        return
+        
       for i, repeat_id in enumerate(repeats_to_include):
         fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)['fcast']
         if i == 0:
@@ -321,7 +332,9 @@ class Experiment:
         'forecast_method': self.extensions_params['unconditional_irfs']['forecast_method'], # old or new
         'max_h': self.extensions_params['unconditional_irfs']['max_h'], 
         'var_names': self.nn_hyps['var_names'],
-        'plot_all_bootstraps': self.extensions_params['unconditional_irfs']['plot_all_bootstraps']
+        'plot_all_bootstraps': self.extensions_params['unconditional_irfs']['plot_all_bootstraps'],
+        'experiment_id': self.experiment_id,
+        'experiment_name': self.nn_hyps['name']
       }
 
     IRFUnconditionalEvaluationObj = IRFUnconditionalEvaluation(fcast_all, fcast_cov_mat_all, unconditional_irf_params)

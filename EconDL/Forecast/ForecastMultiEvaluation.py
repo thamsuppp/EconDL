@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 class ForecastMultiEvaluation:
 
@@ -42,13 +43,14 @@ class ForecastMultiEvaluation:
     # Load all the betas from different experiments
     for i in range(self.M_varnn):
 
-      out = np.load(f'{self.folder_path}/multi_fcast_{i}_compiled.npz')
-      FCAST = out['fcast']
-      experiments_names.append(f'Exp {i}')
-      FCAST_nan = FCAST.copy()
-      FCAST_nan[FCAST_nan == 0] = np.nan
-      Y_pred = np.nanmedian(FCAST_nan, axis = 2)
-      Y_pred_big[i, :,:,:,:] = Y_pred
+      if os.path.exists(f'{self.folder_path}/multi_fcast_{i}_compiled.npz') == True:
+        out = np.load(f'{self.folder_path}/multi_fcast_{i}_compiled.npz')
+        FCAST = out['fcast']
+        experiments_names.append(f'Exp {i}')
+        FCAST_nan = FCAST.copy()
+        FCAST_nan[FCAST_nan == 0] = np.nan
+        Y_pred = np.nanmedian(FCAST_nan, axis = 2)
+        Y_pred_big[i, :,:,:,:] = Y_pred
 
     # Add the benchmark models in
     benchmark_folder_path = f'{self.folder_path}/benchmarks'

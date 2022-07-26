@@ -333,10 +333,10 @@ class Evaluation:
       if n_hemis > 1:
         for hemi in range(n_hemis):
           image_file = f'{self.image_folder_path}/betas_{i}_hemi_{hemi}.png'
-          self._plot_betas_inner(BETAS_ALL_PLOT[i, :, :, :, :, hemi], self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i}, Hemisphere {hemi}', actual = None)
+          self._plot_betas_inner(BETAS_ALL_PLOT[i, :, :, :, :, hemi], self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Hemisphere {hemi}', actual = None)
         
       image_file = f'{self.image_folder_path}/betas_{i}_sum.png'
-      self._plot_betas_inner(np.sum(BETAS_ALL_PLOT[i, :, :, :, :,:], axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} Betas, Sum', actual = None)
+      self._plot_betas_inner(np.sum(BETAS_ALL_PLOT[i, :, :, :, :,:], axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Sum', actual = None)
 
   def plot_precision(self):
 
@@ -372,7 +372,7 @@ class Evaluation:
               np.nanmax(np.nanquantile(PRECISION_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.9))
           )
 
-      fig.suptitle(f'Experiment {i} Precision', fontsize=16)
+      fig.suptitle(f'Experiment {i} ({self.experiment_names[i]}) Precision', fontsize=16)
       image_file = f'{self.image_folder_path}/precision_{i}.png'
       plt.savefig(image_file)
       plt.close()
@@ -413,7 +413,7 @@ class Evaluation:
             # )
             if row == 0 and col == 0:
               axs[row,col].legend()
-      fig.suptitle(f'Experiment {i} Cholesky', fontsize=16)
+      fig.suptitle(f'Experiment {i} ({self.experiment_names[i]}) Cholesky', fontsize=16)
       image_file = f'{self.image_folder_path}/cholesky_{i}.png'
       plt.savefig(image_file)
       plt.close()
@@ -465,7 +465,7 @@ class Evaluation:
       print('Time-Invariant Cov Mat', np.nanmedian(self.SIGMAS_CONS_ALL[i, :,:,:], axis = -1))
       print('Mean Median Time-varying Cov Mat', np.nanmean(np.nanmedian(SIGMAS_ALL_PLOT[i, :, :, :, :], axis = -1), axis = 0))
 
-      fig.suptitle(f'Experiment {i} Sigma', fontsize=16)
+      fig.suptitle(f'Experiment {i} ({self.experiment_names[i]}) Sigma', fontsize=16)
       image_file = f'{self.image_folder_path}/sigmas_{i}.png'
       plt.savefig(image_file)
       plt.close()

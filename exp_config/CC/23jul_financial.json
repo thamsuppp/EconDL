@@ -1,0 +1,283 @@
+{
+
+    "run_params": {
+        "dataset": "financial",
+
+        "num_inner_bootstraps": 50,
+        "num_repeats": 1,
+        "default_nn_hyps": "nn_hyps_default",
+        
+        "var_names": ["S&P", "NASDAQ", "VIX", "DJIA"],
+        "n_lag_linear": 10, 
+        "n_lag_d": 100,
+        "n_var": 4,
+        "test_size": 100,
+        "constant_tvpl": [50],
+
+        "precision_lambda": 0.25, 
+        "lambda_temper_epochs": 40, 
+        "time_dummy_setting": 2, 
+        "optimizer": "Adam",
+        "s_pos_setting": {"is_hemi": false, "n_times": 30},
+        "s_pos": [[0, 440]]
+    },
+
+    "execution_params": {
+        "benchmarks": true,
+        "varnn_estimation": true,
+        "conditional_irfs": true,
+        "unconditional_irfs": true,
+        "multi_forecasting": true
+    },
+
+    "extensions_params": {
+
+        "ml_experiments": ["RF", "XGBoost"],
+
+        "conditional_irfs": {
+            "max_h": 40,
+            "normalize_time_plot": true,
+            "test_exclude_last": 0
+        },
+        "unconditional_irfs": {
+            "num_simulations": 3000,
+            "endh": 100, 
+            "start_shock_time": 100,
+            "max_h": 40,
+            "forecast_method": "new",
+            "plot_all_bootstraps": false
+        },
+        "benchmarks": {
+            "window_length": 100,
+            "reestimation_window": 1
+        },
+        "multi_forecasting": {
+            "forecast_horizons": 10,
+            "reestimation_window": 100,
+            "forecast_method": "new",
+            "num_sim_bootstraps": 25,
+            "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand"]
+        }
+    },
+
+    "nn_hyps": [
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "RELU"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.004, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "RELU High LR"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.00025, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "RELU Low LR"
+        },
+        {
+            "nodes": [400, 400, 400, 400], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "RELU 400x4"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "end_precision_lambda": 0.05,
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "RELU End Precision Lambda 0.05"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440], [440, 620]],
+            "joint_estimation": true, 
+            "name": "RELU 2Hemi"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [100],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "RELU TVPLConstant100"
+        },
+        
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [100],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440], [440, 620]],
+            "joint_estimation": false, 
+            "name": "RELU Joint Off 2Hemi"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.ReLU()", 
+            "constant_tvpl": [100],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": false, 
+            "name": "RELU Joint Off"
+        },
+
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "SELU"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.004, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "SELU High LR"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.00025, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "SELU Low LR"
+        },
+        {
+            "nodes": [400, 400, 400, 400], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "SELU 400x4"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "end_precision_lambda": 0.05,
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "SELU End Precision Lambda 0.05"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [50],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440], [440, 620]],
+            "joint_estimation": true, 
+            "name": "SELU 2Hemi"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [100],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": true, 
+            "name": "SELU TVPLConstant100"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [100],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440], [440, 620]],
+            "joint_estimation": false, 
+            "name": "SELU Joint Off 2Hemi"
+        },
+        {
+            "nodes": [400, 200, 100], 
+            "actv": "nn.SELU()", 
+            "constant_tvpl": [100],
+            "tvpl_archi": [5], 
+            "lr": 0.001, 
+            "dropout_rate": 0.25, 
+            "s_pos": [[0, 440]],
+            "joint_estimation": false, 
+            "name": "SELU Joint Off"
+        }
+    ],
+
+    "evaluation_params": {
+        "is_test": false,
+        "need_to_combine": true,
+        "is_simulation": false,
+        "multiple_datasets": false,
+        "sim_dataset": 2,
+        "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole"],
+        "experiments_to_load": null,
+        "plot_all_bootstraps": false,
+        "exps_to_plot": null,
+        "repeats_to_include": null,
+        "test_exclude_last": 0
+    }
+}
+
+

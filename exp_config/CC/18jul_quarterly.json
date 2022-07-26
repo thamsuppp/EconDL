@@ -37,7 +37,7 @@
         "conditional_irfs": {
             "max_h": 10,
             "normalize_time_plot": true,
-            "test_exclude_last": 0
+            "test_exclude_last": 8
         },
         "unconditional_irfs": {
             "num_simulations": 1000,
@@ -187,15 +187,15 @@
 
     "evaluation_params": {
         "is_test": false,
-        "need_to_combine": false,
+        "need_to_combine": true,
         "is_simulation": false,
         "multiple_datasets": false,
         "sim_dataset": 2,
         "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole"],
-        "experiments_to_load": [0, 1],
+        "experiments_to_load": [0,1,2,3,4,5,6,7,8,9],
         "plot_all_bootstraps": false,
-        "exps_to_plot": [0, 1],
-        "repeats_to_include": null,
+        "exps_to_plot": [0,1,2,3,4,5,6,7,8,9],
+        "repeats_to_include": [1,2],
         "test_exclude_last": 8
     }
 }

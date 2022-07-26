@@ -24,20 +24,18 @@ else:
 # - Instantiates the experiments with the corresponding nn_hyps
 # - Loads the data into the RunObj
 
-task_id = int(os.environ.get('SLURM_ARRAY_TASK_ID')) - 1
 
 # If we are doing this in parallel, then we pass in the job_id parameter here
 
-experiment_id = task_id % num_experiments
-repeat = int(task_id / num_experiments)
+task_id = int(os.environ.get('SLURM_ARRAY_TASK_ID')) - 1
+repeat = task_id
 
-print(f'Task ID {task_id}, Experiment {experiment_id}, repeat {repeat}')
 # Train the specific experiment_id and speciifc repeat_id
-RunObj = Run(run_name, device, experiment_id = experiment_id, job_id = repeat)
-RunObj.train_all()
-
-if experiment_id == 0: # Oly train the ML experiments once per across all experiments (only needed once)
-  RunObj.train_ml_experiments()
+RunObj = Run(run_name, device, experiment_id = 0, job_id = repeat)
+if repeat == 0:
+  RunObj.train_benchmarks()
+  RunObj.train_multi_forecast_benchmarks()
+RunObj.train_ml_experiments()
 
 
 ### Evaluating

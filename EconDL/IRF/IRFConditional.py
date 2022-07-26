@@ -19,6 +19,9 @@ class IRFConditional:
     self.BETAS = np.nansum(results['betas'], axis = -1)
     self.SIGMAS = results['sigmas']
     self.IRFS = None
+
+    self.experiment_id = irf_params['experiment_id']
+    self.experiment_name = irf_params['experiment_name']
     
     # Computes the IRFs
     self.get_irfs()
@@ -119,7 +122,7 @@ class IRFConditional:
 
     self.IRFS = IRFS
 
-  def plot_irfs(self, image_folder_path, experiment_id):
+  def plot_irfs(self, image_folder_path):
 
     # Take the median 
     IRFS_median = np.nanmedian(self.IRFS, axis = 1)
@@ -131,7 +134,7 @@ class IRFConditional:
       times_to_draw = [30, 70, 110, 150]
       times_to_draw_labels = [1968, 1978, 1988, 1998]
     else:
-      times_to_draw = list(np.linspace(0, self.IRF.shape[0], 6, dtype = int)[1:-1])
+      times_to_draw = list(np.linspace(0, self.IRFS.shape[0], 6, dtype = int)[1:-1])
       times_to_draw_labels = times_to_draw
 
     cmap = plt.cm.tab10
@@ -153,14 +156,15 @@ class IRFConditional:
         if k == 0 and kk == 0:
           ax[kk, k].legend()
 
-    image_path = f'{image_folder_path}/irf_conditional_{experiment_id}.png'
+    fig.suptitle(f'Experiment {self.experiment_id} ({self.experiment_name} Conditional IRF', fontsize = 16)
+    image_path = f'{image_folder_path}/irf_conditional_{self.experiment_id}.png'
     plt.savefig(image_path)
 
     print(f'Conditional IRF plotted at {image_path}')
 
   # Compare the IRFs over all time periods for each horizon
   # normalize: normalize by the 0th shock being 1
-  def plot_irfs_over_time(self, image_folder_path, experiment_id, normalize = True):
+  def plot_irfs_over_time(self, image_folder_path, normalize = True):
 
     # Take the median 
     IRFS_median = np.nanmedian(self.IRFS, axis = 1)
@@ -188,7 +192,8 @@ class IRFConditional:
         if k == 0 and kk == 0:
           ax[kk, k].legend()
 
-    image_file = f'{image_folder_path}/irf_conditional_over_time_{experiment_id}.png'
+    fig.suptitle(f'Experiment {self.experiment_id} ({self.experiment_name}) Conditional IRF Over Time', fontsize = 16)
+    image_file = f'{image_folder_path}/irf_conditional_over_time_{self.experiment_id}.png'
     plt.savefig(image_file)
     print(f'Conditional IRF over time plotted at {image_file}')
 
