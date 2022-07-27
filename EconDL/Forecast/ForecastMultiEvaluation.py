@@ -72,13 +72,13 @@ class ForecastMultiEvaluation:
 
   def plot_different_horizons(self):
 
-    for horizon in range(1, self.h+1):
-      fig, ax = plt.subplots(1,self.n_var, figsize = (self.n_var * 6, 4), constrained_layout = True)
+    fig, ax = plt.subplots(self.h, self.n_var, figsize = (self.n_var * 6, 4), constrained_layout = True)
 
+    for horizon in range(1, self.h+1):
       # Plot actual
       for var in range(self.n_var):
-        ax[var].set_title(f'{self.var_names[var]}, h = {horizon}')
-        ax[var].plot(self.Y_test[:, var], label = 'Actual', color = 'black')
+        ax[horizon-1, var].set_title(f'{self.var_names[var]}, h = {horizon}')
+        ax[horizon-1, var].plot(self.Y_test[:, var], label = 'Actual', color = 'black')
       
       # Plot predicted
       for model in range(self.Y_pred_big_latest.shape[0]):
@@ -89,9 +89,9 @@ class ForecastMultiEvaluation:
         Y_pred_h[:horizon, :] = np.nan
 
         for var in range(self.n_var):
-          ax[var].plot(Y_pred_h[:, var], label = self.experiments_names[model])
+          ax[horizon-1, var].plot(Y_pred_h[:, var], label = self.experiments_names[model])
       if var == (self.n_var - 1):
-        ax[var].legend()
+        ax[horizon-1, var].legend()
 
     image_file = f'{self.image_folder_path}/multi_forecast_preds_diff_horizons.png'
     plt.savefig(image_file)

@@ -94,9 +94,9 @@
         "multiple_datasets": false,
         "sim_dataset": 2,
         "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole"],
-        "experiments_to_load": [0,1],
+        "experiments_to_load": null,
         "plot_all_bootstraps": true,
-        "exps_to_plot": [0,1],
+        "exps_to_plot": null,
         "repeats_to_include": null,
         "test_exclude_last": 0
     }

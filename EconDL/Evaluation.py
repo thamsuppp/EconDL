@@ -3,7 +3,11 @@ import numpy as np
 import pandas as pd
 from statsmodels.tsa.api import VAR
 import os
+import seaborn as sns
+import colorcet as cc
 from EconDL.Forecast.ForecastMultiEvaluation import ForecastMultiEvaluation
+
+palette = sns.color_palette(cc.glasbey, n_colors = 25)
 
 class Evaluation:
   def __init__(self, Run):
@@ -482,7 +486,7 @@ class Evaluation:
       preds_test_median = np.nanmedian(self.PREDS_TEST_ALL[i,:,:,:], axis = 1)
       for var in range(self.n_var):
         if i < self.M_varnn:
-          ax[var].plot(preds_median[:, var], lw = 0.75, label = self.all_names[i])
+          ax[var].plot(preds_median[:, var], lw = 0.75, label = self.all_names[i], color = palette[i])
         if i == self.M_total - 1:
           ax[var].plot(self.Y_train[:, var], lw = 1, label = 'Actual', color = 'black')
           ax[var].set_title(self.var_names[var])
@@ -516,7 +520,7 @@ class Evaluation:
       for var in range(self.n_var):
         if i == 0:
           ax[var].set_title(self.var_names[var])
-        ax[var].plot(error[:, var], lw = 0.5, label = self.all_names[i])
+        ax[var].plot(error[:, var], lw = 0.5, label = self.all_names[i], color = palette[i])
         if var == 0:
           ax[var].legend()
 
@@ -549,7 +553,7 @@ class Evaluation:
         if i >= self.M_varnn: # Make benchmarks dotted
           ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i], ls = 'dotted')
         else:
-          ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i])
+          ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i], color = palette[i])
 
         if var == 0:
           ax[var].legend()

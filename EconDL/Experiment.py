@@ -277,7 +277,7 @@ class Experiment:
         else:
           fcast_all = np.concatenate([fcast_all, fcast_repeat], axis = 2)
             
-    with open(f'{self.folder_path}/multi_fcast_{self.experiment_id}_compiled.npz', 'wb') as f:
+    with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_compiled.npz', 'wb') as f:
       np.savez(f, fcast = fcast_all)
 
   def _compile_unconditional_irf_results(self, repeats_to_include = None):
