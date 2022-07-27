@@ -186,6 +186,7 @@ class Benchmarks:
     
     return preds_train, preds_test, None
 
+
   # Wrapper Function - public
   def compute_benchmarks(self):
 
@@ -208,6 +209,10 @@ class Benchmarks:
     # Random forest
     preds_train_whole_rf, preds_test_whole_rf, _ = self._conduct_random_forest(X_train, X_test, Y_train, Y_test)
 
+    # Naive benchmarks
+    preds_train_zero, preds_test_zero = get_naive_preds(Y_train, Y_test, method = 'zero')
+    preds_train_mean, preds_test_mean = get_naive_preds(Y_train, Y_test, method = 'mean')
+
     # Expanding the entire-window regression coefs to be same shape as the rolling/expanding window
     betas_whole_var = np.repeat(np.expand_dims(betas_whole_var, axis = 0), betas_expand_var.shape[0], axis = 0)
     betas_whole_ar = np.repeat(np.expand_dims(betas_whole_ar, axis = 0), betas_expand_ar.shape[0], axis = 0)
@@ -228,3 +233,27 @@ class Benchmarks:
       np.savez(f, train_preds = preds_train_in_expand_ar, betas_in = betas_expand_ar, test_preds = preds_test_expand_ar, y = Y_train, y_test = Y_test)
     with open(f'{self.benchmark_folder_path}/{savefile_header}benchmark_RF_whole.npz', 'wb') as f:
       np.savez(f, train_preds = preds_train_whole_rf, test_preds = preds_test_whole_rf, y = Y_train, y_test = Y_test)
+    with open(f'{self.benchmark_folder_path}/{savefile_header}benchmark_zero.npz', 'wb') as f:
+      np.savez(f, train_preds = preds_train_zero, test_preds = preds_test_zero, y = Y_train, y_test = Y_test)
+    with open(f'{self.benchmark_folder_path}/{savefile_header}benchmark_mean.npz', 'wb') as f:
+      np.savez(f, train_preds = preds_train_mean, test_preds = preds_test_mean, y = Y_train, y_test = Y_test)
+
+def get_naive_preds(Y_train, Y_test, method = 'zero'):
+  '''
+  Types of preds:
+  zero - zero
+  mean - mean of the variable in training set
+  median - median of the variable in training set
+  '''
+  if method == 'zero':
+    return np.zeros_like(Y_train), np.zeros_like(Y_test)
+  elif method == 'mean':
+    return (
+        np.repeat(np.expand_dims(np.mean(Y_train, axis = 0), axis = 0), Y_train.shape[0], axis = 0),
+        np.repeat(np.expand_dims(np.mean(Y_train, axis = 0), axis = 0), Y_test.shape[0], axis = 0)
+    )
+  elif method == 'median':
+    return (
+        np.repeat(np.expand_dims(np.median(Y_train, axis = 0), axis = 0), Y_train.shape[0], axis = 0),
+        np.repeat(np.expand_dims(np.median(Y_train, axis = 0), axis = 0), Y_test.shape[0], axis = 0)
+    )

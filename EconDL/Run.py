@@ -176,9 +176,10 @@ class Run:
       print('Benchmarks trained')
 
   def train_multi_forecast_benchmarks(self):
-    # # Check if the results exist == benchmark_folder exists
-    # if os.path.isdir(f'{self.folder_path}/benchmarks'):
-    #   print('Benchmarks already trained')
+    # Check if the results exist == benchmark_folder exists
+    if os.path.exists(f'{self.folder_path}/benchmarks/benchmark_multi_VAR_roll.npz'):
+      print('Multiforecast Benchmarks already trained')
+      return
     if self.execution_params['multi_forecasting'] == False:
       print('Multiforecasting turned off')
       return

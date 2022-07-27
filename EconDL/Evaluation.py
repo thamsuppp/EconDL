@@ -246,20 +246,6 @@ class Evaluation:
       preds_test = np.repeat(np.expand_dims(preds_test, axis = 1), self.num_bootstraps, axis = 1)
       self.PREDS_ALL[self.M_varnn + i, :,:,:] = preds
       self.PREDS_TEST_ALL[self.M_varnn + i,:,:,:] = preds_test
-
-  # # Estimate and plot VAR benchmark IRFs
-  # def plot_VAR_irfs(self):
-  #   var_model = VAR(self.Y_train)
-  #   var_results = var_model.fit(self.Run.run_params['n_lag_linear'])
-  #   max_h = self.Run.extensions_params['unconditional_irfs']['max_h']
-  #   irf = var_results.irf(max_h)
-
-  #   # Plot the IRFs
-  #   irf_plot = irf.plot(orth = True)
-  #   plt.savefig(f'{self.image_folder_path}/irf_VAR.png')
-  #   irf_plot = irf.plot_cum_effects(orth = True)
-  #   plt.savefig(f'{self.image_folder_path}/cumulative_irf_VAR.png')
-  #   plt.close()
     
   # Helper function to plot betas
   def _plot_betas_inner(self, BETAS, var_names, beta_names, image_file, q = 0.16, title = '', actual = None):
@@ -576,6 +562,13 @@ class Evaluation:
     self.plot_errors(data_sample='oob')
     self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
     self.evaluate_multi_step_forecasts()
+
+  def plot_forecasts(self):
+    self.plot_predictions()
+    self.plot_errors(data_sample='oob')
+    self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
+    self.evaluate_multi_step_forecasts()
+
 
   def evaluate_multi_step_forecasts(self):
     multi_forecasting_params = {
