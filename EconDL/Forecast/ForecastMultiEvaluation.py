@@ -72,7 +72,7 @@ class ForecastMultiEvaluation:
 
   def plot_different_horizons(self):
 
-    fig, ax = plt.subplots(self.h, self.n_var, figsize = (self.n_var * 6, 4), constrained_layout = True)
+    fig, ax = plt.subplots(self.h, self.n_var, figsize = (self.n_var * 6, self.h * 4), constrained_layout = True)
 
     for horizon in range(1, self.h+1):
       # Plot actual
@@ -90,7 +90,7 @@ class ForecastMultiEvaluation:
 
         for var in range(self.n_var):
           ax[horizon-1, var].plot(Y_pred_h[:, var], label = self.experiments_names[model])
-      if var == (self.n_var - 1):
+      if var == (self.n_var - 1) and horizon == 1:
         ax[horizon-1, var].legend()
 
     image_file = f'{self.image_folder_path}/multi_forecast_preds_diff_horizons.png'
@@ -98,15 +98,17 @@ class ForecastMultiEvaluation:
     print(f'Multi-forecasting Different Horizon Preds plotted at {image_file}')
 
   def plot_forecast_errors(self):
-    for horizon in range(1, self.h+1):
-      fig, ax = plt.subplots(1,self.n_var, figsize = (self.n_var * 6, 4), constrained_layout = True)
 
+    fig, ax = plt.subplots(self.h ,self.n_var, figsize = (self.n_var * 6, self.h * 4), constrained_layout = True)
+
+    for horizon in range(1, self.h+1):
+    
       cum_error_benchmark = np.zeros((self.test_size, self.n_var))
       cum_error_benchmark[:] = np.nan
 
       # Plot actual
       for var in range(self.n_var):
-        ax[var].set_title(f'{self.var_names[var]}, h = {horizon}')
+        ax[horizon-1, var].set_title(f'{self.var_names[var]}, h = {horizon}')
         
       # Plot predicted
       for model in range(self.Y_pred_big_latest.shape[0]):
@@ -124,10 +126,10 @@ class ForecastMultiEvaluation:
           if model == 0:
             cum_error_benchmark[:,var] = cum_error.copy()
           
-          ax[var].plot(cum_error - cum_error_benchmark[:,var], label = self.experiments_names[model])
+          ax[horizon-1, var].plot(cum_error - cum_error_benchmark[:,var], label = self.experiments_names[model])
 
-      if var == (self.n_var - 1):
-        ax[var].legend()
+      if var == (self.n_var - 1) and horizon == 1:
+        ax[horizon-1, var].legend()
 
     image_file = f'{self.image_folder_path}/multi_forecast_cum_errors.png'
     plt.savefig(image_file)
