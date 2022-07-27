@@ -16,6 +16,15 @@ invert_order_dict = {
   5: [2, 1, 0]
 }
 
+invert_order_betas_dict = {
+  0: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
+  1: [0, 1,2,3,4,5,6, 13,14,15,16,17,18, 7,8,9,10,11,12],
+  2: [0, 7,8,9,10,11,12, 1,2,3,4,5,6, 13,14,15,16,17,18],
+  3: [0, 13,14,15,16,17,18, 1,2,3,4,5,6, 7,8,9,10,11,12],
+  4: [0, 7,8,9,10,11,12, 13,14,15,16,17,18, 1,2,3,4,5,6],
+  5: [0, 13,14,15,16,17,18, 7,8,9,10,11,12, 1,2,3,4,5,6]
+}
+
 for i in range(M_varnn):
 
   # Invert the results
@@ -39,18 +48,42 @@ for i in range(M_varnn):
   Y_train = results['y']
   Y_test = results['y_test']
 
+  print('BETAS', BETAS.shape)
+  print('SIGMAS', SIGMAS.shape)
+
+  print('PREDS before', np.nanmedian(PREDS, axis = [0, 1]))
+
   # Reverse all
-  BETAS = BETAS[:, [e+1 for e in invert_order_dict[i]], :, invert_order_dict[i], :]
-  BETAS_IN = BETAS_IN[:, [e+1 for e in invert_order_dict[i]], :, invert_order_dict[i], :]
-  SIGMAS = SIGMAS[:, invert_order_dict[i], invert_order_dict[i], :]
-  SIGMAS_IN = SIGMAS_IN[:, invert_order_dict[i], invert_order_dict[i], :]
-  PRECISION = PRECISION[:, invert_order_dict[i], invert_order_dict[i], :]
-  PRECISION_IN = PRECISION_IN[:, invert_order_dict[i], invert_order_dict[i], :]
-  CHOLESKY = CHOLESKY[:, invert_order_dict[i], invert_order_dict[i], :, :]
-  CHOLESKY_IN = CHOLESKY_IN[:, invert_order_dict[i], invert_order_dict[i], :, :]
+  BETAS = BETAS[:, invert_order_betas_dict[i], :, :, :]
+  BETAS = BETAS[:, :, :, invert_order_dict[i], :]
+
+  BETAS_IN = BETAS_IN[:, invert_order_betas_dict[i], :, :, :]
+  BETAS_IN = BETAS_IN[:, :, :, invert_order_dict[i], :]
+
+  SIGMAS = SIGMAS[:, invert_order_dict[i], :, :]
+  SIGMAS = SIGMAS[:, :, invert_order_dict[i], :]
+
+  SIGMAS_IN = SIGMAS_IN[:, invert_order_dict[i], :, :]
+  SIGMAS_IN = SIGMAS_IN[:, :, invert_order_dict[i], :]
+
+  PRECISION = PRECISION[:, invert_order_dict[i], :, :]
+  PRECISION = PRECISION[:, :, invert_order_dict[i], :]
+
+  PRECISION_IN = PRECISION_IN[:, invert_order_dict[i], :, :]
+  PRECISION_IN = PRECISION_IN[:, :, invert_order_dict[i], :]
+
+  CHOLESKY = CHOLESKY[:, invert_order_dict[i], :, :, :]
+  CHOLESKY = CHOLESKY[:, :, invert_order_dict[i], :, :]
+
+  CHOLESKY_IN = CHOLESKY_IN[:, invert_order_dict[i], :, :, :]
+  CHOLESKY_IN = CHOLESKY_IN[:, :, invert_order_dict[i], :, :]
+
   PREDS = PREDS[:, :, invert_order_dict[i]]
   PREDS_TEST = PREDS_TEST[:, :, invert_order_dict[i]]
   params['var_names'] = ["DGS3", "inf", "unrate"]
+
+  print('PREDS before', np.nanmedian(PREDS, axis = [0, 1]))
+
 
   results_out = {
     'betas': BETAS,
@@ -79,7 +112,7 @@ for i in range(M_varnn):
   fcast = out['fcast']
   fcast = fcast[:, :, invert_order_dict[i], invert_order_dict[i], :]
 
-  with open(f'{out_folder_path}/fcast_{i}_compiled.npz', 'wb') as f:
+  with open(f'{out_folder_path}/fcast_params_{i}_compiled.npz', 'wb') as f:
     np.savez(f, fcast = fcast)
 
   print(f'Experiment {i}: Inverted fcast')
@@ -90,7 +123,7 @@ for i in range(M_varnn):
   fcast = out['fcast']
   fcast = fcast[:, invert_order_dict[i], :, :, :]
 
-  with open(f'{out_folder_path}/multi_fcast_{i}_compiled.npz', 'wb') as f:
+  with open(f'{out_folder_path}/multi_fcast_params_{i}_compiled.npz', 'wb') as f:
     np.savez(f, fcast = fcast)
 
 

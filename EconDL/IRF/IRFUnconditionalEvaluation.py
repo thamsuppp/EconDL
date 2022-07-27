@@ -43,8 +43,8 @@ class IRFUnconditionalEvaluation:
     var_irf = np.zeros((self.max_h + 1, self.n_var, self.n_var, 3))
     var_irf[:] = np.nan
     var_irf[:, :, :, 1] = irf_median
-    var_irf[:, :, :, 0] = irf_median - 1.96 * irf_stderr
-    var_irf[:, :, :, 2] = irf_median + 1.96 * irf_stderr
+    var_irf[:, :, :, 0] = irf_median - 1 * irf_stderr
+    var_irf[:, :, :, 2] = irf_median + 1 * irf_stderr
     self.var_irf = var_irf
 
     irf_cum_median = irf.orth_cum_effects
@@ -52,8 +52,8 @@ class IRFUnconditionalEvaluation:
     var_cum_irf = np.zeros((self.max_h + 1, self.n_var, self.n_var, 3))
     var_cum_irf[:] = np.nan
     var_cum_irf[:, :, :, 1] = irf_cum_median
-    var_cum_irf[:, :, :, 0] = irf_cum_median - 1.96 * irf_cum_stderr
-    var_cum_irf[:, :, :, 2] = irf_cum_median + 1.96 * irf_cum_stderr
+    var_cum_irf[:, :, :, 0] = irf_cum_median - 1 * irf_cum_stderr
+    var_cum_irf[:, :, :, 2] = irf_cum_median + 1 * irf_cum_stderr
     self.var_cum_irf = var_cum_irf
 
   def load_results(self, file_name):

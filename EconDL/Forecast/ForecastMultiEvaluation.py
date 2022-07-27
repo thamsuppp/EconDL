@@ -43,8 +43,8 @@ class ForecastMultiEvaluation:
     # Load all the betas from different experiments
     for i in range(self.M_varnn):
 
-      if os.path.exists(f'{self.folder_path}/multi_fcast_{i}_compiled.npz') == True:
-        out = np.load(f'{self.folder_path}/multi_fcast_{i}_compiled.npz')
+      if os.path.exists(f'{self.folder_path}/multi_fcast_params_{i}_compiled.npz') == True:
+        out = np.load(f'{self.folder_path}/multi_fcast_params_{i}_compiled.npz')
         FCAST = out['fcast']
         experiments_names.append(f'Exp {i}')
         FCAST_nan = FCAST.copy()

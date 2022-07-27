@@ -319,13 +319,17 @@ class Experiment:
         fcast_all[i, :,:,:,:] = fcast
 
     
-    with open(f'{self.folder_path}/fcast_{self.experiment_id}_compiled.npz', 'wb') as f:
+    with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_compiled.npz', 'wb') as f:
       np.savez(f, fcast = fcast_all)
 
 
   def evaluate_unconditional_irf_results(self, Y_train):
 
-    results = np.load(f'{self.folder_path}/fcast_{self.experiment_id}_compiled.npz', allow_pickle = True)
+    if len(self.nn_hyps['s_pos']) > 1:
+      print('Experiment _compile_unconditional_irf_results(): Experiment has multiple hemispheres, no unconditional IRF results to compile')
+      return
+
+    results = np.load(f'{self.folder_path}/fcast_params_{self.experiment_id}_compiled.npz', allow_pickle = True)
     fcast_all = results['fcast']
     fcast_cov_mat_all = None
 
