@@ -7,7 +7,7 @@ import seaborn as sns
 import colorcet as cc
 from EconDL.Forecast.ForecastMultiEvaluation import ForecastMultiEvaluation
 
-palette = sns.color_palette(cc.glasbey, n_colors = 25)
+palette = sns.color_palette(cc.glasbey, n_colors = 30)
 
 class Evaluation:
   def __init__(self, Run):

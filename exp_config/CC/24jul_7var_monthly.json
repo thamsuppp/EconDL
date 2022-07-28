@@ -47,7 +47,7 @@
             "plot_all_bootstraps": false
         },
         "benchmarks": {
-            "window_length": 80,
+            "window_length": 120,
             "reestimation_window": 1
         },
         "multi_forecasting": {
@@ -135,7 +135,7 @@
         "is_simulation": false,
         "multiple_datasets": false,
         "sim_dataset": 2,
-        "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole"],
+        "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole", "zero", "mean"],
         "experiments_to_load": null,
         "plot_all_bootstraps": false,
         "exps_to_plot": null,

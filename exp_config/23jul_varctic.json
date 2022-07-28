@@ -47,7 +47,7 @@
             "plot_all_bootstraps": false
         },
         "benchmarks": {
-            "window_length": 80,
+            "window_length": 120,
             "reestimation_window": 1
         },
         "multi_forecasting": {

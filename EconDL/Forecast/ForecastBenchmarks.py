@@ -96,7 +96,7 @@ class ForecastBenchmarks:
     FCAST = np.zeros((self.h +1, self.n_var, self.test_size, self.R))
     FCAST[:] = np.nan
 
-    window_length = 40
+    window_length = 120
     # For every time through the re-estimation window
     for r in range(self.R):
       print(f'Re-estimation window {r}, {datetime.now()}')
@@ -158,6 +158,8 @@ class ForecastBenchmarks:
         for var in range(self.n_var):
           y_train = Y_train[:, var]
           y_test = self.Y_test[:, var]
+
+          print(f'r: {r}, y_train: {y_train.shape}, {y_train}')
           arima_model = ARIMA(y_train, order = (ar_lags,0,0))
           results = arima_model.fit()
           results_coefs = results.params[0:(ar_lags + 1)]
@@ -190,7 +192,7 @@ class ForecastBenchmarks:
     FCAST = np.zeros((self.h+1, self.n_var, self.test_size, R))
     FCAST[:] = np.nan
 
-    window_length = 40
+    window_length = 120
     # For every time through the re-estimation window
     for r in range(R):
       print(f'Re-estimation window {r}, {datetime.now()}')
