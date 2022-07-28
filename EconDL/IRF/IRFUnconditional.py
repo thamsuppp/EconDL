@@ -22,6 +22,7 @@ class IRFUnconditional:
     self.num_simulations = irf_params['num_simulations']
     self.start_shock_time = irf_params['start_shock_time']
     self.endh = irf_params['endh']
+    self.end_precision_lambda = irf_params['end_precision_lambda']
     self.forecast_method = irf_params['forecast_method']
 
     self.model = irf_params['model']
@@ -40,7 +41,8 @@ class IRFUnconditional:
   # New IRF Simulation Wrapper Function (Joint Estimation)
   # Returns: fcast, fcast_cov_mat, sim_shocks
   ## kk: variable to shock , k: response of shock
-  def simulate_irf_paths_new(self, Y_train, Y_test, results, device):
+  def simulate_irf_paths_new(self, Y_train, Y_test, X_train, results, end_precision_lambda = 0.01, 
+                              device = None):
 
     try:
       n_var = self.n_var
@@ -70,14 +72,28 @@ class IRFUnconditional:
       for simul in range(self.num_simulations):
         sim_shocks[simul, :] = np.random.multivariate_normal([0] * n_var, np.eye(n_var), size = 1)
 
+      # Initialize the data at random time from the sample
+      random_obs = random.choices(list(range(X_train.shape[0])), k = 1)
+      initial_all = X_train[random_obs, :]
+      initial_linear = initial_all[0, :self.n_lag_linear * n_var]
+      initial_nonlinear = initial_all[0, (self.n_lag_linear * n_var):((self.n_lag_linear + self.n_lag_d) * n_var)]
+      initial_fcast = Y_train[random_obs, :]
+
+      print(f'Initial Obs ({random_obs}, Initial Linear: {initial_linear}')
+
       for kk in range(n_var): # Variable to shock
 
         bootstraps_to_ignore = []
         for shock_level in [0, 1]:
-          # Initialize new data at 0
-          new_in_linear = np.zeros(self.n_lag_linear * n_var)
-          new_in_nonlinear = np.zeros(self.n_lag_d * n_var)
-          fcast[0, :, kk, shock_level] = np.zeros((n_var))
+
+          # Initialize new data at 0 (not using this from 7/28 onwards)
+          # new_in_linear = np.zeros(self.n_lag_linear * n_var)
+          # new_in_nonlinear = np.zeros(self.n_lag_d * n_var)
+          # fcast[0, :, kk, shock_level] = np.zeros((n_var))
+
+          new_in_linear = initial_linear.copy()
+          new_in_nonlinear = initial_nonlinear.copy()
+          fcast[0, :, kk, shock_level] = initial_fcast.copy()
 
           # Start the simulation
           f = 1
@@ -106,7 +122,7 @@ class IRFUnconditional:
             ### 2: Call NN forward to get pred and cov mat (stop if the whole thing exploded)
             if np.any(np.isnan(new_data_all)) == False and np.all(np.isfinite(new_data_all)) == True:
               
-              pred, cov, bootstraps_to_ignore = predict_nn_new(results, new_data_all, bootstraps_to_ignore, device)
+              pred, cov, bootstraps_to_ignore = predict_nn_new(results, new_data_all, end_precision_lambda, bootstraps_to_ignore, device)
 
               # Cholesky the cov mat to get C matrix
               cov = np.squeeze(cov, axis = 0)
@@ -240,11 +256,11 @@ class IRFUnconditional:
     return fcast, None, simul_shocks_old
 
   # Compute conditional IRFs for ONE repeat/ONE experiment - takes in VARNN estimation results
-  def get_irfs_wrapper(self, Y_train, Y_test, results):
+  def get_irfs_wrapper(self, Y_train, Y_test, X_train, results):
 
     if self.forecast_method == 'old' or self.model != 'VARNN':
       fcast, fcast_cov_mat, sim_shocks = self.simulate_irf_paths_old(Y_train, Y_test, results, self.device)
     else:
-      fcast, fcast_cov_mat, sim_shocks = self.simulate_irf_paths_new(Y_train, Y_test, results, self.device)
+      fcast, fcast_cov_mat, sim_shocks = self.simulate_irf_paths_new(Y_train, Y_test, X_train, results, self.end_precision_lambda, self.device)
 
     return fcast, fcast_cov_mat, sim_shocks

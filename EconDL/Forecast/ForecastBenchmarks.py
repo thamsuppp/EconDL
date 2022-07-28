@@ -159,7 +159,6 @@ class ForecastBenchmarks:
           y_train = Y_train[:, var]
           y_test = self.Y_test[:, var]
 
-          print(f'r: {r}, y_train: {y_train.shape}, {y_train}')
           arima_model = ARIMA(y_train, order = (ar_lags,0,0))
           results = arima_model.fit()
           results_coefs = results.params[0:(ar_lags + 1)]

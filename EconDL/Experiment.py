@@ -82,7 +82,7 @@ class Experiment:
       IRFConditionalObj.plot_irfs_over_time(image_folder_path, normalize = self.extensions_params['conditional_irfs']['normalize_time_plot'])
       self.evaluations['conditional_irf'] = IRFConditionalObj
 
-  def compute_unconditional_irfs(self, Y_train, Y_test, results, device, repeat_id):
+  def compute_unconditional_irfs(self, Y_train, Y_test, X_train, results, device, repeat_id):
     if self.execution_params['unconditional_irfs'] == False:
       print('Experiment compute_unconditional_irfs(): Unconditional IRFs turned off')
       return 
@@ -97,6 +97,7 @@ class Experiment:
         'forecast_method': self.extensions_params['unconditional_irfs']['forecast_method'], # old or new
         'max_h': self.extensions_params['unconditional_irfs']['max_h'], 
         'var_names': self.nn_hyps['var_names'],
+        'end_precision_lambda': self.nn_hyps['end_precision_lambda'],
         'model': 'VARNN'
       }
 
@@ -111,7 +112,7 @@ class Experiment:
     else:
 
       IRFUnconditionalObj = IRFUnconditional(unconditional_irf_params, device)
-      fcast, fcast_cov_mat, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, results)
+      fcast, fcast_cov_mat, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, X_train, results)
 
       with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
         np.savez(f, fcast = fcast, fcast_cov_mat = fcast_cov_mat)
@@ -135,6 +136,7 @@ class Experiment:
       'n_var': len(self.nn_hyps['var_names']),
       'forecast_method': self.extensions_params['multi_forecasting']['forecast_method'], # old or new
       'var_names': self.nn_hyps['var_names'],
+      'end_precision_lambda': self.nn_hyps['end_precision_lambda'],
       'model': 'VARNN'
     }
 
@@ -192,7 +194,7 @@ class Experiment:
 
         print(f'Experiment train(): Finished training repeat {repeat_id} of experiment {self.experiment_id} at {datetime.now()}')
 
-        self.compute_unconditional_irfs(Y_train, Y_test, results, device = device, repeat_id = repeat_id)
+        self.compute_unconditional_irfs(Y_train, Y_test, X_train, results, device = device, repeat_id = repeat_id)
         self.compute_multi_forecasts(X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id)
 
       # After completing all repeats

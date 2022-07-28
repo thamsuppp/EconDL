@@ -5,7 +5,7 @@ from EconDL.utils import invert_scaling
 
 # @title Predict NN Function (Joint Estimation)
 # Returns pred, cov
-def predict_nn_new(results, newx, bootstraps_to_ignore = [], device = None):
+def predict_nn_new(results, newx, end_precision_lambda = 0.01, bootstraps_to_ignore = [], device = None):
 
   scale_output = results['scale_output']
   if results['prior_shift'] == True:
@@ -52,7 +52,8 @@ def predict_nn_new(results, newx, bootstraps_to_ignore = [], device = None):
         pred = invert_scaling(pred, scale_output['mu_y'], scale_output['sigma_y'])
       pred_mat[:, i, :] = pred
 
-      precision = precision.detach().cpu().numpy()
+      # Add the end_precision_lambda to the precision matrix
+      precision = precision.detach().cpu().numpy() + np.eye(precision.shape[1]) * end_precision_lambda
       sigma = np.linalg.inv(precision) # Standardized cov mat
       
       if results['standardize'] == True:
@@ -73,8 +74,8 @@ def predict_nn_new(results, newx, bootstraps_to_ignore = [], device = None):
 
   # Take mean BEFORE unscaling (REVISIT IF WE NEED TO FLIP ORDER)
   pred = np.nanmedian(pred_mat, axis = 1)
-  # Add back the oos adj
 
+  # Add back the oos adj
   pred = pred + pred_oos_adj
   cov = np.nanmedian(cov_mat, axis = 1)
 

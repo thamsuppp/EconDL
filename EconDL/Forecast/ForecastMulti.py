@@ -33,6 +33,7 @@ class ForecastMulti:
     self.n_lag_d = multi_forecasting_params['n_lag_d']
     self.n_var = multi_forecasting_params['n_var']
     self.var_names = multi_forecasting_params['var_names']
+    self.end_precision_lambda = multi_forecasting_params['end_precision_lambda']
 
     self.forecast_method = multi_forecasting_params['forecast_method']
 
@@ -105,7 +106,7 @@ class ForecastMulti:
         # Now we self.have new_data_all
         
         # Use estimated model to make prediction with the generated input vector
-        pred, cov, bootstraps_to_ignore = predict_nn_new(results, new_data_all, bootstraps_to_ignore, self.device)
+        pred, cov, bootstraps_to_ignore = predict_nn_new(results, new_data_all, self.end_precision_lambda, bootstraps_to_ignore, self.device)
 
         # Cholesky the cov mat to get C matrix
         cov = np.squeeze(cov, axis = 0)
