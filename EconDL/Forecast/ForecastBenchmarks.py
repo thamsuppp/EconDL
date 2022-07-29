@@ -132,7 +132,7 @@ class ForecastBenchmarks:
       # Get the input lags for 
       y_in_this = y_all[(y_in.shape[0] -1 -4 + self.horizon):(y_in.shape[0] -1 + self.horizon)]
       # Evaluate the AR equation to get the prediction
-      y_all[y_in.shape[0] - 1 + self.horizon] = results_coefs[0] + np.dot(results_coefs[1:], y_in)
+      y_all[y_in.shape[0] - 1 + self.horizon] = results_coefs[0] + np.dot(results_coefs[1:], y_in_this)
 
     # Return self.h predictions
     return y_all[y_in.shape[0]:]

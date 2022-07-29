@@ -45,13 +45,20 @@ class ForecastMultiEvaluation:
 
       if os.path.exists(f'{self.folder_path}/multi_fcast_params_{i}_compiled.npz') == True:
         out = np.load(f'{self.folder_path}/multi_fcast_params_{i}_compiled.npz')
+        results = np.load(f'{self.folder_path}/params_{i}_compiled.npz', allow_pickle=True)['results'].item()
+        experiment_name = results['params']['name']
+
         FCAST = out['fcast']
-        experiments_names.append(f'Exp {i}')
+        experiments_names.append(experiment_name)
         FCAST_nan = FCAST.copy()
         FCAST_nan[FCAST_nan == 0] = np.nan
         Y_pred = np.nanmedian(FCAST_nan, axis = 2)
         Y_pred_big[i, :,:,:,:] = Y_pred
-
+      else: # If there no multi-forecasting results, then just skip (add the experiment name so that self.experiments_names is the same length as self.M_varnn )
+        results = np.load(f'{self.folder_path}/params_{i}_compiled.npz', allow_pickle=True)['results'].item()
+        experiment_name = results['params']['name']
+        experiments_names.append(f'{experiment_name} - No results')
+        
     # Add the benchmark models in
     benchmark_folder_path = f'{self.folder_path}/benchmarks'
 
@@ -73,6 +80,9 @@ class ForecastMultiEvaluation:
   def plot_different_horizons(self):
 
     fig, ax = plt.subplots(self.h, self.n_var, figsize = (self.n_var * 6, self.h * 4), constrained_layout = True)
+
+    print('Experiments Names', self.experiments_names)
+    print('Number of models', self.Y_pred_big_latest.shape[0])
 
     for horizon in range(1, self.h+1):
       # Plot actual

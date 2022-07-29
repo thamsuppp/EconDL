@@ -580,7 +580,8 @@ class Evaluation:
       'var_names': self.var_names,
       'M_varnn': self.M_varnn
     }
-
+    # print data
+      
     ForecastMultiEvaluationObj = ForecastMultiEvaluation(self.run_name, multi_forecasting_params, 
       self.Y_train, self.Y_test)
 

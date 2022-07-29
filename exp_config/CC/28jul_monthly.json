@@ -1,25 +1,24 @@
 {
 
     "run_params": {
+        "dataset": "monthly",
+
         "num_inner_bootstraps": 40,
         "num_repeats": 1,
         "default_nn_hyps": "nn_hyps_default",
-        "dataset": "quarterly",
         
         "var_names": ["oil", "Ex", "SPY", "DGS3", "inf", "unrate", "house_starts"],
-        "n_lag_linear": 3, 
-        "n_lag_d": 6,
+        "n_lag_linear": 6, 
+        "n_lag_d": 12,
         "n_var": 7,
-        "test_size": 60,
-        "constant_tvpl": [50],
+        "test_size": 100,
+        "s_pos": [[0, 126]],
 
-        "time_dummy_setting": 2, 
-        "dropout_rate": 0.25, 
         "precision_lambda": 0.25, 
         "lambda_temper_epochs": 40, 
+        "time_dummy_setting": 2, 
         "optimizer": "Adam",
-        "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-        "s_pos": [[0, 63]]
+        "s_pos_setting": {"is_hemi": false, "n_times": 30}
     },
 
     "execution_params": {
@@ -35,14 +34,14 @@
         "ml_experiments": ["RF", "XGBoost"],
 
         "conditional_irfs": {
-            "max_h": 10,
+            "max_h": 18,
             "normalize_time_plot": true,
             "test_exclude_last": 0
         },
         "unconditional_irfs": {
-            "num_simulations": 1000,
-            "endh": 40, 
-            "start_shock_time": 40,
+            "num_simulations": 1600,
+            "endh": 80, 
+            "start_shock_time": 80,
             "max_h": 20,
             "forecast_method": "new",
             "plot_all_bootstraps": false
@@ -52,8 +51,8 @@
             "reestimation_window": 1
         },
         "multi_forecasting": {
-            "forecast_horizons": 4,
-            "reestimation_window": 60,
+            "forecast_horizons": 6,
+            "reestimation_window": 100,
             "forecast_method": "new",
             "num_sim_bootstraps": 25,
             "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand"]
@@ -68,7 +67,7 @@
             "tvpl_archi": [5], 
             "lr": 0.001, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "0: ReLU Baseline"
         },
@@ -79,7 +78,7 @@
             "tvpl_archi": [5], 
             "lr": 0.001, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "1: ReLU 100-25"
         },
@@ -90,7 +89,7 @@
             "tvpl_archi": [5], 
             "lr": 0.001, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "2: ReLU TVPLConstant200"
         },
@@ -101,7 +100,7 @@
             "tvpl_archi": [2], 
             "lr": 0.001, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "3: ReLU TVPL2"
         },
@@ -112,7 +111,7 @@
             "tvpl_archi": [2], 
             "lr": 0.005, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "4: ReLU High LR"
         },
@@ -124,7 +123,7 @@
             "lr": 0.001, 
             "end_precision_lambda": 0.05,
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "5: ReLU End Precision Lambda 0.05"
         },
@@ -135,7 +134,7 @@
             "tvpl_archi": [2], 
             "lr": 0.0005, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": false, 
             "name": "6: ReLU Joint Off"
         },
@@ -146,7 +145,7 @@
             "tvpl_archi": [5], 
             "lr": 0.0005, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "7: SELU Low LR"
         },
@@ -157,7 +156,7 @@
             "tvpl_archi": [5], 
             "lr": 0.001, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "8: SELU 100-25"
         },
@@ -168,7 +167,7 @@
             "tvpl_archi": [2], 
             "lr": 0.001, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "9: SELU TVPL2"
         },
@@ -179,7 +178,7 @@
             "tvpl_archi": [2], 
             "lr": 0.0005, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "10: SELU Low LR 100-25 TVPL2"
         },
@@ -191,7 +190,7 @@
             "lr": 0.001, 
             "end_precision_lambda": 0.05,
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": true, 
             "name": "11. SELU End Precision Lambda 0.05"
         },
@@ -202,7 +201,7 @@
             "tvpl_archi": [2], 
             "lr": 0.0005, 
             "dropout_rate": 0.25, 
-            "s_pos": [[0, 63]],
+            "s_pos": [[0, 126]],
             "joint_estimation": false, 
             "name": "12. SELU Joint Off"
         }
@@ -210,16 +209,16 @@
 
     "evaluation_params": {
         "is_test": false,
-        "need_to_combine": false,
+        "need_to_combine": true,
         "is_simulation": false,
         "multiple_datasets": false,
         "sim_dataset": 2,
-        "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole"],
+        "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole", "zero", "mean"],
         "experiments_to_load": null,
         "plot_all_bootstraps": false,
         "exps_to_plot": null,
         "repeats_to_include": null,
-        "test_exclude_last": 8
+        "test_exclude_last": 20
     }
 }
 
