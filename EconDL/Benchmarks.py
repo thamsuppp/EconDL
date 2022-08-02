@@ -210,8 +210,8 @@ class Benchmarks:
     preds_train_whole_rf, preds_test_whole_rf, _ = self._conduct_random_forest(X_train, X_test, Y_train, Y_test)
 
     # Naive benchmarks
-    preds_train_zero, preds_test_zero = get_naive_preds(Y_train, Y_test, method = 'zero')
-    preds_train_mean, preds_test_mean = get_naive_preds(Y_train, Y_test, method = 'mean')
+    preds_train_zero, preds_test_zero = get_naive_preds(X_train, X_test, Y_train, Y_test, method = 'zero')
+    preds_train_mean, preds_test_mean = get_naive_preds(X_train, X_test, Y_train, Y_test, method = 'mean', mean_window = 40)
 
     # Expanding the entire-window regression coefs to be same shape as the rolling/expanding window
     betas_whole_var = np.repeat(np.expand_dims(betas_whole_var, axis = 0), betas_expand_var.shape[0], axis = 0)
@@ -238,22 +238,25 @@ class Benchmarks:
     with open(f'{self.benchmark_folder_path}/{savefile_header}benchmark_mean.npz', 'wb') as f:
       np.savez(f, train_preds = preds_train_mean, test_preds = preds_test_mean, y = Y_train, y_test = Y_test)
 
-def get_naive_preds(Y_train, Y_test, method = 'zero'):
-  '''
-  Types of preds:
-  zero - zero
-  mean - mean of the variable in training set
-  median - median of the variable in training set
-  '''
+'''
+Types of preds:
+zero - zero
+mean - mean of the variable in training set over `mean_window` observations
+'''
+def get_naive_preds(X_train, X_test, Y_train, Y_test, method = 'zero', mean_window = 40):
   if method == 'zero':
     return np.zeros_like(Y_train), np.zeros_like(Y_test)
   elif method == 'mean':
+    # Get the previous value (this will be the prediction for the 1st Y)
+    first_pred = X_train[0:1, sorted([min(e) for e in x_pos.values()])] 
+    Y_train_df = pd.DataFrame(Y_train)
+    # Take the rolling mean of the previous `window` observations, excluding the current observation
+    Y_train_rolling_mean = np.array(Y_train_df.rolling(mean_window, min_periods = 1, closed = 'left').mean())
+    Y_train_rolling_mean[0, :] = first_pred
+    # Test pred
+    test_pred = Y_train_rolling_mean[-1, :]
+
     return (
-        np.repeat(np.expand_dims(np.mean(Y_train, axis = 0), axis = 0), Y_train.shape[0], axis = 0),
-        np.repeat(np.expand_dims(np.mean(Y_train, axis = 0), axis = 0), Y_test.shape[0], axis = 0)
-    )
-  elif method == 'median':
-    return (
-        np.repeat(np.expand_dims(np.median(Y_train, axis = 0), axis = 0), Y_train.shape[0], axis = 0),
-        np.repeat(np.expand_dims(np.median(Y_train, axis = 0), axis = 0), Y_test.shape[0], axis = 0)
+        Y_train_rolling_mean,
+        np.repeat(np.expand_dims(test_pred, axis = 0), Y_test.shape[0], axis = 0)
     )
