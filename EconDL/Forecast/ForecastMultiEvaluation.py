@@ -19,6 +19,8 @@ class ForecastMultiEvaluation:
     self.reestimation_window = multi_forecasting_params['reestimation_window']
     self.R = int(self.test_size / self.reestimation_window)
 
+    self.exclude_last = multi_forecasting_params['exclude_last']
+
     self.n_var = multi_forecasting_params['n_var']
     self.var_names = multi_forecasting_params['var_names']
 
@@ -88,7 +90,10 @@ class ForecastMultiEvaluation:
       # Plot actual
       for var in range(self.n_var):
         ax[horizon-1, var].set_title(f'{self.var_names[var]}, h = {horizon}')
-        ax[horizon-1, var].plot(self.Y_test[:, var], label = 'Actual', color = 'black')
+        if self.exclude_last > 0:
+          ax[horizon-1, var].plot(self.Y_test[:-self.exclude_last, var], label = 'Actual', color = 'black')
+        else:
+          ax[horizon-1, var].plot(self.Y_test[:, var], label = 'Actual', color = 'black')
       
       # Plot predicted
       for model in range(self.Y_pred_big_latest.shape[0]):
@@ -99,7 +104,10 @@ class ForecastMultiEvaluation:
         Y_pred_h[:horizon, :] = np.nan
 
         for var in range(self.n_var):
-          ax[horizon-1, var].plot(Y_pred_h[:, var], label = self.experiments_names[model])
+          if self.exclude_last > 0:
+            ax[horizon-1, var].plot(Y_pred_h[:-self.exclude_last, var], label = self.experiments_names[model])
+          else:
+            ax[horizon-1, var].plot(Y_pred_h[:, var], label = self.experiments_names[model])
       if var == (self.n_var - 1) and horizon == 1:
         ax[horizon-1, var].legend()
 
@@ -113,7 +121,7 @@ class ForecastMultiEvaluation:
 
     for horizon in range(1, self.h+1):
     
-      cum_error_benchmark = np.zeros((self.test_size, self.n_var))
+      cum_error_benchmark = np.zeros((self.test_size - self.exclude_last, self.n_var))
       cum_error_benchmark[:] = np.nan
 
       # Plot actual
@@ -128,8 +136,12 @@ class ForecastMultiEvaluation:
         Y_pred_h[:horizon, :] = np.nan
 
         for var in range(self.n_var):
-          actual = self.Y_test[:, var]
-          pred = Y_pred_h[:, var]
+          if self.exclude_last > 0:
+            actual = self.Y_test[:-self.exclude_last, var]
+            pred = Y_pred_h[:-self.exclude_last, var]
+          else:
+            actual = self.Y_test[:, var]
+            pred = Y_pred_h[:, var]
           error = np.abs(actual - pred)
           cum_error = np.nancumsum(error)
           

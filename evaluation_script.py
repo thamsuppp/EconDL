@@ -24,8 +24,11 @@ print(f'Run is {run_name}, cond_irf is {cond_irf}, fcast_only is {fcast_only}')
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-RunObj = Run(run_name, device)
+for job_id in range(3):
+  RunObj = Run(run_name, device, job_id = 0)
+  RunObj.train_ml_experiments()
 
+RunObj = Run(run_name, device)
 # Train benchmarks if not already trained (function in Run will not train if benchmark files already exist)
 RunObj.train_benchmarks()
 RunObj.train_multi_forecast_benchmarks()

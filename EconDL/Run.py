@@ -18,6 +18,7 @@ class Run:
 
     self.dataset_name = None
     self.dataset = None
+    self.exog_dataset = None
     self.n_var = None
     self.var_names = None
     self.run_params = None
@@ -125,7 +126,7 @@ class Run:
       self.num_experiments = len(self.experiments)
   
   def _load_data(self):
-    self.dataset, _, _ = DataLoader.load_data(self.dataset_name)
+    self.dataset, _, _, self.exog_dataset = DataLoader.load_data(self.dataset_name)
 
   def train_experiments(self, experiment_ids = None):  
     # If experiment_ids = None, then train all
@@ -133,7 +134,7 @@ class Run:
     
     for experiment_id in experiment_ids:
       ExperimentObj = self.experiments[experiment_id]
-      ExperimentObj.train(self.dataset, self.device)
+      ExperimentObj.train(self.dataset, self.exog_dataset, self.device)
 
   def train_ml_experiments(self):
     for MLExperiment in self.ml_experiments:

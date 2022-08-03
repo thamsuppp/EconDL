@@ -79,7 +79,6 @@ class ForecastMulti:
       new_in_nonlinear = newx[(n_lag_linear * self.n_var):((n_lag_linear + n_lag_d) * self.n_var)]
       new_in_time = newx[((n_lag_linear + n_lag_d) * self.n_var):]
 
-
       bootstraps_to_ignore = []
       for period in range(1, self.h + 1):
 
@@ -101,6 +100,11 @@ class ForecastMulti:
         
         # Combine the first n_lag_linear lags, with the MARX data, to get the full input vector
         new_data_all = np.hstack([new_in_linear, new_data_marx, new_in_time])
+        # print(f'''
+        # new_in_linear: {new_in_linear},
+        # new_in_nonlinear: {new_data_marx},
+        # new_in_time: {new_in_time}
+        # ''')
         new_data_all = np.expand_dims(new_data_all, axis = 0)
 
         # Now we self.have new_data_all
@@ -230,6 +234,7 @@ class ForecastMulti:
       if t % 5 == 0:
         print(f'Time {t}, {datetime.now()}')
       for b in range(self.num_sim_bootstraps):
+        #print(f'Starting time {t}, bootstrap {b}')
         if t == r * self.reestimation_window: # first sample (X_train is continually changed so can take last value of X_train)
           FCAST[:, :, b, t, r] = predict_fn(X_train[-1, :], results, nn_hyps)
         else: # not the first sample (X_test is unchanged so can just index t)

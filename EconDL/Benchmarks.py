@@ -1,5 +1,6 @@
 from sklearn.linear_model import LinearRegression
 import numpy as np
+import pandas as pd
 from datetime import datetime
 from sklearn.ensemble import RandomForestRegressor
 import os
@@ -248,11 +249,12 @@ def get_naive_preds(X_train, X_test, Y_train, Y_test, method = 'zero', mean_wind
     return np.zeros_like(Y_train), np.zeros_like(Y_test)
   elif method == 'mean':
     # Get the previous value (this will be the prediction for the 1st Y)
-    first_pred = X_train[0:1, sorted([min(e) for e in x_pos.values()])] 
+    #first_pred = X_train[0:1, sorted([min(e) for e in x_pos.values()])] 
     Y_train_df = pd.DataFrame(Y_train)
     # Take the rolling mean of the previous `window` observations, excluding the current observation
     Y_train_rolling_mean = np.array(Y_train_df.rolling(mean_window, min_periods = 1, closed = 'left').mean())
-    Y_train_rolling_mean[0, :] = first_pred
+    Y_train_rolling_mean[0, :] = np.nan
+    #Y_train_rolling_mean[0, :] = first_pred
     # Test pred
     test_pred = Y_train_rolling_mean[-1, :]
 

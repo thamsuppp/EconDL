@@ -570,7 +570,7 @@ class Evaluation:
     self.evaluate_multi_step_forecasts()
 
 
-  def evaluate_multi_step_forecasts(self):
+  def evaluate_multi_step_forecasts(self, exclude_last = 0):
     multi_forecasting_params = {
       'test_size': self.test_size,
       'forecast_horizons': self.Run.extensions_params['multi_forecasting']['forecast_horizons'],
@@ -578,7 +578,8 @@ class Evaluation:
       'benchmarks': self.Run.extensions_params['multi_forecasting']['benchmarks'],
       'n_var': self.n_var, 
       'var_names': self.var_names,
-      'M_varnn': self.M_varnn
+      'M_varnn': self.M_varnn,
+      'exclude_last': self.Run.evaluation_params['test_exclude_last']
     }
     # print data
       

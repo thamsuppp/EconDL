@@ -108,6 +108,14 @@ class Experiment:
       fcast[:] = np.nan
       with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
         np.savez(f, fcast = fcast, fcast_cov_mat = None)
+    
+    # Check if exogenous is set on
+    elif self.nn_hyps['exog'] is not None:
+      print('Experiment compute_unconditional_irfs(): Experiment has exogenous data, not training unconditional IRFs')
+      fcast = np.zeros((self.extensions_params['unconditional_irfs']['num_simulations'], len(self.nn_hyps['var_names']), len(self.nn_hyps['var_names']), 3))
+      fcast[:] = np.nan
+      with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
+        np.savez(f, fcast = fcast, fcast_cov_mat = None)
 
     else:
 
@@ -152,11 +160,13 @@ class Experiment:
   # @DEV: Don't pass in the dataset in the _init_() because if not then there will be multiple copies of
   # the dataset sitting in each run.
   # Results are now only compiled during evaluation
-  def train(self, dataset, device):
+  def train(self, dataset, exog_dataset, device):
 
     if self.is_trained == True:
       print('Experiment train(): Trained already')
     else:
+      if self.nn_hyps['exog_data'] == True and exog_dataset is not None and self.nn_hyps['exog'] is None:
+        self.nn_hyps['exog'] = np.array(exog_dataset)
       X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, self.nn_hyps)
       
       repeat_ids = []

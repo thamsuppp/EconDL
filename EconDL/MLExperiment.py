@@ -30,11 +30,12 @@ class MLExperiment(Experiment):
         'forecast_method': self.extensions_params['unconditional_irfs']['forecast_method'], # old or new
         'max_h': self.extensions_params['unconditional_irfs']['max_h'], 
         'var_names': self.nn_hyps['var_names'],
-        'model': self.model
+        'model': self.model,
+        'end_precision_lambda': 0
       }
 
     IRFUnconditionalObj = IRFUnconditional(unconditional_irf_params, None)
-    fcast, _, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, results)
+    fcast, _, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, X_train, results)
 
     with open(f'{self.folder_path}/fcast_params_{self.model}_repeat_{repeat_id}.npz', 'wb') as f:
       np.savez(f, fcast = fcast)
