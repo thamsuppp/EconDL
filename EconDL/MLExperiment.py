@@ -19,7 +19,7 @@ class MLExperiment(Experiment):
     self._compile_multi_forecasting_results(repeats_to_include = repeats_to_include)
     self._compile_unconditional_irf_results(repeats_to_include = repeats_to_include)
 
-  def compute_unconditional_irfs(self, Y_train, Y_test, results, repeat_id):
+  def compute_unconditional_irfs(self, Y_train, Y_test, X_train, results, repeat_id):
     unconditional_irf_params = {
         'n_lag_linear': self.nn_hyps['n_lag_linear'],
         'n_lag_d': self.nn_hyps['n_lag_d'],
@@ -54,7 +54,8 @@ class MLExperiment(Experiment):
       'n_var': self.nn_hyps['n_var'],
       'forecast_method': self.extensions_params['multi_forecasting']['forecast_method'], # old or new
       'var_names': self.nn_hyps['var_names'],
-      'model': self.model
+      'model': self.model,
+      'end_precision_lambda': 0
     }
 
     ForecastMultiObj = ForecastMulti(self.run_name, Y_train, Y_test, multi_forecasting_params, device = None)
@@ -84,7 +85,7 @@ class MLExperiment(Experiment):
 
         results = train_ml_model(X_train, X_test, Y_train, Y_test, nn_hyps)
 
-        self.compute_unconditional_irfs(Y_train, Y_test, results, repeat_id = repeat_id)
+        self.compute_unconditional_irfs(Y_train, Y_test, X_train, results, repeat_id = repeat_id)
         self.compute_multi_forecasts(X_train, X_test, Y_train, Y_test, results, nn_hyps, repeat_id)
 
       # After completing all repeats

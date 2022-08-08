@@ -1,6 +1,13 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import colorcet as cc
+import seaborn as sns
 import os
+
+from sklearn.metrics import mean_absolute_error
+
+palette = sns.color_palette(cc.glasbey, n_colors = 30)
 
 class ForecastMultiEvaluation:
 
@@ -27,9 +34,11 @@ class ForecastMultiEvaluation:
     self.benchmarks = multi_forecasting_params['benchmarks']
     self.experiments_names = []
     self.M_varnn = multi_forecasting_params['M_varnn']
+    self.normalize_errors_to_benchmark = multi_forecasting_params['normalize_errors_to_benchmark'] if multi_forecasting_params['normalize_errors_to_benchmark'] else True
 
     self.Y_pred_big = None
     self.Y_pred_big_latest = None
+
 
     self._load_results()
 
@@ -65,13 +74,18 @@ class ForecastMultiEvaluation:
     benchmark_folder_path = f'{self.folder_path}/benchmarks'
 
     for bid, benchmark in enumerate(self.benchmarks):
-      FCAST = np.load(f'{benchmark_folder_path}/benchmark_multi_{benchmark}.npz')
-      FCAST_nan = FCAST.copy()
-      FCAST_nan[FCAST_nan == 0] = np.nan
-      if benchmark in ['XGBoost', 'RF']:
-        Y_pred = np.nanmedian(FCAST_nan, axis = 2)
-        Y_pred_big[self.M_varnn + bid, :,:,:,:] = Y_pred
+
+      if benchmark in ['XGBoost', 'RF']:  # Load the ML results - different as their results are saved w the ML models
+          out = np.load(f'{self.folder_path}/multi_fcast_params_{benchmark}_compiled.npz')
+          FCAST = out['fcast']
+          FCAST_nan = FCAST.copy()
+          FCAST_nan[FCAST_nan == 0] = np.nan
+          Y_pred = np.nanmedian(FCAST_nan, axis = 2)
+          Y_pred_big[self.M_varnn + bid, :,:,:,:] = Y_pred
       else:
+        FCAST = np.load(f'{benchmark_folder_path}/benchmark_multi_{benchmark}.npz')
+        FCAST_nan = FCAST.copy()
+        FCAST_nan[FCAST_nan == 0] = np.nan
         Y_pred_big[self.M_varnn + bid, :,:,:,:] = FCAST_nan[:, :, :, 0:1]
 
     self.Y_pred_big = Y_pred_big
@@ -105,9 +119,9 @@ class ForecastMultiEvaluation:
 
         for var in range(self.n_var):
           if self.exclude_last > 0:
-            ax[horizon-1, var].plot(Y_pred_h[:-self.exclude_last, var], label = self.experiments_names[model])
+            ax[horizon-1, var].plot(Y_pred_h[:-self.exclude_last, var], label = self.experiments_names[model], color = palette[model])
           else:
-            ax[horizon-1, var].plot(Y_pred_h[:, var], label = self.experiments_names[model])
+            ax[horizon-1, var].plot(Y_pred_h[:, var], label = self.experiments_names[model], color = palette[model])
       if var == (self.n_var - 1) and horizon == 1:
         ax[horizon-1, var].legend()
 
@@ -117,19 +131,20 @@ class ForecastMultiEvaluation:
 
   def plot_forecast_errors(self):
 
-    fig, ax = plt.subplots(self.h ,self.n_var, figsize = (self.n_var * 6, self.h * 4), constrained_layout = True)
+    n_models = self.Y_pred_big_latest.shape[0]
 
+    fig, ax = plt.subplots(self.h ,self.n_var, figsize = (self.n_var * 6, self.h * 4), constrained_layout = True)
+  
+    errors = np.zeros((n_models, self.test_size - self.exclude_last, self.h, self.n_var))
+  
     for horizon in range(1, self.h+1):
-    
-      cum_error_benchmark = np.zeros((self.test_size - self.exclude_last, self.n_var))
-      cum_error_benchmark[:] = np.nan
 
       # Plot actual
       for var in range(self.n_var):
         ax[horizon-1, var].set_title(f'{self.var_names[var]}, h = {horizon}')
         
       # Plot predicted
-      for model in range(self.Y_pred_big_latest.shape[0]):
+      for model in range(n_models):
         Y_pred_h = np.transpose(self.Y_pred_big_latest[model, horizon, :, :]).copy()
         # Shift forward by horizon
         Y_pred_h[horizon:, :] = Y_pred_h[:(self.test_size-horizon), :]
@@ -143,12 +158,21 @@ class ForecastMultiEvaluation:
             actual = self.Y_test[:, var]
             pred = Y_pred_h[:, var]
           error = np.abs(actual - pred)
-          cum_error = np.nancumsum(error)
-          
-          if model == 0:
-            cum_error_benchmark[:,var] = cum_error.copy()
-          
-          ax[horizon-1, var].plot(cum_error - cum_error_benchmark[:,var], label = self.experiments_names[model])
+
+          # Store the errors in the errors array
+          errors[model, :, horizon-1, var] = error
+
+    cum_errors = np.nancumsum(errors, axis = 1)
+    cum_error_benchmark = cum_errors[self.M_varnn + 2, :, :, :] # Benchmark is the VAR expanding model
+
+    # After computing all the cum errors, plot them
+    for horizon in range(1, self.h+1):
+      for model in range(n_models):
+        for var in range(self.n_var):
+          if model < self.M_varnn:
+            ax[horizon-1, var].plot(cum_errors[model, :, horizon-1, var] - cum_error_benchmark[:, horizon-1, var], label = self.experiments_names[model], color = palette[model])
+          else: # Dotted lines plot for benchmarks
+            ax[horizon-1, var].plot(cum_errors[model, :, horizon-1, var] - cum_error_benchmark[:,horizon-1, var], label = self.experiments_names[model], color = palette[model], ls = 'dotted')
 
       if var == (self.n_var - 1) and horizon == 1:
         ax[horizon-1, var].legend()
@@ -156,3 +180,31 @@ class ForecastMultiEvaluation:
     image_file = f'{self.image_folder_path}/multi_forecast_cum_errors.png'
     plt.savefig(image_file)
     print(f'Multi-forecasting Cum Errors plotted at {image_file}')
+
+    # Calculate MAE and save file
+    
+    maes = np.nanmean(errors, axis = 1)
+
+    maes_reshaped = maes.reshape(maes.shape[0] * maes.shape[1], maes.shape[2])
+
+    mae_df = pd.DataFrame(maes_reshaped,
+                columns = self.var_names
+    )
+    mae_df['model'] = np.repeat(self.experiments_names, maes.shape[1])
+    mae_df['horizon'] = np.tile(np.arange(1, maes.shape[1] + 1), maes.shape[0])
+
+    # Standardize errors by benchmark model
+    if self.normalize_errors_to_benchmark == True:
+      normalized_df = pd.DataFrame()
+      for horizon in range(1, self.h+1):
+        maes_horizon = mae_df.loc[mae_df['horizon'] == horizon, :].copy()
+        maes_horizon[self.var_names] = maes_horizon[self.var_names] / maes_horizon.loc[maes_horizon['model'] == self.experiments_names[self.M_varnn + 2], self.var_names].values
+        normalized_df = pd.concat([normalized_df, maes_horizon])
+      mae_df = normalized_df
+
+    mae_df = mae_df[['model', 'horizon'] + self.var_names]
+    mae_df['model_id'] = mae_df['model'].apply(lambda x: self.experiments_names.index(x))
+    mae_df = mae_df.sort_values(by = ['horizon', 'model_id'])
+    mae_df = mae_df.drop(columns = ['model_id'])
+
+    mae_df.to_csv(f'{self.image_folder_path}/multi_forecast_errors.csv', index = False)

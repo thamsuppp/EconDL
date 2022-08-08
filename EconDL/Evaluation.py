@@ -42,10 +42,10 @@ class Evaluation:
     self.sim_dataset = evaluation_params['sim_dataset']
     self.benchmark_names = evaluation_params['benchmarks']
     self.test_exclude_last = evaluation_params['test_exclude_last']
+    self.normalize_errors_to_benchmark = evaluation_params['normalize_errors_to_benchmark']
 
     # Store the names of every hyperparameter list
     self.experiment_names = []
-
 
     self.params = []
     self.BETAS_IN_ALL = None
@@ -489,6 +489,11 @@ class Evaluation:
     print(f'Predictions plotted at {image_file}')
 
   def plot_errors(self, data_sample = 'oob', exclude_last = 0):
+
+    '''
+    Gets the median prediction from all the bootstraps models
+    Calculates the Absolute Errors
+    '''
         
     fig, ax = plt.subplots(1, self.n_var, figsize = (6 * self.n_var, 6), constrained_layout = True)
     for i in range(self.M_total):
@@ -527,12 +532,19 @@ class Evaluation:
     if exclude_last != 0:
       errors = errors[:, :-exclude_last, :]
     cum_errors = np.nancumsum(errors, axis = 1)
+    # dim of cum_errors: 
+
+    mean_absolute_errors = np.nanmean(errors, axis = 1)
+    mean_absolute_errors_df = pd.DataFrame(mean_absolute_errors, columns = self.var_names, index = self.all_names)
+    if self.normalize_errors_to_benchmark == True: # Standardize errors by benchmark model
+      mean_absolute_errors_df = mean_absolute_errors_df.div(mean_absolute_errors_df.iloc[self.M_varnn, :])
+    mean_absolute_errors_df.to_csv(f'{self.image_folder_path}/mean_absolute_errors_{data_sample}.csv')
 
     # Choose the benchmark (fix as VAR whole)
     benchmark_cum_error = cum_errors[(self.M_varnn), :, :]
 
+    # Plots the cumulative absolute errors of the different models
     for i in range(self.M_total):
-      
       for var in range(self.n_var):
         if i == 0:
           ax[var].set_title(self.var_names[var])
@@ -579,7 +591,8 @@ class Evaluation:
       'n_var': self.n_var, 
       'var_names': self.var_names,
       'M_varnn': self.M_varnn,
-      'exclude_last': self.Run.evaluation_params['test_exclude_last']
+      'exclude_last': self.Run.evaluation_params['test_exclude_last'],
+      'normalize_errors_to_benchmark': self.Run.evaluation_params['normalize_errors_to_benchmark']
     }
     # print data
       

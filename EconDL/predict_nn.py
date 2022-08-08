@@ -1,4 +1,3 @@
-from ensurepip import bootstrap
 import numpy as np
 import torch 
 from EconDL.utils import invert_scaling
