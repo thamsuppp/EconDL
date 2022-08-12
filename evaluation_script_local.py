@@ -21,21 +21,11 @@ if args.fcast_only:
 
 print(f'Run is {run_name}, cond_irf is {cond_irf}, fcast_only is {fcast_only}')
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 RunObj = Run(run_name, device)
-# Train benchmarks if not already trained (function in Run will not train if benchmark files already exist)
-RunObj.train_benchmarks()
-RunObj.train_multi_forecast_benchmarks()
 
 EvaluationObj = Evaluation(RunObj)
-if cond_irf == True:
-  EvaluationObj.Run.compute_conditional_irfs()
-  EvaluationObj.plot_conditional_irf_comparison()
-
 print(EvaluationObj.check_results_sizes())
-if fcast_only == True:
-  EvaluationObj.plot_forecasts()
-else:
-  EvaluationObj.plot_all()
+EvaluationObj.plot_betas_comparison(exps_to_compare = [0, 1, 2])
+EvaluationObj.plot_sigmas_comparison(exps_to_compare = [0, 1, 2])

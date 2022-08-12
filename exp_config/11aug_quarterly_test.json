@@ -49,7 +49,7 @@
             "forecast_horizons": 6,
             "reestimation_window": 40,
             "forecast_method": "new",
-            "num_sim_bootstraps": 20,
+            "num_sim_bootstraps": 50,
             "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF", "XGBoost"]
         }
     },
@@ -58,7 +58,7 @@
         {
             "nodes": [200, 100, 50], 
             "actv": "nn.ReLU()", 
-            "tvpl_archi": [5], 
+            "tvpl_archi": [2], 
             "lr": 0.001, 
             "time_dummy_setting": 2, 
             "dropout_rate": 0.25, 
@@ -66,10 +66,26 @@
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 27], [27, 1514]],
+            "s_pos": [[0, 27]],
             "joint_estimation": true, 
-            "exog_data": true,
-            "name": "RELU w Exog"
+            "exog_data": false,
+            "name": "RELU TVPL2"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.0025, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 27]],
+            "joint_estimation": true, 
+            "exog_data": false,
+            "name": "RELU High LR"
         },
         {
             "nodes": [200, 100, 50], 
@@ -88,20 +104,52 @@
             "name": "RELU"
         },
         {
-            "nodes": [200, 100, 50], 
-            "actv": "nn.ReLU()", 
-            "tvpl_archi": [5], 
-            "lr": 0.001, 
+            "nodes": [100, 50, 25], 
+            "actv": "nn.SELU()", 
+            "tvpl_archi": [2], 
+            "lr": 0.0005, 
             "time_dummy_setting": 2, 
             "dropout_rate": 0.25, 
             "precision_lambda": 0.25, 
             "lambda_temper_epochs": 50, 
             "optimizer": "Adam",
             "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
-            "s_pos": [[0, 27], [27, 47]],
+            "s_pos": [[0, 27]],
             "joint_estimation": true, 
             "exog_data": false,
-            "name": "RELU w Time"
+            "name": "SELU TVPL2"
+        },
+        {
+            "nodes": [100, 50, 25], 
+            "actv": "nn.SELU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.0005, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 27]],
+            "joint_estimation": true, 
+            "exog_data": false,
+            "name": "SELU"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.SELU()", 
+            "tvpl_archi": [5], 
+            "lr": 0.0005, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"is_hemi": false, "n_times": 30}, 
+            "s_pos": [[0, 27]],
+            "joint_estimation": true, 
+            "exog_data": false,
+            "name": "SELU 200-50"
         }
     ],
 

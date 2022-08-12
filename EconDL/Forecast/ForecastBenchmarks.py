@@ -22,7 +22,9 @@ class ForecastBenchmarks:
 
     self.h = multi_forecasting_params['forecast_horizons']
     self.test_size = multi_forecasting_params['test_size'] #T
+
     self.reestimation_window = multi_forecasting_params['reestimation_window']
+    
     self.R = int(self.test_size / self.reestimation_window)
     self.num_repeats = multi_forecasting_params['num_repeats']
 
@@ -32,6 +34,7 @@ class ForecastBenchmarks:
     self.var_names = multi_forecasting_params['var_names']
 
     self.benchmarks = multi_forecasting_params['benchmarks']
+    self.window_length = multi_forecasting_params['window_length']
 
     self._process_dataset()
 
@@ -96,7 +99,7 @@ class ForecastBenchmarks:
     FCAST = np.zeros((self.h +1, self.n_var, self.test_size, self.R))
     FCAST[:] = np.nan
 
-    window_length = 120
+    window_length = self.window_length
     # For every time through the re-estimation window
     for r in range(self.R):
       print(f'Re-estimation window {r}, {datetime.now()}')
@@ -121,34 +124,37 @@ class ForecastBenchmarks:
         np.save(f, FCAST)
   
   def get_ar_forecasts(self, y_in, results_coefs, h):
-    # y_in should be of length 'ar_lags' - all you need to start iterating forward
+  # y_in should be of length 'ar_lags' - all you need to start iterating forward
     
+    ar_lags = y_in.shape[0]
     # Store both train and test 
     y_all = np.zeros((y_in.shape[0] + h))
     y_all[:] = np.nan
-    y_all[:y_in.shape[0]] = y_in
+    y_all[:ar_lags] = y_in
 
-    for self.horizon in range(1, self.h+1):
+    for horizon in range(1, h+1):
       # Get the input lags for 
-      y_in_this = y_all[(y_in.shape[0] -1 -4 + self.horizon):(y_in.shape[0] -1 + self.horizon)]
-      # Evaluate the AR equation to get the prediction
-      y_all[y_in.shape[0] - 1 + self.horizon] = results_coefs[0] + np.dot(results_coefs[1:], y_in_this)
+      y_in_this = y_all[(horizon-1):(horizon + ar_lags - 1)]
+      # Evaluate the AR equation to get the prediction 
+      # **results_coefs are from L1 to L4, so must reverse this before dot product
+      y_all[ar_lags - 1 + horizon] = results_coefs[0] + np.dot(np.flip(results_coefs[1:]), y_in_this)
 
-    # Return self.h predictions
+    # Return h predictions
     return y_all[y_in.shape[0]:]
 
   def expanding_window_AR(self):
     ### Expanding Window AR(4)
-    self.reestimation_window = 1
-    R = int(self.test_size / self.reestimation_window)
+    # self.reestimation_window = 1
+    # R = int(self.test_size / self.reestimation_window)
 
+    #ar_lags = self.n_lag_linear
     ar_lags = 4
 
-    FCAST = np.zeros((self.h+1, self.n_var, self.test_size, R))
+    FCAST = np.zeros((self.h+1, self.n_var, self.test_size, self.R))
     FCAST[:] = np.nan
 
     # For every time through the re-estimation window
-    for r in range(R):
+    for r in range(self.R):
       print(f'Re-estimation window {r}, {datetime.now()}')
       # Training data is the data available till that moment
       Y_train = self.Y_all[:-(self.test_size - self.reestimation_window * r), :]
@@ -183,17 +189,19 @@ class ForecastBenchmarks:
   ### Rolling Window AR(4)
   def rolling_window_AR(self):
   
-    self.reestimation_window = 1
-    R = int(self.test_size / self.reestimation_window)
+    # self.reestimation_window = 1
+    # R = int(self.test_size / self.reestimation_window)
 
-    ar_lags = 4
+    #ar_lags = self.n_lag_linear
 
-    FCAST = np.zeros((self.h+1, self.n_var, self.test_size, R))
+    FCAST = np.zeros((self.h+1, self.n_var, self.test_size, self.R))
     FCAST[:] = np.nan
 
-    window_length = 120
+    #window_length = self.window_length
+    window_length = 40
+    ar_lags = 4
     # For every time through the re-estimation window
-    for r in range(R):
+    for r in range(self.R):
       print(f'Re-estimation window {r}, {datetime.now()}')
       # Training data is the data available till that moment
       Y_train = self.Y_all[-(self.test_size - self.reestimation_window * r + window_length):-(self.test_size - self.reestimation_window * r), :]

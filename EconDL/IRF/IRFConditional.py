@@ -104,10 +104,6 @@ class IRFConditional:
       if t % 100 == 0:
         print(f'Simulation timestep {t} at {datetime.now()}')
       for boot in range(n_bootstraps):
-
-        if t == 0 and boot == 0:
-          print('beta_draw at 0', BETAS[t, :, boot, :])
-          print('cov_mat_draw at 0', SIGMAS[t, :, :, boot])
           
         # Can change BETAS_IN or BETAS
         beta_draw = BETAS[t, :, boot, :].T
@@ -141,20 +137,20 @@ class IRFConditional:
 
     fig, ax = plt.subplots(self.n_var, self.n_var, constrained_layout = True, figsize = (4 * self.n_var, 4 * self.n_var))
 
-    for k in range(self.n_var):
-      for kk in range(self.n_var):
+    for shock_var in range(self.n_var):
+      for response_var in range(self.n_var):
         for i in range(len(times_to_draw)):
-          irf_df = IRFS_median[times_to_draw[i], k, kk, :]
-          ax[kk, k].plot(irf_df, label = times_to_draw_labels[i], color = cmap(i))
+          irf_df = IRFS_median[times_to_draw[i], shock_var, response_var, :]
+          ax[response_var, shock_var].plot(irf_df, label = times_to_draw_labels[i], color = cmap(i))
 
           #irf_actual_df = IRFS_actual[times_to_draw[i], k, kk, :]
           #ax[kk, k].plot(irf_actual_df, label = str(times_to_draw_labels[i]) + ' Actual', ls = '--', color = cmap(i))
-          ax[kk, k].set_xlabel('Horizon')
-          ax[kk, k].set_ylabel('Impulse Response')
-          ax[kk, k].axhline(y = 0, color = 'black', ls = '--')
-          ax[kk, k].set_title(f'{self.var_names[k]} -> {self.var_names[kk]}')
-        if k == 0 and kk == 0:
-          ax[kk, k].legend()
+          ax[response_var, shock_var].set_xlabel('Horizon')
+          ax[response_var, shock_var].set_ylabel('Impulse Response')
+          ax[response_var, shock_var].axhline(y = 0, color = 'black', ls = '--')
+          ax[response_var, shock_var].set_title(f'{self.var_names[shock_var]} -> {self.var_names[response_var]}')
+        if response_var == 0 and shock_var == 0:
+          ax[response_var, shock_var].legend()
 
     fig.suptitle(f'Experiment {self.experiment_id} ({self.experiment_name} Conditional IRF', fontsize = 16)
     image_path = f'{image_folder_path}/irf_conditional_{self.experiment_id}.png'
@@ -175,22 +171,22 @@ class IRFConditional:
     cmap = plt.cm.Reds(np.linspace(1,0,6))
     fig, ax = plt.subplots(self.n_var, self.n_var, constrained_layout = True, figsize = (6 * self.n_var, 4 * self.n_var))
 
-    for k in range(self.n_var):
-      for kk in range(self.n_var):
+    for shock_var in range(self.n_var):
+      for response_var in range(self.n_var):
         for h in [0,1,2,3,4]:
-          irf_df = IRFS_median[:, k, kk, h]
+          irf_df = IRFS_median[:, shock_var, response_var, h]
           if normalize == True:
-            irf_df = irf_df / IRFS_median[:, k, k, 0] # Divide IRF by the time-0 of 
-          ax[kk, k].plot(irf_df, label = f'h={h}', color = cmap[h], lw = 1)
+            irf_df = irf_df / IRFS_median[:, shock_var, response_var, 0] # Divide IRF by the time-0 of 
+          ax[response_var, shock_var].plot(irf_df, label = f'h={h}', color = cmap[h], lw = 1)
 
           #irf_actual_df = IRFS_actual[:, k, kk, h]
           #ax[kk, k].plot(irf_actual_df, label = f'h={h} Actual', color = 'black')
-          ax[kk, k].set_xlabel('Horizon')
-          ax[kk, k].set_ylabel('Impulse Response')
-          ax[kk, k].axhline(y = 0, color = 'black', ls = '--')
-          ax[kk, k].set_title(f'{self.var_names[k]} -> {self.var_names[kk]}')
-        if k == 0 and kk == 0:
-          ax[kk, k].legend()
+          ax[response_var, shock_var].set_xlabel('Horizon')
+          ax[response_var, shock_var].set_ylabel('Impulse Response')
+          ax[response_var, shock_var].axhline(y = 0, color = 'black', ls = '--')
+          ax[response_var, shock_var].set_title(f'{self.var_names[shock_var]} -> {self.var_names[response_var]}')
+        if response_var == 0 and shock_var == 0:
+          ax[response_var, shock_var].legend()
 
     fig.suptitle(f'Experiment {self.experiment_id} ({self.experiment_name}) Conditional IRF Over Time', fontsize = 16)
     image_file = f'{image_folder_path}/irf_conditional_over_time_{self.experiment_id}.png'

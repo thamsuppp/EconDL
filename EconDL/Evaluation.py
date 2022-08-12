@@ -1,3 +1,4 @@
+from calendar import c
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -5,6 +6,8 @@ from statsmodels.tsa.api import VAR
 import os
 import seaborn as sns
 import colorcet as cc
+import matplotlib.cm as cm
+import matplotlib.colors as colors
 from EconDL.Forecast.ForecastMultiEvaluation import ForecastMultiEvaluation
 
 palette = sns.color_palette(cc.glasbey, n_colors = 30)
@@ -43,6 +46,7 @@ class Evaluation:
     self.benchmark_names = evaluation_params['benchmarks']
     self.test_exclude_last = evaluation_params['test_exclude_last']
     self.normalize_errors_to_benchmark = evaluation_params['normalize_errors_to_benchmark']
+    self.experiments_to_compare = evaluation_params.get('experiments_to_compare', None)
 
     # Store the names of every hyperparameter list
     self.experiment_names = []
@@ -150,6 +154,8 @@ class Evaluation:
       BETAS_IN = BETAS_IN[:, beta_ids_to_keep, :,:,:]
       BETAS = BETAS[:, beta_ids_to_keep, :,:,:]
 
+      n_hemis = BETAS.shape[4]
+
       if i == 0:
         BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], 2))
         #BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], BETAS.shape[4]))
@@ -194,14 +200,14 @@ class Evaluation:
         # BETAS[:, :, :, :, 0] = BETAS[:, :, :, :, 0] + time_hemi_means_expand
         # BETAS[:, :, :, :, 1] = BETAS[:, :, :, :, 1] - time_hemi_means_expand
 
-      BETAS_ALL[i,:,:,:,:, :] = BETAS
-      BETAS_IN_ALL[i,:,:,:,:, :] = BETAS_IN
+      BETAS_ALL[i,:,:,:,:, :n_hemis] = BETAS
+      BETAS_IN_ALL[i,:,:,:,:, :n_hemis] = BETAS_IN
       SIGMAS_ALL[i, :,:,:,:] = SIGMAS
       SIGMAS_IN_ALL[i, :,:,:,:] = SIGMAS_IN
       PRECISION_ALL[i, :,:,:,:] = PRECISION
       PRECISION_IN_ALL[i, :,:,:,:] = PRECISION_IN
-      CHOLESKY_ALL[i, :,:,:,:, :] = CHOLESKY
-      CHOLESKY_IN_ALL[i, :,:,:,:, :] = CHOLESKY_IN
+      CHOLESKY_ALL[i, :,:,:, :n_hemis, :] = CHOLESKY
+      CHOLESKY_IN_ALL[i, :,:,:, :n_hemis, :] = CHOLESKY_IN
       PREDS_ALL[i,:,:,:] = PREDS
       PREDS_TEST_ALL[i,:,:,:] = PREDS_TEST
 
@@ -249,6 +255,10 @@ class Evaluation:
     
   # Helper function to plot betas
   def _plot_betas_inner(self, BETAS, var_names, beta_names, image_file, q = 0.16, title = '', actual = None):
+
+    # Check if the entire numpy array is nan
+    if np.all(np.isnan(BETAS)):
+      return
 
     n_obs = BETAS.shape[0]
     n_betas = BETAS.shape[1]
@@ -310,24 +320,83 @@ class Evaluation:
     print(f'Betas plotted at {image_file}')
 
   def plot_betas(self):
-    # Plot individual hemisphere and summd betas
+    # Plot individual hemisphere and summed betas
     if self.is_test == False:
-      BETAS_ALL_PLOT = self.BETAS_IN_ALL[:, :-self.test_size,:,:,:]
+      BETAS_ALL_PLOT = self.BETAS_IN_ALL[:, :-self.test_size,:,:,:,:]
       #coefs_tv_plot = coefs_tv[:-test_size, :, :] if is_simulation == True else None
     else:
-      BETAS_ALL_PLOT = self.BETAS_ALL[:, -self.test_size:,:,:,:]
+      BETAS_ALL_PLOT = self.BETAS_ALL[:, -self.test_size:,:,:,:, :]
       #coefs_tv_plot = coefs_tv[-test_size:, :, :] if is_simulation == True else None
 
-    n_hemis = BETAS_ALL_PLOT.shape[5]
     for i in self.exps_to_plot:
-      if n_hemis > 1:
-        for hemi in range(n_hemis):
-          image_file = f'{self.image_folder_path}/betas_{i}_hemi_{hemi}.png'
-          self._plot_betas_inner(BETAS_ALL_PLOT[i, :, :, :, :, hemi], self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Hemisphere {hemi}', actual = None)
-        
-      image_file = f'{self.image_folder_path}/betas_{i}_sum.png'
-      self._plot_betas_inner(np.sum(BETAS_ALL_PLOT[i, :, :, :, :,:], axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Sum', actual = None)
 
+      BETAS_EXP_PLOT = BETAS_ALL_PLOT[i, :, :, :, :]
+
+      n_hemis = 0
+      for hemi in range(BETAS_ALL_PLOT.shape[5]):
+        # Check that the entire array is not nan
+        if np.isnan(BETAS_EXP_PLOT[:, :, :, :, hemi]).all() == False:
+          n_hemis += 1
+
+      BETAS_EXP_PLOT = BETAS_EXP_PLOT[:, :, :, :, :n_hemis]
+      print(f'Experiment {i} has {n_hemis} hemispheres')
+
+      for hemi in range(n_hemis):
+        image_file = f'{self.image_folder_path}/betas_{i}_hemi_{hemi}.png'
+        self._plot_betas_inner(BETAS_EXP_PLOT[:, :, :, :, hemi], self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Hemisphere {hemi}', actual = None)
+      
+      image_file = f'{self.image_folder_path}/betas_{i}_sum.png'
+      self._plot_betas_inner(np.sum(BETAS_EXP_PLOT, axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Sum', actual = None)
+
+  def plot_betas_comparison(self, exps_to_compare = [0, 1]):
+    if self.is_test == False:
+      BETAS_ALL_PLOT = self.BETAS_IN_ALL[:, :-self.test_size,:,:,:,:]
+    else:
+      BETAS_ALL_PLOT = self.BETAS_ALL[:, -self.test_size:,:,:,:, :]
+
+    BETAS_COMPARE = np.zeros((len(exps_to_compare), BETAS_ALL_PLOT.shape[1], BETAS_ALL_PLOT.shape[2], BETAS_ALL_PLOT.shape[3], BETAS_ALL_PLOT.shape[4]))
+    for i, exp in enumerate(exps_to_compare):
+      BETAS_EXP_PLOT = BETAS_ALL_PLOT[exp, :, :, :, :]
+      n_hemis = 0
+      for hemi in range(BETAS_ALL_PLOT.shape[5]):
+        # Check that the entire array is not nan
+        if np.isnan(BETAS_EXP_PLOT[:, :, :, :, hemi]).all() == False:
+          n_hemis += 1
+
+      BETAS_EXP_PLOT = BETAS_EXP_PLOT[:, :, :, :, :n_hemis]
+      BETAS_SUM = np.sum(BETAS_EXP_PLOT, axis = -1)
+      BETAS_COMPARE[i, :, :, :, :] = BETAS_SUM
+      
+    n_obs = BETAS_COMPARE.shape[1]
+    n_betas = BETAS_COMPARE.shape[2]
+    n_bootstraps = BETAS_COMPARE.shape[3]
+    n_vars = BETAS_COMPARE.shape[4]
+
+    fig, axs = plt.subplots(n_vars, n_betas, figsize = (6 * n_betas, 4 * n_vars), constrained_layout = True)
+
+    for var in range(n_vars):
+      for beta in range(n_betas):
+        for i, exp in enumerate(exps_to_compare):
+          axs[var, beta].plot(np.nanmedian(BETAS_COMPARE[i, :, beta, :, var], axis = 1), label = f'{self.experiment_names[exp]}')
+          axs[var, beta].fill_between(
+              np.arange(n_obs),
+              np.nanquantile(BETAS_COMPARE[i, :, beta, :, var], axis = 1, q = 0.16),
+              np.nanquantile(BETAS_COMPARE[i, :, beta, :, var], axis = 1, q = 0.84),
+              alpha = 0.5
+          )
+          axs[var, beta].set_title(f'{self.var_names[var]}, {self.beta_names[beta]}')
+          axs[var, beta].set_xlabel('Time')
+          axs[var, beta].set_ylabel('Coefficient')
+
+          if var == 0 and beta == 0:
+            axs[var, beta].legend()
+    
+    fig.suptitle(f'Comparison of Betas', fontsize=16)
+    image_file = f'{self.image_folder_path}/betas_comparison.png'
+    plt.savefig(image_file)
+    plt.close()
+  
+  
   def plot_precision(self):
 
       # Don't show test (change this code to show in-sample)
@@ -410,13 +479,50 @@ class Evaluation:
 
       print(f'Cholesky plotted at {image_file}')
 
+  def plot_sigmas_comparison(self, exps_to_compare = [0, 1]):
+    if self.is_test == False:
+      SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, :-self.test_size,:,:,:]
+    else:
+      SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, -self.test_size:,:,:,:]
+
+    fig, axs = plt.subplots(self.n_var, self.n_var, figsize = (6 * self.n_var, 4 * self.n_var), constrained_layout = True)
+    
+    for row in range(self.n_var):
+      for col in range(self.n_var):
+        for i in exps_to_compare:
+
+          axs[row, col].plot(np.nanmedian(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1), label = self.experiment_names[exps_to_compare[i]])
+          axs[row, col].set_title(f'{self.var_names[row]}, {self.var_names[col]}')
+          axs[row, col].set_xlabel('Time')
+          axs[row, col].set_ylabel('Coefficient')
+
+          sigmas_lcl = np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.16)
+          sigmas_ucl = np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.84)
+          axs[row, col].fill_between(list(range(SIGMAS_ALL_PLOT.shape[1])), sigmas_lcl, sigmas_ucl, alpha = 0.5)
+
+        # Set the y-axis limits to be at the min 10% LCL and max 10% UCL
+        axs[row, col].set_ylim(
+            np.nanmin(np.nanquantile(SIGMAS_ALL_PLOT[exps_to_compare, :, row, col, :], axis = -1, q = 0.35)),
+            np.nanmax(np.nanquantile(SIGMAS_ALL_PLOT[exps_to_compare, :, row, col, :], axis = -1, q = 0.65))
+        )
+        # Plot the time-invariant covariance matrix
+        axs[row, col].axhline(y = np.nanmedian(self.SIGMAS_CONS_ALL[i, row, col, :]), color = 'red', label = 'Time-Invariant')
+
+        if row == 0 and col == 0:
+          axs[row, col].legend()
+
+
+    fig.suptitle(f'Sigmas Comparison', fontsize=16)
+    image_file = f'{self.image_folder_path}/sigmas_comparison.png'
+    plt.savefig(image_file)
+    plt.close()
+
   def plot_sigmas(self):
         
     # Don't show test (change this code to show in-sample)
     if self.is_test == False:
       SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, :-self.test_size,:,:,:]
       #cov_mat_tv_plot = cov_mat_tv[:-test_size, :, :] if self.is_simulation == True else None
-
     else:
       SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, -self.test_size:,:,:,:]
       #cov_mat_tv_plot = cov_mat_tv[-test_size:, :, :] if self.is_simulation == True else None
@@ -537,11 +643,11 @@ class Evaluation:
     mean_absolute_errors = np.nanmean(errors, axis = 1)
     mean_absolute_errors_df = pd.DataFrame(mean_absolute_errors, columns = self.var_names, index = self.all_names)
     if self.normalize_errors_to_benchmark == True: # Standardize errors by benchmark model
-      mean_absolute_errors_df = mean_absolute_errors_df.div(mean_absolute_errors_df.iloc[self.M_varnn, :])
+      mean_absolute_errors_df = mean_absolute_errors_df.div(mean_absolute_errors_df.iloc[self.M_varnn+3, :])
     mean_absolute_errors_df.to_csv(f'{self.image_folder_path}/mean_absolute_errors_{data_sample}.csv')
 
-    # Choose the benchmark (fix as VAR whole)
-    benchmark_cum_error = cum_errors[(self.M_varnn), :, :]
+    # Choose the benchmark (fix as AR rolling)
+    benchmark_cum_error = cum_errors[(self.M_varnn + 3), :, :]
 
     # Plots the cumulative absolute errors of the different models
     for i in range(self.M_total):
@@ -549,7 +655,7 @@ class Evaluation:
         if i == 0:
           ax[var].set_title(self.var_names[var])
         if i >= self.M_varnn: # Make benchmarks dotted
-          ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i], ls = 'dotted')
+          ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i], color = palette[i], ls = 'dotted')
         else:
           ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i], color = palette[i])
 
@@ -561,11 +667,50 @@ class Evaluation:
     plt.close()
 
     print(f'{data_sample} Cum Errors plotted at {image_file}')
+
+  def plot_conditional_irf_comparison(self, exps_to_compare = [0, 1]):
     
+    for i, exp in enumerate(exps_to_compare):
+      IRFS = self.Run.experiments[exp].evaluations['conditional_irf'].IRFS
+      if i == 0:
+        IRFS_ALL = np.zeros((len(exps_to_compare), IRFS.shape[0], IRFS.shape[1], IRFS.shape[2], IRFS.shape[3], IRFS.shape[4]))
+      IRFS_ALL[i, :,:,:,:,:] = IRFS
+    
+    print(IRFS_ALL.shape)
+
+    IRFS_MEDIAN_ALL = np.nanmedian(IRFS_ALL, axis = 2)
+    # Shape of IRFS_MEDIAN_ALL: n_models x n_obs, n_var n_var, self.max_h
+    cmap = plt.cm.tab10
+    fig, ax = plt.subplots(self.n_var, self.n_var, constrained_layout = True, figsize = (6 * self.n_var, 4 * self.n_var))
+
+    alphas = [1, 0.6, 0.2]
+    weights = [2, 1.5, 1]
+
+    for shock_var in range(self.n_var):
+      for response_var in range(self.n_var):
+        for exp in range(len(exps_to_compare)):
+          for h in [1,2,3]:
+            irf_df = IRFS_MEDIAN_ALL[exp, :, shock_var, response_var, h]
+            # if normalize == True:
+            irf_df = irf_df / IRFS_MEDIAN_ALL[exp, :, response_var, response_var, 0] # Divide IRF by the time-0 of 
+            ax[response_var, shock_var].plot(irf_df, label = f'h={h} ({self.experiment_names[exps_to_compare[exp]]})', color = cmap(exp), lw = weights[h-1], alpha = alphas[h-1])
+
+            ax[response_var, shock_var].set_xlabel('Horizon')
+            ax[response_var, shock_var].set_ylabel('Impulse Response')
+            ax[response_var, shock_var].axhline(y = 0, color = 'black', ls = '--')
+            ax[response_var, shock_var].set_title(f'{self.var_names[shock_var]} -> {self.var_names[response_var]}')
+          if shock_var == 0 and response_var == 0:
+            ax[response_var, shock_var].legend()
+
+    fig.suptitle(f'Conditional IRF over Time Comparison', fontsize = 16)
+    image_file = f'{self.image_folder_path}/irf_conditional_over_time_comparison.png'
+    plt.savefig(image_file)
+
   # Wrapper function to do all plots
   def plot_all(self):
     
     self.Run.evaluate_unconditional_irfs(self.Y_train)
+
     self.plot_cholesky()
     self.plot_precision()
     self.plot_sigmas()
@@ -573,6 +718,9 @@ class Evaluation:
     self.plot_predictions()
     self.plot_errors(data_sample='oob')
     self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
+
+    self.plot_betas_comparison(exps_to_compare = self.experiments_to_compare)
+    self.plot_sigmas_comparison(exps_to_compare = self.experiments_to_compare)
     self.evaluate_multi_step_forecasts()
 
   def plot_forecasts(self):
@@ -592,13 +740,14 @@ class Evaluation:
       'var_names': self.var_names,
       'M_varnn': self.M_varnn,
       'exclude_last': self.Run.evaluation_params['test_exclude_last'],
-      'normalize_errors_to_benchmark': self.Run.evaluation_params['normalize_errors_to_benchmark']
+      'normalize_errors_to_benchmark': self.Run.evaluation_params['normalize_errors_to_benchmark'],
+      'window_length': self.Run.extensions_params['benchmarks']['window_length']
     }
-    # print data
       
     ForecastMultiEvaluationObj = ForecastMultiEvaluation(self.run_name, multi_forecasting_params, 
       self.Y_train, self.Y_test)
 
+    ForecastMultiEvaluationObj.plot_different_horizons_same_model()
     ForecastMultiEvaluationObj.plot_different_horizons()
     ForecastMultiEvaluationObj.plot_forecast_errors()
     

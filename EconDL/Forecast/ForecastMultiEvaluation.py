@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib import cm, colors
 import colorcet as cc
 import seaborn as sns
 import os
@@ -92,6 +93,44 @@ class ForecastMultiEvaluation:
     self.Y_pred_big_latest = Y_pred_big[:, :, :, :, -1]
     self.experiments_names = experiments_names + self.benchmarks
 
+  def plot_different_horizons_same_model(self):
+    n_models = self.Y_pred_big_latest.shape[0]
+    fig, ax = plt.subplots(n_models, self.n_var, figsize = (self.n_var * 6, n_models * 4), constrained_layout = True)
+
+    my_cmap = cm.viridis
+    my_norm = colors.Normalize(vmin = 0, vmax = self.h)
+
+    # Plot the actual in each model
+    for model in range(n_models):
+      
+      # Plot actual
+      for var in range(self.n_var):
+        ax[model, var].set_title(f'{self.experiments_names[model]} - {self.var_names[var]}')
+        if self.exclude_last > 0:
+          ax[model, var].plot(self.Y_test[:-self.exclude_last, var], label = 'Actual', color = 'black')
+        else:
+          ax[model, var].plot(self.Y_test[:, var], label = 'Actual', color = 'black')
+      
+      # Plot predicted for each horizon
+      for horizon in range(1, self.h+1):
+
+        Y_pred_h = np.transpose(self.Y_pred_big_latest[model, horizon, :, :]).copy()
+        # Shift forward by horizon
+        Y_pred_h[horizon:, :] = Y_pred_h[:(self.test_size-horizon), :]
+        Y_pred_h[:horizon, :] = np.nan
+
+        for var in range(self.n_var):
+          if self.exclude_last > 0:
+            ax[model, var].plot(Y_pred_h[:-self.exclude_last, var], label = horizon, color = my_cmap(my_norm(horizon)))
+          else:
+            ax[model, var].plot(Y_pred_h[:, var], label = horizon, color = my_cmap(my_norm(horizon)))
+      if var == (self.n_var - 1) and model == 0:
+        ax[model, var].legend()
+
+    image_file = f'{self.image_folder_path}/multi_forecast_preds_diff_horizons_each_model.png'
+    plt.savefig(image_file)
+    print(f'Multi-forecasting Different Horizon Each Model Preds plotted at {image_file}')
+
 
   def plot_different_horizons(self):
 
@@ -119,9 +158,11 @@ class ForecastMultiEvaluation:
 
         for var in range(self.n_var):
           if self.exclude_last > 0:
-            ax[horizon-1, var].plot(Y_pred_h[:-self.exclude_last, var], label = self.experiments_names[model], color = palette[model])
+            ax[horizon-1, var].plot(Y_pred_h[:-self.exclude_last, var], label = self.experiments_names[model], color = palette[model], 
+                                    ls = 'solid' if model < self.M_varnn else 'dotted')
           else:
-            ax[horizon-1, var].plot(Y_pred_h[:, var], label = self.experiments_names[model], color = palette[model])
+            ax[horizon-1, var].plot(Y_pred_h[:, var], label = self.experiments_names[model], color = palette[model],
+                                    ls = 'solid' if model < self.M_varnn else 'dotted')
       if var == (self.n_var - 1) and horizon == 1:
         ax[horizon-1, var].legend()
 
@@ -163,7 +204,7 @@ class ForecastMultiEvaluation:
           errors[model, :, horizon-1, var] = error
 
     cum_errors = np.nancumsum(errors, axis = 1)
-    cum_error_benchmark = cum_errors[self.M_varnn + 2, :, :, :] # Benchmark is the VAR expanding model
+    cum_error_benchmark = cum_errors[self.M_varnn + 1, :, :, :] # Benchmark is the AR rolling model
 
     # After computing all the cum errors, plot them
     for horizon in range(1, self.h+1):
@@ -172,7 +213,7 @@ class ForecastMultiEvaluation:
           if model < self.M_varnn:
             ax[horizon-1, var].plot(cum_errors[model, :, horizon-1, var] - cum_error_benchmark[:, horizon-1, var], label = self.experiments_names[model], color = palette[model])
           else: # Dotted lines plot for benchmarks
-            ax[horizon-1, var].plot(cum_errors[model, :, horizon-1, var] - cum_error_benchmark[:,horizon-1, var], label = self.experiments_names[model], color = palette[model], ls = 'dotted')
+            ax[horizon-1, var].plot(cum_errors[model, :, horizon-1, var] - cum_error_benchmark[:, horizon-1, var], label = self.experiments_names[model], color = palette[model], ls = 'dotted')
 
       if var == (self.n_var - 1) and horizon == 1:
         ax[horizon-1, var].legend()
@@ -198,7 +239,7 @@ class ForecastMultiEvaluation:
       normalized_df = pd.DataFrame()
       for horizon in range(1, self.h+1):
         maes_horizon = mae_df.loc[mae_df['horizon'] == horizon, :].copy()
-        maes_horizon[self.var_names] = maes_horizon[self.var_names] / maes_horizon.loc[maes_horizon['model'] == self.experiments_names[self.M_varnn + 2], self.var_names].values
+        maes_horizon[self.var_names] = maes_horizon[self.var_names] / maes_horizon.loc[maes_horizon['model'] == self.experiments_names[self.M_varnn + 1], self.var_names].values
         normalized_df = pd.concat([normalized_df, maes_horizon])
       mae_df = normalized_df
 

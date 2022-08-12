@@ -189,11 +189,13 @@ class Run:
     multi_forecasting_params = {
       'test_size': self.run_params['test_size'], 
       'forecast_horizons': self.extensions_params['multi_forecasting']['forecast_horizons'],
-      'reestimation_window': self.extensions_params['multi_forecasting']['reestimation_window'],
+
+      'reestimation_window': self.extensions_params['benchmarks']['reestimation_window'], # ** no longer multi_forecasting reestimation_window
       'num_inner_bootstraps': self.run_params['num_inner_bootstraps'],
       'num_sim_bootstraps': self.extensions_params['multi_forecasting']['num_sim_bootstraps'],
       'benchmarks': self.extensions_params['multi_forecasting']['benchmarks'],
       'num_repeats': 1, 
+      'window_length': self.extensions_params['benchmarks']['window_length'],
 
       'n_lag_linear': self.run_params['n_lag_linear'],
       'n_lag_d': self.run_params['n_lag_d'],
