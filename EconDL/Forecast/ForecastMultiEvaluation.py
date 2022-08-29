@@ -35,7 +35,7 @@ class ForecastMultiEvaluation:
     self.benchmarks = multi_forecasting_params['benchmarks']
     self.experiments_names = []
     self.M_varnn = multi_forecasting_params['M_varnn']
-    self.normalize_errors_to_benchmark = multi_forecasting_params['normalize_errors_to_benchmark'] if multi_forecasting_params['normalize_errors_to_benchmark'] else True
+    self.normalize_errors_to_benchmark = multi_forecasting_params.get('normalize_errors_to_benchmark', True)
 
     self.Y_pred_big = None
     self.Y_pred_big_latest = None
@@ -116,8 +116,8 @@ class ForecastMultiEvaluation:
 
         Y_pred_h = np.transpose(self.Y_pred_big_latest[model, horizon, :, :]).copy()
         # Shift forward by horizon
-        Y_pred_h[horizon:, :] = Y_pred_h[:(self.test_size-horizon), :]
-        Y_pred_h[:horizon, :] = np.nan
+        Y_pred_h[(horizon-1):, :] = Y_pred_h[:(self.test_size-(horizon-1)), :]
+        Y_pred_h[:(horizon-1), :] = np.nan
 
         for var in range(self.n_var):
           if self.exclude_last > 0:
@@ -153,8 +153,8 @@ class ForecastMultiEvaluation:
 
         Y_pred_h = np.transpose(self.Y_pred_big_latest[model, horizon, :, :]).copy()
         # Shift forward by horizon
-        Y_pred_h[horizon:, :] = Y_pred_h[:(self.test_size-horizon), :]
-        Y_pred_h[:horizon, :] = np.nan
+        Y_pred_h[(horizon-1):, :] = Y_pred_h[:(self.test_size-(horizon-1)), :]
+        Y_pred_h[:(horizon-1), :] = np.nan
 
         for var in range(self.n_var):
           if self.exclude_last > 0:
@@ -188,8 +188,8 @@ class ForecastMultiEvaluation:
       for model in range(n_models):
         Y_pred_h = np.transpose(self.Y_pred_big_latest[model, horizon, :, :]).copy()
         # Shift forward by horizon
-        Y_pred_h[horizon:, :] = Y_pred_h[:(self.test_size-horizon), :]
-        Y_pred_h[:horizon, :] = np.nan
+        Y_pred_h[(horizon-1):, :] = Y_pred_h[:(self.test_size-(horizon-1)), :]
+        Y_pred_h[:(horizon-1), :] = np.nan
 
         for var in range(self.n_var):
           if self.exclude_last > 0:
@@ -199,6 +199,12 @@ class ForecastMultiEvaluation:
             actual = self.Y_test[:, var]
             pred = Y_pred_h[:, var]
           error = np.abs(actual - pred)
+
+          #if horizon == 1 and var == 1 and model == 3:
+            #print('Multi-forecasting Actual', actual)
+            #print('Multi-forecasting Pred', pred)
+            #print('Multi-forecasting Error', error)
+            
 
           # Store the errors in the errors array
           errors[model, :, horizon-1, var] = error
@@ -247,5 +253,14 @@ class ForecastMultiEvaluation:
     mae_df['model_id'] = mae_df['model'].apply(lambda x: self.experiments_names.index(x))
     mae_df = mae_df.sort_values(by = ['horizon', 'model_id'])
     mae_df = mae_df.drop(columns = ['model_id'])
+
+    # Convert into the format in PGC's papers
+    mae_df = mae_df.melt(['model', 'horizon'], var_name = 'variable', value_name = 'MAE')
+    mae_df = mae_df.sort_values(['variable', 'horizon']).pivot(values = 'MAE',
+                                                    index = ['variable', 'horizon'],
+                                                    columns = 'model'
+    )
+    mae_df = mae_df[self.experiments_names]
+    mae_df = mae_df.reset_index()
 
     mae_df.to_csv(f'{self.image_folder_path}/multi_forecast_errors.csv', index = False)

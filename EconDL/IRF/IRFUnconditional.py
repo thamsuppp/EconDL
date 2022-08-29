@@ -122,7 +122,7 @@ class IRFUnconditional:
             ### 2: Call NN forward to get pred and cov mat (stop if the whole thing exploded)
             if np.any(np.isnan(new_data_all)) == False and np.all(np.isfinite(new_data_all)) == True:
               
-              pred, cov, bootstraps_to_ignore = predict_nn_new(results, new_data_all, end_precision_lambda, bootstraps_to_ignore, device)
+              pred, cov, bootstraps_to_ignore, _ = predict_nn_new(results, new_data_all, end_precision_lambda, bootstraps_to_ignore, device)
 
               # Cholesky the cov mat to get C matrix
               cov = np.squeeze(cov, axis = 0)

@@ -165,7 +165,7 @@
         "exps_to_plot": null,
         "repeats_to_include": null,
         "test_exclude_last": 8,
-        "normalize_errors_to_benchmark": true,
+        "normalize_errors_to_benchmark": false,
         "experiments_to_compare": [0, 1]
     }
 }

@@ -24,7 +24,6 @@ class Benchmarks:
     self.n_lag_linear = benchmark_params['n_lag_linear']
     self.n_lag_d = benchmark_params['n_lag_d']
     self.benchmarks = benchmark_params['benchmarks']
-    
     self.test_size = benchmark_params['test_size']
 
     self.window_length = benchmark_params['window_length']
@@ -33,9 +32,30 @@ class Benchmarks:
     # Process the dataset
     self.X_train, self.Y_train, self.X_test, self.Y_test, self.x_pos = self._process_dataset(self.dataset)
 
+  # def _process_dataset(self, dataset):
+    
+  #   print(dataset.columns)
+  #   print(self.var_names)
+  #   # Remove the first n_lag_d observations
+  #   dataset = dataset.iloc[self.n_lag_d:, :].reset_index(drop=True)
+  #   Y_all = dataset[self.var_names]
+
+  #   X_all = dataset[[e for e in dataset.columns if e not in self.var_names]]
+
+  #   n_obs = Y_all.shape[0]
+  #   train_split_id = n_obs - self.test_size
+
+  #   self.Y_train = np.array(Y_all.iloc[:train_split_id, :])
+  #   self.Y_test = np.array(Y_all.iloc[train_split_id:, :])
+  #   self.X_train = np.array(X_all.iloc[:train_split_id, :])
+  #   self.X_test = np.array(X_all.iloc[train_split_id:, :])
+
+  #   print(self.Y_train.shape, self.Y_test.shape, self.X_train.shape, self.X_test.shape)
+
   def _process_dataset(self, dataset):
     
     mat_data_d = dataset
+
     # 2: Generating the lags
     for col in self.var_names:
       for lag in range(1, self.n_lag_linear + 1):
@@ -45,6 +65,7 @@ class Benchmarks:
     mat_y_d = mat_data_d.iloc[:, :self.n_var]
     mat_x_d = mat_data_d.iloc[:, self.n_var:]
     mat_x_d_colnames = mat_data_d.iloc[:, self.n_var:].columns
+
 
     # mat_x_d and mat_y_d have n_lag_d fewer observations than original data
     n_obs = mat_y_d.shape[0]
@@ -128,12 +149,17 @@ class Benchmarks:
     betas_all = np.zeros((Y_train.shape[0], Y_train.shape[1], (Y_train.shape[1] * self.n_lag_linear + 1), Y_train.shape[0]))
     betas_all[:] = np.nan
 
-    for start_t in range(0, Y_train.shape[0] - window_length + 1, reestimation_window):
+    start_t_list = list(range(0, Y_train.shape[0] - window_length + 1, reestimation_window))
+    if (Y_train.shape[0] - window_length) not in start_t_list:
+      start_t_list.append(Y_train.shape[0] - window_length)
+
+    for start_t in start_t_list:
 
       end_t = start_t + window_length - 1
       if window_type == 'roll':
-        X_train_subset = X_train[start_t:(start_t + window_length), :]
-        Y_train_subset = Y_train[start_t:(start_t + window_length), :]
+        X_train_subset = X_train[(start_t + self.n_lag_linear):(start_t + window_length), :]
+        Y_train_subset = Y_train[(start_t + self.n_lag_linear):(start_t + window_length), :]
+
       elif window_type == 'expand':
         X_train_subset = X_train[:(start_t + window_length), :]
         Y_train_subset = Y_train[:(start_t + window_length), :]
@@ -148,8 +174,8 @@ class Benchmarks:
         preds_train_out[(start_t + window_length):(start_t + window_length + reestimation_window), :] = preds_train_out_subset
       
       if window_type == 'roll':
-        preds_train_in_all[start_t:(start_t + window_length) , :, start_t] = preds_train_in_subset
-        betas_all[start_t:(start_t + window_length), :, :, start_t] = coefs
+        preds_train_in_all[(start_t + self.n_lag_linear):(start_t + window_length) , :, start_t] = preds_train_in_subset
+        betas_all[(start_t + self.n_lag_linear):(start_t + window_length), :, :, start_t] = coefs
       elif window_type == 'expand':
         preds_train_in_all[:(start_t + window_length) , :, end_t] = preds_train_in_subset
         betas_all[:(start_t + window_length), :, :, end_t] = coefs

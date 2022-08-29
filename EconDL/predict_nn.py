@@ -24,7 +24,7 @@ def predict_nn_new(results, newx, end_precision_lambda = 0.01, bootstraps_to_ign
   if results['standardize'] == True:
     scaler_x = scale_output['scaler_x']
     newx = scaler_x.transform(newx)
-
+  
   newx_tensor = torch.tensor(newx, dtype = torch.float).to(device)
 
   num_inner_bootstraps = len(results['trained_model'])
@@ -49,6 +49,7 @@ def predict_nn_new(results, newx, end_precision_lambda = 0.01, bootstraps_to_ign
 
       if results['standardize'] == True:
         pred = invert_scaling(pred, scale_output['mu_y'], scale_output['sigma_y'])
+
       pred_mat[:, i, :] = pred
 
       # Add the end_precision_lambda to the precision matrix
@@ -72,13 +73,14 @@ def predict_nn_new(results, newx, end_precision_lambda = 0.01, bootstraps_to_ign
     #print(f'Bootstrap {i} Cov Mat: ', sigma)
 
   # Take mean BEFORE unscaling (REVISIT IF WE NEED TO FLIP ORDER)
+
   pred = np.nanmedian(pred_mat, axis = 1)
 
   # Add back the oos adj
   pred = pred + pred_oos_adj
   cov = np.nanmedian(cov_mat, axis = 1)
 
-  return pred, cov, bootstraps_to_ignore
+  return pred, cov, bootstraps_to_ignore, pred_mat.T
 
 # @title Predict NN Function OLD (Non-Joint Estimation)
 # Returns: pred
@@ -131,7 +133,7 @@ def predict_nn_old(self, results, newx, bootstraps_to_ignore = [], device = None
   # Add back the oos adj
   pred = pred + pred_oos_adj
 
-  return pred, bootstraps_to_ignore
+  return pred, bootstraps_to_ignore, pred_mat.T
 
 def predict_ml_model(results, newx):
   scale_output = results['scale_output']

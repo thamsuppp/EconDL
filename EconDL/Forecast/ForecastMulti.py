@@ -66,6 +66,14 @@ class ForecastMulti:
       fcast = np.zeros((self.h+1, self.n_var))
       fcast[:] = np.nan
 
+      # Array that stores the actual simulation path (this is fcast + simulated errors for each period except self.h)
+      sim_path = np.zeros((self.h+1, self.n_var))
+      sim_path[:] = np.nan
+
+      # Store all inner bootstraps of the fcast
+      fcast_all = np.zeros((self.h+1, self.n_var, self.num_inner_bootstraps))
+      fcast_all[:] = np.nan
+
       fcast_cov_mat = np.zeros((self.h+1, self.n_var, self.n_var))
       fcast_cov_mat[:] = np.nan
 
@@ -85,21 +93,22 @@ class ForecastMulti:
         if period != 1: # Excluding first period (i.e. there are forecasts)
           # Update simulated prediction for previous period to the current period's newx data
           if n_lag_linear == 1:
-            new_in_linear = fcast[period-1, :]
+            new_in_linear = sim_path[period-1, :]
           else:
-            new_in_linear = np.hstack([fcast[period-1, :], new_in_linear[:(len(new_in_linear) - self.n_var)]])
+            new_in_linear = np.hstack([sim_path[period-1, :], new_in_linear[:(len(new_in_linear) - self.n_var)]])
 
-          new_in_nonlinear = np.hstack([fcast[period-1, :], new_in_nonlinear[:(len(new_in_nonlinear) - self.n_var)]])
+          new_in_nonlinear = np.hstack([sim_path[period-1, :], new_in_nonlinear[:(len(new_in_nonlinear) - self.n_var)]])
 
         # Conduct MARX transformation on the nonlinear layer
-        new_data_marx = new_in_nonlinear.copy()
-        for lag in range(2, n_lag_d + 1):
-          for var in range(self.n_var):
-            who_to_avg = list(range(var, self.n_var * (lag - 1) + var + 1, self.n_var))
-            new_data_marx[who_to_avg[-1]] = new_in_nonlinear[who_to_avg].mean()
+        # new_data_marx = new_in_nonlinear.copy()
+        # for lag in range(2, n_lag_d + 1):
+        #   for var in range(self.n_var):
+        #     who_to_avg = list(range(var, self.n_var * (lag - 1) + var + 1, self.n_var))
+        #     new_data_marx[who_to_avg[-1]] = new_in_nonlinear[who_to_avg].mean()
         
         # Combine the first n_lag_linear lags, with the MARX data, to get the full input vector
-        new_data_all = np.hstack([new_in_linear, new_data_marx, new_in_time])
+        new_data_all = np.hstack([new_in_linear, new_in_nonlinear, new_in_time])
+        #new_data_all = np.hstack([new_in_linear, new_data_marx, new_in_time])
         # print(f'''
         # new_in_linear: {new_in_linear},
         # new_in_nonlinear: {new_data_marx},
@@ -110,7 +119,7 @@ class ForecastMulti:
         # Now we self.have new_data_all
         
         # Use estimated model to make prediction with the generated input vector
-        pred, cov, bootstraps_to_ignore = predict_nn_new(results, new_data_all, self.end_precision_lambda, bootstraps_to_ignore, self.device)
+        pred, cov, bootstraps_to_ignore, pred_all = predict_nn_new(results, new_data_all, self.end_precision_lambda, bootstraps_to_ignore, self.device)
 
         # Cholesky the cov mat to get C matrix
         cov = np.squeeze(cov, axis = 0)
@@ -124,11 +133,14 @@ class ForecastMulti:
           # Convert the shock back into residual, add this to the series
           sim_resid = np.matmul(sim_shock, c_t.T)
           
-          fcast[period, :] = pred + sim_resid
+          sim_path[period, :] = pred + sim_resid
+          fcast[period, :] = pred
         else: # if last period (h) - then no need to add any sampled errors
+          sim_path[period, :] = pred
           fcast[period, :] = pred
         
-      return fcast 
+        fcast_all[period, :, :] = pred_all[:, :, 0]
+      return fcast
     except np.linalg.LinAlgError as err:
       print(f'LinAlgError at period {period}')
       return fcast
@@ -153,11 +165,18 @@ class ForecastMulti:
     # Remove all NA values so that we don't sample NAs
     a = pd.DataFrame(oob_res)
     oob_res = np.array(a.dropna())
-    #print('oob_res', oob_res)
 
     # Create array to store the predictions for each bootstrap
     fcast = np.zeros((self.h +1, self.n_var))
     fcast[:] = np.nan
+
+    # Array that stores the actual simulation path (this is fcast + simulated errors for each period except self.h)
+    sim_path = np.zeros((self.h+1, self.n_var))
+    sim_path[:] = np.nan
+
+    # Store all inner bootstraps of the fcast
+    fcast_all = np.zeros((self.h+1, self.n_var, self.num_inner_bootstraps))
+    fcast_all[:] = np.nan
 
     # Create vectors to store the 3 segments of the x input: linear, nonlinear and time
     new_in_linear = np.zeros(n_lag_linear * self.n_var)
@@ -174,11 +193,11 @@ class ForecastMulti:
       if period != 1: # Excluding first period (i.e. there are forecasts)
         # Update simulated prediction for previous period to the current period's newx data
         if n_lag_linear == 1:
-          new_in_linear = fcast[period-1, :]
+          new_in_linear = sim_path[period-1, :]
         else:
-          new_in_linear = np.hstack([fcast[period-1, :], new_in_linear[:(len(new_in_linear) - self.n_var)]])
+          new_in_linear = np.hstack([sim_path[period-1, :], new_in_linear[:(len(new_in_linear) - self.n_var)]])
 
-        new_in_nonlinear = np.hstack([fcast[period-1, :], new_in_nonlinear[:(len(new_in_nonlinear) - self.n_var)]])
+        new_in_nonlinear = np.hstack([sim_path[period-1, :], new_in_nonlinear[:(len(new_in_nonlinear) - self.n_var)]])
 
       # Conduct MARX transformation on the nonlinear layer
       new_data_marx = new_in_nonlinear.copy()
@@ -192,10 +211,10 @@ class ForecastMulti:
       new_data_all = np.expand_dims(new_data_all, axis = 0)
       
       if self.model in ['RF', 'XGBoost']:
-        pred = predict_ml_model(results, new_data_all)
+        pred, pred_all = predict_ml_model(results, new_data_all)
       else: # VARNN
       # Use estimated model to make prediction with the generated input vector
-        pred = predict_nn_old(results, new_data_all, self.device)
+        pred, pred_all = predict_nn_old(results, new_data_all, self.device)
 
       # Add the sampled error if not the last period
       if period != self.h:
@@ -205,13 +224,15 @@ class ForecastMulti:
         
         # Get the error vector
         sampled_error = oob_res[sample_id, :]
-        fcast[period, :] = pred + sampled_error
-      else: # if last period (h) - then no need to add any sampled errors
+        sim_path[period, :] = pred + sampled_error
         fcast[period, :] = pred
-      
-    return fcast 
+      else: # if last period (h) - then no need to add any sampled errors
+        sim_path[period, :] = pred
+        fcast[period, :] = pred
 
-  
+      fcast_all[period, :, :] = pred_all[:, :, 0]
+      
+    return fcast
 
   def conduct_multi_forecasting_wrapper(self, X_train, X_test, results, nn_hyps):
     # Fix the shock ids across the different models
@@ -228,6 +249,10 @@ class ForecastMulti:
 
     FCAST = np.zeros((self.h + 1, self.n_var, self.num_sim_bootstraps, self.test_size, self.R))
     FCAST[:] = np.nan
+
+    FCAST_ALL = np.zeros((self.h + 1, self.n_var, self.num_sim_bootstraps, self.num_inner_bootstraps, self.test_size, self.R))
+    FCAST_ALL[:] = np.nan
+
     r = 0
     # For every timestep (in the future), for every bootstrap, get the self.h-th self.horizon prediction
     for t in range(r * self.reestimation_window, self.test_size):
@@ -235,10 +260,8 @@ class ForecastMulti:
         print(f'Time {t}, {datetime.now()}')
       for b in range(self.num_sim_bootstraps):
         #print(f'Starting time {t}, bootstrap {b}')
-        if t == r * self.reestimation_window: # first sample (X_train is continually changed so can take last value of X_train)
-          FCAST[:, :, b, t, r] = predict_fn(X_train[-1, :], results, nn_hyps)
-        else: # not the first sample (X_test is unchanged so can just index t)
-          FCAST[:, :, b, t, r] = predict_fn(X_test[t, :], results, nn_hyps)
+        #else: # not the first sample (X_test is unchanged so can just index t)
+        FCAST[:, :, b, t, r] = predict_fn(X_test[t, :], results, nn_hyps)
     
     return FCAST
 

@@ -23,32 +23,32 @@ def process_data(data, nn_hyps, marx = True, test_size = 60, n_time_trends = 0, 
   x_mat = np.array(data.iloc[:, n_var:]) # Explanatory variables (lags of target variables + other exogenous variables)
   x_mat_colnames = data.iloc[:, n_var:].columns
   
-  if marx == True:
-    # Computing MARX (moving averages)
-    x_mat_marx = np.array(x_mat)
+  # if marx == True:
+  #   # Computing MARX (moving averages)
+  #   x_mat_marx = np.array(x_mat)
 
-    for lag in range(2, n_lag_d + 1):
-      for var in range(n_var):
-        # For earlier lags, set earliest lagged value to be the mean of all more recent lags
-        who_to_avg = list(range(var, n_var * (lag - 1) + var + 1, n_var))
-        x_mat_marx[:, who_to_avg[-1]] = x_mat[:, who_to_avg].mean(axis = 1)
+  #   for lag in range(2, n_lag_d + 1):
+  #     for var in range(n_var):
+  #       # For earlier lags, set earliest lagged value to be the mean of all more recent lags
+  #       who_to_avg = list(range(var, n_var * (lag - 1) + var + 1, n_var))
+  #       x_mat_marx[:, who_to_avg[-1]] = x_mat[:, who_to_avg].mean(axis = 1)
 
-    x_mat_marx_colnames = ['MARX_' + e for e in x_mat_colnames]
-    print('Size of x_mat before appending MARX', x_mat[:, :(n_var * n_lag_linear)].shape)
-    print('Size of x_mat_marx', x_mat_marx.shape)
+  #   x_mat_marx_colnames = ['MARX_' + e for e in x_mat_colnames]
+  #   print('Size of x_mat before appending MARX', x_mat[:, :(n_var * n_lag_linear)].shape)
+  #   print('Size of x_mat_marx', x_mat_marx.shape)
 
-    # Concatenate
-    x_mat_all = np.hstack([x_mat[:, :(n_var * n_lag_linear)], x_mat_marx])
-    x_mat_all_colnames = list(x_mat_colnames[:(n_var * n_lag_linear)]) + list(x_mat_marx_colnames)
+  #   # Concatenate
+  #   x_mat_all = np.hstack([x_mat[:, :(n_var * n_lag_linear)], x_mat_marx])
+  #   x_mat_all_colnames = list(x_mat_colnames[:(n_var * n_lag_linear)]) + list(x_mat_marx_colnames)
 
-    print('x_mat_all size', x_mat_all.shape)
+  #   print('x_mat_all size', x_mat_all.shape)
   
-  else: # If no MARX
-    x_mat_all = np.array(x_mat)
-    x_mat_all = x_mat_all[:, :(n_var * n_lag_d)]
-    x_mat_all_colnames = list(x_mat_colnames[:(n_var * n_lag_d)])
+  #else: # If no MARX
+  x_mat_all = np.array(x_mat)
+  x_mat_all = x_mat_all[:, :(n_var * n_lag_d)]
+  x_mat_all_colnames = list(x_mat_colnames[:(n_var * n_lag_d)])
 
-    print('x_mat_all size', x_mat_all.shape)
+  print('x_mat_all size', x_mat_all.shape)
 
   # Add exog
   if nn_hyps['exog'] is not None:

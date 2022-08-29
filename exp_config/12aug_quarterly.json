@@ -1,0 +1,899 @@
+{
+    "run_params": {
+        "dataset": "quarterly",
+        "num_inner_bootstraps": 25,
+        "num_repeats": 1,
+        "default_nn_hyps": "nn_hyps_default",
+        "var_names": [
+            "oil",
+            "Ex",
+            "SPY",
+            "DGS3",
+            "inf",
+            "unrate",
+            "house_starts"
+        ],
+        "n_lag_linear": 4,
+        "n_lag_d": 8,
+        "n_var": 7,
+        "test_size": 60,
+        "constant_tvpl": [
+            200
+        ],
+        "end_precision_lambda": 0.025,
+        "s_pos": [
+            [
+                0,
+                84
+            ]
+        ]
+    },
+    "execution_params": {
+        "benchmarks": true,
+        "varnn_estimation": true,
+        "conditional_irfs": true,
+        "unconditional_irfs": true,
+        "multi_forecasting": true
+    },
+    "extensions_params": {
+        "ml_experiments": [
+            "RF",
+            "XGBoost"
+        ],
+        "conditional_irfs": {
+            "max_h": 10,
+            "normalize_time_plot": true,
+            "test_exclude_last": 8
+        },
+        "unconditional_irfs": {
+            "num_simulations": 1000,
+            "endh": 40,
+            "start_shock_time": 40,
+            "max_h": 20,
+            "forecast_method": "new",
+            "plot_all_bootstraps": false
+        },
+        "benchmarks": {
+            "window_length": 120,
+            "reestimation_window": 1
+        },
+        "multi_forecasting": {
+            "forecast_horizons": 4,
+            "reestimation_window": 60,
+            "forecast_method": "new",
+            "num_sim_bootstraps": 150,
+            "benchmarks": [
+                "VAR_roll",
+                "AR_roll",
+                "VAR_expand",
+                "AR_expand"
+            ]
+        }
+    },
+    "nn_hyps_baseline": {
+        "nodes": [
+            200,
+            100,
+            50
+        ],
+        "actv": "nn.ReLU()",
+        "tvpl_archi": [
+            5
+        ],
+        "lr": 0.001,
+        "time_dummy_setting": 2,
+        "dropout_rate": 0.25,
+        "precision_lambda": 0.25,
+        "lambda_temper_epochs": 50,
+        "optimizer": "Adam",
+        "s_pos_setting": {
+            "is_hemi": false,
+            "n_times": 30
+        },
+        "s_pos": [
+            [
+                0,
+                84
+            ]
+        ],
+        "joint_estimation": true,
+        "exog_data": false,
+        "name": "Baseline"
+    },
+    "params_to_vary": {
+        "nodes": [
+            [
+                400,
+                200,
+                100
+            ],
+            [
+                200,
+                100,
+                50
+            ],
+            [
+                100,
+                50,
+                25
+            ]
+        ],
+        "joint_estimation": [
+            false
+        ],
+        "end_precision_lambda": [
+            0,
+            0.01,
+            0.05,
+            0.1
+        ],
+        "actv": [
+            "nn.SELU()"
+        ],
+        "lr": [
+            0.005,
+            0.0025,
+            0.001,
+            0.0005,
+            0.00025
+        ],
+        "tvpl_archi": [
+            [
+                2
+            ],
+            [
+                5
+            ],
+            [
+                10
+            ],
+            [
+                5,
+                5
+            ]
+        ],
+        "tvpl_constant": [
+            20,
+            50,
+            200
+        ]
+    },
+    "evaluation_params": {
+        "is_test": false,
+        "need_to_combine": true,
+        "is_simulation": false,
+        "multiple_datasets": false,
+        "sim_dataset": 2,
+        "benchmarks": [
+            "VAR_whole",
+            "AR_whole",
+            "VAR_roll",
+            "AR_roll",
+            "VAR_expand",
+            "AR_expand",
+            "RF_whole",
+            "zero",
+            "mean"
+        ],
+        "experiments_to_load": null,
+        "plot_all_bootstraps": false,
+        "exps_to_plot": null,
+        "repeats_to_include": null,
+        "test_exclude_last": 8,
+        "normalize_errors_to_benchmark": true
+    },
+    "experiment_groups": {
+        "nodes": [
+            0,
+            1,
+            2,
+            3
+        ],
+        "joint_estimation": [
+            0,
+            4
+        ],
+        "end_precision_lambda": [
+            0,
+            5,
+            6,
+            7,
+            8
+        ],
+        "actv": [
+            0,
+            9
+        ],
+        "lr": [
+            0,
+            10,
+            11,
+            12,
+            13,
+            14
+        ],
+        "tvpl_archi": [
+            0,
+            15,
+            16,
+            17,
+            18
+        ],
+        "tvpl_constant": [
+            0,
+            19,
+            20,
+            21
+        ]
+    },
+    "nn_hyps": [
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "Baseline"
+        },
+        {
+            "nodes": [
+                400,
+                200,
+                100
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "nodes [400, 200, 100]"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "nodes [200, 100, 50]"
+        },
+        {
+            "nodes": [
+                100,
+                50,
+                25
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "nodes [100, 50, 25]"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": false,
+            "exog_data": false,
+            "name": "joint_estimation False"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "end_precision_lambda 0",
+            "end_precision_lambda": 0
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "end_precision_lambda 0.01",
+            "end_precision_lambda": 0.01
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "end_precision_lambda 0.05",
+            "end_precision_lambda": 0.05
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "end_precision_lambda 0.1",
+            "end_precision_lambda": 0.1
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.SELU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "actv nn.SELU()"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.005,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "lr 0.005"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.0025,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "lr 0.0025"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "lr 0.001"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.0005,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "lr 0.0005"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.00025,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "lr 0.00025"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                2
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "tvpl_archi [2]"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "tvpl_archi [5]"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                10
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "tvpl_archi [10]"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5,
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "tvpl_archi [5, 5]"
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "tvpl_constant 20",
+            "tvpl_constant": 20
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "tvpl_constant 50",
+            "tvpl_constant": 50
+        },
+        {
+            "nodes": [
+                200,
+                100,
+                50
+            ],
+            "actv": "nn.ReLU()",
+            "tvpl_archi": [
+                5
+            ],
+            "lr": 0.001,
+            "time_dummy_setting": 2,
+            "dropout_rate": 0.25,
+            "precision_lambda": 0.25,
+            "lambda_temper_epochs": 50,
+            "optimizer": "Adam",
+            "s_pos_setting": {
+                "is_hemi": false,
+                "n_times": 30
+            },
+            "s_pos": [
+                [
+                    0,
+                    84
+                ]
+            ],
+            "joint_estimation": true,
+            "exog_data": false,
+            "name": "tvpl_constant 200",
+            "tvpl_constant": 200
+        }
+    ]
+}

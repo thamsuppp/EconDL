@@ -32,10 +32,9 @@ RunObj.train_multi_forecast_benchmarks()
 EvaluationObj = Evaluation(RunObj)
 if cond_irf == True:
   EvaluationObj.Run.compute_conditional_irfs()
-  EvaluationObj.plot_conditional_irf_comparison()
 
 print(EvaluationObj.check_results_sizes())
 if fcast_only == True:
   EvaluationObj.plot_forecasts()
 else:
-  EvaluationObj.plot_all()
+  EvaluationObj.plot_all(cond_irf = cond_irf)

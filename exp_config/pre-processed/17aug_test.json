@@ -3,7 +3,7 @@
     "run_params": {
 
         "dataset": "quarterly",
-        "num_inner_bootstraps": 20,
+        "num_inner_bootstraps": 25,
         "num_repeats": 1,
         "default_nn_hyps": "nn_hyps_default",
         
@@ -50,16 +50,16 @@
             "forecast_horizons": 4,
             "reestimation_window": 60,
             "forecast_method": "new",
-            "num_sim_bootstraps": 150,
+            "num_sim_bootstraps": 50,
             "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand"]
         }
     },
 
     "nn_hyps_baseline": {
         "nodes": [200, 100, 50], 
-        "actv": "nn.ReLU()", 
+        "actv": "nn.SELU()", 
         "tvpl_archi": [5], 
-        "lr": 0.001, 
+        "lr": 0.0005, 
         "time_dummy_setting": 2, 
         "dropout_rate": 0.25, 
         "precision_lambda": 0.25, 
@@ -73,11 +73,11 @@
     },
 
     "params_to_vary": {
-        "nodes": [[400, 200, 100], [200, 100, 50], [100, 50, 25]],
+        "nodes": [[200, 100, 50], [100, 50, 25], [200, 200, 200, 200]],
         "joint_estimation": [false],
         "end_precision_lambda": [0, 0.01, 0.05, 0.1],
-        "actv": ["nn.SELU()"],
-        "lr": [0.005, 0.0025, 0.001, 0.0005, 0.00025],
+        "actv": ["nn.RELU()"],
+        "lr": [0.002, 0.0005, 0.0001],
         "tvpl_archi": [[2], [5], [10], [5, 5]],
         "tvpl_constant": [20, 50, 200]
     },

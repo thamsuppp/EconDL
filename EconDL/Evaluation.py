@@ -84,6 +84,8 @@ class Evaluation:
     self.M_total = self.M_varnn + self.M_benchmarks
     self.num_bootstraps = None
 
+    self.evaluation_metrics = []
+
 
     # Load the results and params
     self.compile_results()
@@ -348,6 +350,17 @@ class Evaluation:
       image_file = f'{self.image_folder_path}/betas_{i}_sum.png'
       self._plot_betas_inner(np.sum(BETAS_EXP_PLOT, axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Sum', actual = None)
 
+      # @evalmetric
+      # BETAS_EXP_PLOT: obs x betas x bootstraps x vars x hemis
+      BETAS_EXP = np.sum(BETAS_EXP_PLOT, axis = -1)
+      BETAS_EXP_MEDIAN = np.nanmedian(BETAS_EXP, axis = 2) # obs x betas x vars
+
+      const_vol = np.nanstd(BETAS_EXP_MEDIAN[:, 0, :], axis = 0) # vars
+      betas_vol = np.nanstd(BETAS_EXP_MEDIAN[:, 1:, :], axis = 0) # betas x vars
+
+      self.evaluation_metrics.append({'metric': 'const_vol', 'experiment': i, 'value': const_vol})
+      self.evaluation_metrics.append({'metric': 'betas_vol', 'experiment': i, 'value': betas_vol})
+
   def plot_betas_comparison(self, exps_to_compare = [0, 1]):
     if self.is_test == False:
       BETAS_ALL_PLOT = self.BETAS_IN_ALL[:, :-self.test_size,:,:,:,:]
@@ -369,7 +382,6 @@ class Evaluation:
       
     n_obs = BETAS_COMPARE.shape[1]
     n_betas = BETAS_COMPARE.shape[2]
-    n_bootstraps = BETAS_COMPARE.shape[3]
     n_vars = BETAS_COMPARE.shape[4]
 
     fig, axs = plt.subplots(n_vars, n_betas, figsize = (6 * n_betas, 4 * n_vars), constrained_layout = True)
@@ -395,7 +407,6 @@ class Evaluation:
     image_file = f'{self.image_folder_path}/betas_comparison.png'
     plt.savefig(image_file)
     plt.close()
-  
   
   def plot_precision(self):
 
@@ -566,6 +577,18 @@ class Evaluation:
       plt.savefig(image_file)
       plt.close()
 
+      # @evalmetric
+      # SIGMAS_EXP: n_time, n_var, n_var, n_boot
+      SIGMAS_EXP = SIGMAS_ALL_PLOT[i, :, :, :, :]
+      SIGMAS_EXP_LCL = np.nanquantile(SIGMAS_EXP, axis = -1, q = 0.16)
+      SIGMAS_EXP_UCL = np.nanquantile(SIGMAS_EXP, axis = -1, q = 0.84)
+      SIGMAS_EXP_RANGE = SIGMAS_EXP_UCL - SIGMAS_EXP_LCL # n_time x n_var x n_var
+      mean_sigmas_range = np.nanmean(SIGMAS_EXP_RANGE, axis = 0) # n_var x n_var
+      high_sigmas_range = np.nanquantile(SIGMAS_EXP_RANGE, axis = 0, q = 0.95)
+      
+      self.evaluation_metrics.append({'metric': 'mean_sigmas_range', 'experiment': i, 'value': mean_sigmas_range})
+      self.evaluation_metrics.append({'metric': '95pct_sigmas_range', 'experiment': i, 'value': high_sigmas_range})
+
       print(f'Cov Mat plotted at {image_file}')
 
   def plot_predictions(self):
@@ -576,14 +599,22 @@ class Evaluation:
 
       preds_median = np.nanmedian(self.PREDS_ALL[i,:,:,:], axis = 1)
       preds_test_median = np.nanmedian(self.PREDS_TEST_ALL[i,:,:,:], axis = 1)
+
+      if self.is_test == False:
+        preds_plot = preds_median
+        actual_plot = self.Y_train
+      else:
+        preds_plot = preds_test_median[:-self.test_exclude_last, :]
+        actual_plot = self.Y_test[:-self.test_exclude_last, :]
+        
       for var in range(self.n_var):
         if i < self.M_varnn:
-          ax[var].plot(preds_median[:, var], lw = 0.75, label = self.all_names[i], color = palette[i])
+          ax[var].plot(preds_plot[:, var], lw = 0.75, label = self.all_names[i], color = palette[i])
         if i == self.M_total - 1:
-          ax[var].plot(self.Y_train[:, var], lw = 1, label = 'Actual', color = 'black')
+          ax[var].plot(actual_plot[:, var], lw = 1, label = 'Actual', color = 'black')
           ax[var].set_title(self.var_names[var])
         if i >= self.M_varnn:
-          ax[var].plot(preds_median[:, var], lw = 0.75, label = self.all_names[i], ls = 'dotted')
+          ax[var].plot(preds_plot[:, var], lw = 0.75, label = self.all_names[i - self.M_varnn], ls = 'dotted')
 
         if var == 0:
           ax[var].legend()
@@ -617,7 +648,10 @@ class Evaluation:
       for var in range(self.n_var):
         if i == 0:
           ax[var].set_title(self.var_names[var])
-        ax[var].plot(error[:, var], lw = 0.5, label = self.all_names[i], color = palette[i])
+        if i >= self.M_varnn:
+          ax[var].plot(error[:, var], lw = 0.5, label = self.all_names[i - self.M_varnn], ls = 'dotted')
+        else:
+          ax[var].plot(error[:, var], lw = 0.5, label = self.all_names[i], color = palette[i])
         if var == 0:
           ax[var].legend()
 
@@ -637,6 +671,7 @@ class Evaluation:
     errors = np.abs(preds_median - y_repeated)
     if exclude_last != 0:
       errors = errors[:, :-exclude_last, :]
+    
     cum_errors = np.nancumsum(errors, axis = 1)
     # dim of cum_errors: 
 
@@ -644,7 +679,7 @@ class Evaluation:
     mean_absolute_errors_df = pd.DataFrame(mean_absolute_errors, columns = self.var_names, index = self.all_names)
     if self.normalize_errors_to_benchmark == True: # Standardize errors by benchmark model
       mean_absolute_errors_df = mean_absolute_errors_df.div(mean_absolute_errors_df.iloc[self.M_varnn+3, :])
-    mean_absolute_errors_df.to_csv(f'{self.image_folder_path}/mean_absolute_errors_{data_sample}.csv')
+    mean_absolute_errors_df.T.to_csv(f'{self.image_folder_path}/mean_absolute_errors_{data_sample}.csv')
 
     # Choose the benchmark (fix as AR rolling)
     benchmark_cum_error = cum_errors[(self.M_varnn + 3), :, :]
@@ -655,7 +690,7 @@ class Evaluation:
         if i == 0:
           ax[var].set_title(self.var_names[var])
         if i >= self.M_varnn: # Make benchmarks dotted
-          ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i], color = palette[i], ls = 'dotted')
+          ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i], color = palette[i - self.M_varnn], ls = 'dotted')
         else:
           ax[var].plot(cum_errors[i, :, var] - benchmark_cum_error[:, var], label = self.all_names[i], color = palette[i])
 
@@ -667,6 +702,14 @@ class Evaluation:
     plt.close()
 
     print(f'{data_sample} Cum Errors plotted at {image_file}')
+
+  def get_conditional_irf_eval_metrics(self):
+    for exp in self.M_varnn:
+      IRFS = self.Run.experiments[exp].evaluations['conditional_irf'].IRFS
+      
+      IRFS_MEDIAN = np.nanmedian(IRFS, axis = 1) #  n_obs x n_var x n_var x max_h
+      irf_vol = np.nanstd(IRFS_MEDIAN, axis = 0) #  n_var x n_var x max_h
+      self.evaluation_metrics.append({'metric': 'conditional_irf_vol', 'experiment': exp, 'value': irf_vol})
 
   def plot_conditional_irf_comparison(self, exps_to_compare = [0, 1]):
     
@@ -707,7 +750,7 @@ class Evaluation:
     plt.savefig(image_file)
 
   # Wrapper function to do all plots
-  def plot_all(self):
+  def plot_all(self, cond_irf = False):
     
     self.Run.evaluate_unconditional_irfs(self.Y_train)
 
@@ -721,7 +764,13 @@ class Evaluation:
 
     self.plot_betas_comparison(exps_to_compare = self.experiments_to_compare)
     self.plot_sigmas_comparison(exps_to_compare = self.experiments_to_compare)
+    if cond_irf == True:
+      self.plot_conditional_irf_comparison(exps_to_compare = self.experiments_to_compare)
     self.evaluate_multi_step_forecasts()
+
+    # Save the evaluation_metrics as an npz object
+    np.savez(f'{self.image_folder_path}/evaluation_metrics.npz', evaluation_metrics = self.evaluation_metrics)
+
 
   def plot_forecasts(self):
     self.plot_predictions()

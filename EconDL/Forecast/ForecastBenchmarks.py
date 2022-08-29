@@ -1,5 +1,6 @@
 from statsmodels.tsa.api import VAR
 from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.ar_model import AutoReg
 from datetime import datetime
 import numpy as np
 import os
@@ -41,8 +42,8 @@ class ForecastBenchmarks:
   def _process_dataset(self):
     
     Y_all = self.dataset[self.var_names]
-    # Remove the first n_lag_d observations
-    Y_all = Y_all.iloc[self.n_lag_d:, :].reset_index(drop=True)
+    # Remove the first n_lag_d - n_lag_linear observations (*becuase the remaining n_lag_linear observations will be removed when training VAR model)
+    Y_all = Y_all.iloc[(self.n_lag_d - self.n_lag_linear):, :].reset_index(drop=True)
     n_obs = Y_all.shape[0]
     train_split_id = n_obs - self.test_size
 
@@ -138,17 +139,18 @@ class ForecastBenchmarks:
       # Evaluate the AR equation to get the prediction 
       # **results_coefs are from L1 to L4, so must reverse this before dot product
       y_all[ar_lags - 1 + horizon] = results_coefs[0] + np.dot(np.flip(results_coefs[1:]), y_in_this)
+      #y_all[ar_lags - 1 + horizon] = np.dot(np.flip(results_coefs[1:]), y_in_this)
 
     # Return h predictions
     return y_all[y_in.shape[0]:]
+
 
   def expanding_window_AR(self):
     ### Expanding Window AR(4)
     # self.reestimation_window = 1
     # R = int(self.test_size / self.reestimation_window)
-
-    #ar_lags = self.n_lag_linear
-    ar_lags = 4
+    
+    ar_lags = self.n_lag_linear
 
     FCAST = np.zeros((self.h+1, self.n_var, self.test_size, self.R))
     FCAST[:] = np.nan
@@ -165,9 +167,13 @@ class ForecastBenchmarks:
           y_train = Y_train[:, var]
           y_test = self.Y_test[:, var]
 
-          arima_model = ARIMA(y_train, order = (ar_lags,0,0))
-          results = arima_model.fit()
-          results_coefs = results.params[0:(ar_lags + 1)]
+          ar_model = AutoReg(y_train, lags = ar_lags)
+          results = ar_model.fit()
+          results_coefs = np.array(results.params)
+
+          # arima_model = ARIMA(y_train, order = (ar_lags,0,0))
+          # results = arima_model.fit()
+          # results_coefs = results.params[0:(ar_lags + 1)]
         
           for t in range(self.reestimation_window * r, self.test_size):
             # Different cases of getting the input y_in
@@ -188,7 +194,7 @@ class ForecastBenchmarks:
 
   ### Rolling Window AR(4)
   def rolling_window_AR(self):
-  
+
     # self.reestimation_window = 1
     # R = int(self.test_size / self.reestimation_window)
 
@@ -197,9 +203,8 @@ class ForecastBenchmarks:
     FCAST = np.zeros((self.h+1, self.n_var, self.test_size, self.R))
     FCAST[:] = np.nan
 
-    #window_length = self.window_length
-    window_length = 40
-    ar_lags = 4
+    window_length = self.window_length
+    ar_lags = self.n_lag_linear
     # For every time through the re-estimation window
     for r in range(self.R):
       print(f'Re-estimation window {r}, {datetime.now()}')
@@ -211,9 +216,13 @@ class ForecastBenchmarks:
         for var in range(self.n_var):
           y_train = Y_train[:, var]
           y_test = self.Y_test[:, var]
-          arima_model = ARIMA(y_train, order = (ar_lags,0,0))
-          results = arima_model.fit()
-          results_coefs = results.params[0:(ar_lags + 1)]
+          # arima_model = ARIMA(y_train, order = (ar_lags,0,0))
+          # results = arima_model.fit()
+          # results_coefs = results.params[0:(ar_lags + 1)]
+
+          ar_model = AutoReg(y_train, lags = ar_lags)
+          results = ar_model.fit()
+          results_coefs = np.array(results.params)
         
           for t in range(self.reestimation_window * r, self.test_size):
             # Different cases of getting the input y_in
