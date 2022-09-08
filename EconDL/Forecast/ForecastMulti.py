@@ -71,8 +71,8 @@ class ForecastMulti:
       sim_path[:] = np.nan
 
       # Store all inner bootstraps of the fcast
-      fcast_all = np.zeros((self.h+1, self.n_var, self.num_inner_bootstraps))
-      fcast_all[:] = np.nan
+      # fcast_all = np.zeros((self.h+1, self.n_var, self.num_inner_bootstraps))
+      # fcast_all[:] = np.nan
 
       fcast_cov_mat = np.zeros((self.h+1, self.n_var, self.n_var))
       fcast_cov_mat[:] = np.nan
@@ -119,7 +119,7 @@ class ForecastMulti:
         # Now we self.have new_data_all
         
         # Use estimated model to make prediction with the generated input vector
-        pred, cov, bootstraps_to_ignore, pred_all = predict_nn_new(results, new_data_all, self.end_precision_lambda, bootstraps_to_ignore, self.device)
+        pred, cov, _, _ = predict_nn_new(results, new_data_all, self.end_precision_lambda, bootstraps_to_ignore, self.device)
 
         # Cholesky the cov mat to get C matrix
         cov = np.squeeze(cov, axis = 0)
@@ -139,7 +139,7 @@ class ForecastMulti:
           sim_path[period, :] = pred
           fcast[period, :] = pred
         
-        fcast_all[period, :, :] = pred_all[:, :, 0]
+        #fcast_all[period, :, :] = pred_all[:, :, 0]
       return fcast
     except np.linalg.LinAlgError as err:
       print(f'LinAlgError at period {period}')
@@ -175,8 +175,8 @@ class ForecastMulti:
     sim_path[:] = np.nan
 
     # Store all inner bootstraps of the fcast
-    fcast_all = np.zeros((self.h+1, self.n_var, self.num_inner_bootstraps))
-    fcast_all[:] = np.nan
+    # fcast_all = np.zeros((self.h+1, self.n_var, self.num_inner_bootstraps))
+    # fcast_all[:] = np.nan
 
     # Create vectors to store the 3 segments of the x input: linear, nonlinear and time
     new_in_linear = np.zeros(n_lag_linear * self.n_var)
@@ -211,10 +211,10 @@ class ForecastMulti:
       new_data_all = np.expand_dims(new_data_all, axis = 0)
       
       if self.model in ['RF', 'XGBoost']:
-        pred, pred_all = predict_ml_model(results, new_data_all)
+        pred = predict_ml_model(results, new_data_all)
       else: # VARNN
       # Use estimated model to make prediction with the generated input vector
-        pred, pred_all = predict_nn_old(results, new_data_all, self.device)
+        pred, _, _ = predict_nn_old(results, new_data_all, self.device)
 
       # Add the sampled error if not the last period
       if period != self.h:
@@ -230,7 +230,7 @@ class ForecastMulti:
         sim_path[period, :] = pred
         fcast[period, :] = pred
 
-      fcast_all[period, :, :] = pred_all[:, :, 0]
+      #fcast_all[period, :, :] = pred_all[:, :, 0]
       
     return fcast
 

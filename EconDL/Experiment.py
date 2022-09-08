@@ -76,11 +76,15 @@ class Experiment:
         'experiment_id': self.experiment_id,
         'experiment_name': self.nn_hyps['name']
       }
-      
-      IRFConditionalObj = IRFConditional(self.results, conditional_irf_params)
-      IRFConditionalObj.plot_irfs(image_folder_path)
-      IRFConditionalObj.plot_irfs_over_time(image_folder_path, normalize = self.extensions_params['conditional_irfs']['normalize_time_plot'])
-      self.evaluations['conditional_irf'] = IRFConditionalObj
+      try:
+        IRFConditionalObj = IRFConditional(self.results, conditional_irf_params)
+        IRFConditionalObj.plot_irfs(image_folder_path)
+        IRFConditionalObj.plot_irfs_3d(image_folder_path)
+        IRFConditionalObj.plot_irfs_over_time(image_folder_path, normalize = self.extensions_params['conditional_irfs']['normalize_time_plot'])
+        self.evaluations['conditional_irf'] = IRFConditionalObj
+      except Exception as e:
+        print('Error in Experiment compute_conditional_irfs():', e)
+        
 
   def compute_unconditional_irfs(self, Y_train, Y_test, X_train, results, device, repeat_id):
     if self.execution_params['unconditional_irfs'] == False:

@@ -9,7 +9,7 @@ from EconDL.MLExperiment import MLExperiment
 
 class Run:
   
-  def __init__(self, run_name, device, experiment_id = None, job_id = None):
+  def __init__(self, run_name, device, experiment_id = None, job_id = None, bootstrap_indices = None):
 
     self.run_name = run_name
     self.device = device
@@ -26,6 +26,7 @@ class Run:
     self.extensions_params = None
     self.experiment_params = None
     self.evaluation_params = None
+    self.bootstrap_indices = bootstrap_indices
 
     self.experiments = []
     self.num_experiments = 0
@@ -54,9 +55,12 @@ class Run:
         }
       )
     
+    self._load_data()
+
+    train_size = self.dataset.shape[0] - self.run_params['test_size'] - self.run_params['n_lag_d']
+
     self._init_experiments()
     self._init_ml_experiments()
-    self._load_data()
 
   def _load_params(self):
     with open(f'exp_config/{self.run_name}.json', 'r') as f:
@@ -72,6 +76,11 @@ class Run:
     self.n_var = all_params['run_params']['n_var']
     self.var_names = all_params['run_params']['var_names']
 
+    # Load the default nn_hyps
+    default_nn_hyps_path = self.run_params['default_nn_hyps']
+    with open(f'exp_config/{default_nn_hyps_path}.json', 'r') as f:
+      self.default_nn_hyps = json.load(f)
+
     # If specific experiment ID is specified, filter for that experiment params
     if self.experiment_id is not None:
       self.experiment_params = [self.experiment_params[self.experiment_id]]
@@ -79,12 +88,7 @@ class Run:
       print(f'Run _load_params(): Load params for only Expeirment {self.experiment_id}')
 
   def _init_ml_experiments(self):
-
-    # Load the default nn_hyps
-    default_nn_hyps_path = self.run_params['default_nn_hyps']
-    with open(f'exp_config/{default_nn_hyps_path}.json', 'r') as f:
-      default_nn_hyps = json.load(f)
-
+    default_nn_hyps = self.default_nn_hyps.copy()
     # Combine default_nn_hyps with the run_params
     default_nn_hyps.update(self.run_params)
 
@@ -96,12 +100,7 @@ class Run:
       self.ml_experiments.append(MLExperimentObj)
 
   def _init_experiments(self): # Only if experiments are not already initialized
-
-    # Load the default nn_hyps
-    default_nn_hyps_path = self.run_params['default_nn_hyps']
-    with open(f'exp_config/{default_nn_hyps_path}.json', 'r') as f:
-      default_nn_hyps = json.load(f)
-
+    default_nn_hyps = self.default_nn_hyps.copy()
     # Combine default_nn_hyps with the run_params
     default_nn_hyps.update(self.run_params)
 
@@ -110,6 +109,10 @@ class Run:
       all_nn_hyps = default_nn_hyps.copy()
       all_nn_hyps.update(self.experiment_params[0])
       all_nn_hyps['model'] = 'VARNN'
+
+      # Update the bootstrap indices
+      all_nn_hyps['bootstrap_indices'] = self.bootstrap_indices
+
       ExperimentObj = Experiment(self.run_name, self.experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id)
       self.experiments.append(ExperimentObj)
       self.num_experiments = 1
@@ -120,6 +123,8 @@ class Run:
         all_nn_hyps = default_nn_hyps.copy()
         all_nn_hyps.update(changed_nn_hyps)
         all_nn_hyps['model'] = 'VARNN'
+        # Update the bootstrap indices
+        all_nn_hyps['bootstrap_indices'] = self.bootstrap_indices
         ExperimentObj = Experiment(self.run_name, experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id)
         self.experiments.append(ExperimentObj)
       

@@ -42,6 +42,15 @@ def load_data(dataset_name):
         x_d_all.columns = ['S&P', 'NASDAQ', 'VIX', 'DJIA']
         exog_data = data[[e for e in data.columns if e not in ['index', 'Y_sp', 'Y_nas', 'Y_vix', 'Y_dj']]]
 
+    elif dataset_name == 'financial_3var':
+        data = pd.read_csv('data/ryan_data_h1.csv')
+        # Shift all the Y values up by 1 period (so that yesterday's predictors predict today's Y)
+        data[['index', 'Y_sp', 'Y_nas', 'Y_dj']] = data[['index', 'Y_sp', 'Y_nas', 'Y_dj']].shift(-1)
+        data = data.dropna()
+        x_d_all = data[['Y_sp', 'Y_nas', 'Y_dj']]
+        x_d_all.columns = ['S&P', 'NASDAQ', 'DJIA']
+        exog_data = data[[e for e in data.columns if e not in ['index', 'Y_sp', 'Y_nas', 'Y_dj']]]
+
     else:
         raise ValueError('No such dataset found!')
     

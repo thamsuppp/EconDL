@@ -171,12 +171,15 @@ def process_data_wrapper(data, nn_hyps):
     # Get the bootstraps
     if nn_hyps['model'] == 'VARNN':
       train_size = x_d.shape[0] - test_size - nn_hyps['n_lag_d']
-      if nn_hyps['fix_bootstrap'] == True:
-          print('DataProcesser: Bootstraps fixed')
-          bootstrap_indices = get_bootstrap_indices(num_bootstrap = nn_hyps['num_bootstrap'], n_obs = train_size, block_size = nn_hyps['block_size'], sampling_rate = nn_hyps['sampling_rate'], opt_bootstrap = nn_hyps['opt_bootstrap'])
-          nn_hyps['bootstrap_indices'] = bootstrap_indices
+      if nn_hyps.get('bootstrap_indices', None) != None: # If there are bootstrap indices set already
+        pass 
       else:
-          nn_hyps['bootstrap_indices'] = None
+        if nn_hyps['fix_bootstrap'] == True:
+            print('DataProcesser: Bootstraps fixed')
+            bootstrap_indices = get_bootstrap_indices(num_bootstrap = nn_hyps['num_bootstrap'], n_obs = train_size, block_size = nn_hyps['block_size'], sampling_rate = nn_hyps['sampling_rate'], opt_bootstrap = nn_hyps['opt_bootstrap'])
+            nn_hyps['bootstrap_indices'] = bootstrap_indices
+        else:
+            nn_hyps['bootstrap_indices'] = None
 
       
     n_betas = n_var * nn_hyps['n_lag_linear'] + 1

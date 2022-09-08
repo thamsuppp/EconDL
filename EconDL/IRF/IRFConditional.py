@@ -4,6 +4,16 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as colors
 
+import chart_studio
+import chart_studio.plotly as py
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+
+# plotly api key
+plotly_api_key = 'Dns1gp04h4QpiskQPFT3'
+chart_studio.tools.set_credentials_file(username= 'thamsuppp', api_key = plotly_api_key)
+
 class IRFConditional:
 
   def __init__(self, results, irf_params):
@@ -117,6 +127,48 @@ class IRFConditional:
         IRFS[t, boot, :, :, :] = irf_draw
 
     self.IRFS = IRFS
+
+    # Save the IRFs
+    np.savez(f'IRF_conditional.npz', IRFS = IRFS)
+
+  def plot_irfs_3d(self, image_folder_path):
+    # Take the median 
+    IRFS_median = np.nanmedian(self.IRFS, axis = 1)
+    n_var = IRFS_median.shape[1]
+        
+    fig = make_subplots(rows = n_var, cols = n_var,
+                        subplot_titles = [f'IRF {k} -> {kk}' for k in range(n_var) for kk in range(n_var)],
+                        specs = [[{'is_3d': True} for e in range(n_var)] for e in range(n_var)],
+                        shared_xaxes = False,
+                        shared_yaxes = False,
+                        horizontal_spacing = 0,
+                        vertical_spacing = 0.05
+    )
+
+    for shock_var in range(n_var):
+      for response_var in range(n_var):
+        fig.add_trace(go.Surface(name = 'Exp 1', z = IRFS_median[:, shock_var, response_var, :], showscale = False, showlegend = True, 
+              colorscale = [[0, px.colors.qualitative.Plotly[0]], [1, px.colors.qualitative.Plotly[0]]],
+              cmin = 0, cmax = 0, opacity = 0.7),
+              row = response_var + 1, col = shock_var + 1)
+
+    fig.update_scenes(xaxis_title = 'Horizon',
+                      yaxis_title = 'Time', 
+                      zaxis_title = 'Value',
+                      camera = {
+                      'up': {'x': 0, 'y': 0, 'z': 1},
+                      'center': {'x': 0, 'y': 0, 'z': 0},
+                      'eye': {'x': 1.25, 'y': -1.5, 'z': 0.75}
+                      })
+
+
+    fig.update_layout(title = f'Conditional IRFs for Experiment {self.experiment_id}', autosize=False,
+                      width = 350 * n_var, height = 350 * n_var,
+                      margin=dict(l=25, r=25, b=65, t=90))
+
+    image_path = f'{image_folder_path}/irf_conditional_3d_{self.experiment_id}.html'
+    fig.write_html(image_path)
+
 
   def plot_irfs(self, image_folder_path):
 
