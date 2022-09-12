@@ -819,33 +819,6 @@
             "joint_estimation": true,
             "exog_data": true,
             "name": "Exog"
-        },
-        {
-            "nodes": [
-                400,
-                200,
-                100
-            ],
-            "actv": "nn.SELU()",
-            "tvpl_archi": [
-                5
-            ],
-            "lr": 0.0005,
-            "time_dummy_setting": 2,
-            "dropout_rate": 0.25,
-            "precision_lambda": 0.25,
-            "lambda_temper_epochs": 50,
-            "optimizer": "Adam",
-            "s_pos_setting": {
-                "is_hemi": false,
-                "n_times": 30
-            },
-            "s_pos": [
-                [0, 330], [330, 510]
-            ],
-            "joint_estimation": true,
-            "exog_data": false,
-            "name": "Time Hemisphere"
         }
     ]
 }
