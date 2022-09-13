@@ -76,14 +76,14 @@ class Experiment:
         'experiment_id': self.experiment_id,
         'experiment_name': self.nn_hyps['name']
       }
-      try:
-        IRFConditionalObj = IRFConditional(self.results, conditional_irf_params)
-        IRFConditionalObj.plot_irfs(image_folder_path)
-        IRFConditionalObj.plot_irfs_3d(image_folder_path)
-        IRFConditionalObj.plot_irfs_over_time(image_folder_path, normalize = self.extensions_params['conditional_irfs']['normalize_time_plot'])
-        self.evaluations['conditional_irf'] = IRFConditionalObj
-      except Exception as e:
-        print('Error in Experiment compute_conditional_irfs():', e)
+      #try:
+      IRFConditionalObj = IRFConditional(self.results, conditional_irf_params)
+      IRFConditionalObj.plot_irfs(image_folder_path)
+      IRFConditionalObj.plot_irfs_3d(image_folder_path)
+      IRFConditionalObj.plot_irfs_over_time(image_folder_path, normalize = self.extensions_params['conditional_irfs']['normalize_time_plot'])
+      self.evaluations['conditional_irf'] = IRFConditionalObj
+      # except Exception as e:
+      #   print('Error in Experiment compute_conditional_irfs():', e)
         
 
   def compute_unconditional_irfs(self, Y_train, Y_test, X_train, results, device, repeat_id):
@@ -106,7 +106,7 @@ class Experiment:
       }
 
     # Check if multiple hemispheres
-    if len(self.nn_hyps['s_pos']) > 1:
+    if self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog']:
       print('Experiment compute_unconditional_irfs(): Experiment has multiple hemispheres, not training unconditional IRFs')
       fcast = np.zeros((self.extensions_params['unconditional_irfs']['num_simulations'], len(self.nn_hyps['var_names']), len(self.nn_hyps['var_names']), 3))
       fcast[:] = np.nan
@@ -114,7 +114,7 @@ class Experiment:
         np.savez(f, fcast = fcast, fcast_cov_mat = None)
     
     # Check if exogenous is set on
-    elif self.nn_hyps['exog'] is not None:
+    elif self.nn_hyps['s_pos_setting']['hemis'] in ['exog']:
       print('Experiment compute_unconditional_irfs(): Experiment has exogenous data, not training unconditional IRFs')
       fcast = np.zeros((self.extensions_params['unconditional_irfs']['num_simulations'], len(self.nn_hyps['var_names']), len(self.nn_hyps['var_names']), 3))
       fcast[:] = np.nan
@@ -171,6 +171,7 @@ class Experiment:
     else:
       if self.nn_hyps['exog_data'] == True and exog_dataset is not None and self.nn_hyps['exog'] is None:
         self.nn_hyps['exog'] = np.array(exog_dataset)
+
       X_train, X_test, Y_train, Y_test, nn_hyps = DataProcesser.process_data_wrapper(dataset, self.nn_hyps)
       
       repeat_ids = []
@@ -304,7 +305,7 @@ class Experiment:
     if self.execution_params['unconditional_irfs'] == False:
       print('Experiment _compile_unconditional_irf_results(): Unconditional IRFs turned off')
       return 
-    if len(self.nn_hyps['s_pos']) > 1:
+    if self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']:
       print('Experiment _compile_unconditional_irf_results(): Experiment has multiple hemispheres, not training unconditional IRFs')
       return
       
@@ -341,7 +342,7 @@ class Experiment:
 
   def evaluate_unconditional_irf_results(self, Y_train):
 
-    if len(self.nn_hyps['s_pos']) > 1:
+    if self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']:
       print('Experiment _compile_unconditional_irf_results(): Experiment has multiple hemispheres, no unconditional IRF results to compile')
       return
 

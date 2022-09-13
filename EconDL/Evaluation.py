@@ -712,6 +712,8 @@ class Evaluation:
       self.evaluation_metrics.append({'metric': 'conditional_irf_vol', 'experiment': exp, 'value': irf_vol})
 
   def plot_conditional_irf_comparison(self, exps_to_compare = [0, 1]):
+
+    print('Experiments to Compare', exps_to_compare)
     
     for i, exp in enumerate(exps_to_compare):
       IRFS = self.Run.experiments[exp].evaluations['conditional_irf'].IRFS

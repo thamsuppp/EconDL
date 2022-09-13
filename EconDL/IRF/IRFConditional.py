@@ -137,7 +137,8 @@ class IRFConditional:
     n_var = IRFS_median.shape[1]
         
     fig = make_subplots(rows = n_var, cols = n_var,
-                        subplot_titles = [f'IRF {k} -> {kk}' for k in range(n_var) for kk in range(n_var)],
+                        subplot_titles = [f'IRF {self.var_names[shock_var]} -> {self.var_names[response_var]}' for response_var in range(n_var) 
+                          for shock_var in range(n_var)],
                         specs = [[{'is_3d': True} for e in range(n_var)] for e in range(n_var)],
                         shared_xaxes = False,
                         shared_yaxes = False,
@@ -147,9 +148,9 @@ class IRFConditional:
 
     for shock_var in range(n_var):
       for response_var in range(n_var):
-        fig.add_trace(go.Surface(name = 'Exp 1', z = IRFS_median[:, shock_var, response_var, :], showscale = False, showlegend = True, 
-              colorscale = [[0, px.colors.qualitative.Plotly[0]], [1, px.colors.qualitative.Plotly[0]]],
-              cmin = 0, cmax = 0, opacity = 0.7),
+        fig.add_trace(go.Surface(name = self.experiment_name, z = IRFS_median[:, shock_var, response_var, :], 
+              showscale = False, showlegend = True, 
+              colorscale = 'RdBu', cmid = 0, opacity = 0.75),
               row = response_var + 1, col = shock_var + 1)
 
     fig.update_scenes(xaxis_title = 'Horizon',
@@ -162,7 +163,7 @@ class IRFConditional:
                       })
 
 
-    fig.update_layout(title = f'Conditional IRFs for Experiment {self.experiment_id}', autosize=False,
+    fig.update_layout(title = f'Experiment {self.experiment_id} ({self.experiment_name}) Conditional IRF', autosize=False,
                       width = 350 * n_var, height = 350 * n_var,
                       margin=dict(l=25, r=25, b=65, t=90))
 
@@ -187,6 +188,7 @@ class IRFConditional:
 
     cmap = plt.cm.tab10
 
+    # Plot IRF
     fig, ax = plt.subplots(self.n_var, self.n_var, constrained_layout = True, figsize = (4 * self.n_var, 4 * self.n_var))
 
     for shock_var in range(self.n_var):
@@ -204,8 +206,28 @@ class IRFConditional:
         if response_var == 0 and shock_var == 0:
           ax[response_var, shock_var].legend()
 
-    fig.suptitle(f'Experiment {self.experiment_id} ({self.experiment_name} Conditional IRF', fontsize = 16)
+    fig.suptitle(f'Experiment {self.experiment_id} ({self.experiment_name}) Conditional IRF', fontsize = 16)
     image_path = f'{image_folder_path}/irf_conditional_{self.experiment_id}.png'
+    plt.savefig(image_path)
+
+    # Plot cumulative IRF
+    fig, ax = plt.subplots(self.n_var, self.n_var, constrained_layout = True, figsize = (4 * self.n_var, 4 * self.n_var))
+
+    for shock_var in range(self.n_var):
+      for response_var in range(self.n_var):
+        for i in range(len(times_to_draw)):
+          cum_irf_df = np.cumsum(IRFS_median[times_to_draw[i], shock_var, response_var, :], axis = -1)
+          ax[response_var, shock_var].plot(cum_irf_df, label = times_to_draw_labels[i], color = cmap(i))
+
+          ax[response_var, shock_var].set_xlabel('Horizon')
+          ax[response_var, shock_var].set_ylabel('Impulse Response')
+          ax[response_var, shock_var].axhline(y = 0, color = 'black', ls = '--')
+          ax[response_var, shock_var].set_title(f'{self.var_names[shock_var]} -> {self.var_names[response_var]}')
+        if response_var == 0 and shock_var == 0:
+          ax[response_var, shock_var].legend()
+
+    fig.suptitle(f'Experiment {self.experiment_id} ({self.experiment_name}) Cumulative Conditional IRF', fontsize = 16)
+    image_path = f'{image_folder_path}/irf_cum_conditional_{self.experiment_id}.png'
     plt.savefig(image_path)
 
     print(f'Conditional IRF plotted at {image_path}')

@@ -85,6 +85,8 @@ class ForecastMulti:
       # Start with the initial input
       new_in_linear = newx[0:(n_lag_linear * self.n_var)]
       new_in_nonlinear = newx[(n_lag_linear * self.n_var):((n_lag_linear + n_lag_d) * self.n_var)]
+
+      # This represents the time or exogenous layers
       new_in_time = newx[((n_lag_linear + n_lag_d) * self.n_var):]
 
       bootstraps_to_ignore = []
@@ -143,6 +145,8 @@ class ForecastMulti:
       return fcast
     except np.linalg.LinAlgError as err:
       print(f'LinAlgError at period {period}')
+      print(err)
+      print('Cov Mat', cov)
       return fcast
 
   # @title Bootstrap Forecasting Function (Old Method - works for ML models)
@@ -201,10 +205,10 @@ class ForecastMulti:
 
       # Conduct MARX transformation on the nonlinear layer
       new_data_marx = new_in_nonlinear.copy()
-      for lag in range(2, n_lag_d + 1):
-        for var in range(self.n_var):
-          who_to_avg = list(range(var, self.n_var * (lag - 1) + var + 1, self.n_var))
-          new_data_marx[who_to_avg[-1]] = new_in_nonlinear[who_to_avg].mean()
+      # for lag in range(2, n_lag_d + 1):
+      #   for var in range(self.n_var):
+      #     who_to_avg = list(range(var, self.n_var * (lag - 1) + var + 1, self.n_var))
+      #     new_data_marx[who_to_avg[-1]] = new_in_nonlinear[who_to_avg].mean()
       
       # Combine the first n_lag_linear lags, with the MARX data, to get the full input vector
       new_data_all = np.hstack([new_in_linear, new_data_marx, new_in_time])

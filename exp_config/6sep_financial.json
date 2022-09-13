@@ -170,7 +170,8 @@
         "exps_to_plot": null,
         "repeats_to_include": null,
         "test_exclude_last": 0,
-        "normalize_errors_to_benchmark": true
+        "normalize_errors_to_benchmark": true,
+        "experiments_to_compare": [0]
     },
     "experiment_groups": {
         "nodes": [

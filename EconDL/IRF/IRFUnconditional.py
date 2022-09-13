@@ -72,7 +72,7 @@ class IRFUnconditional:
       for simul in range(self.num_simulations):
         sim_shocks[simul, :] = np.random.multivariate_normal([0] * n_var, np.eye(n_var), size = 1)
 
-      # Initialize the data at random time from the sample
+      # Initialize the data at random time from the sample (new 7/28 - this stabilizes the simulation)
       random_obs = random.choices(list(range(X_train.shape[0])), k = 1)
       initial_all = X_train[random_obs, :]
       initial_linear = initial_all[0, :self.n_lag_linear * n_var]
@@ -85,11 +85,6 @@ class IRFUnconditional:
 
         bootstraps_to_ignore = []
         for shock_level in [0, 1]:
-
-          # Initialize new data at 0 (not using this from 7/28 onwards)
-          # new_in_linear = np.zeros(self.n_lag_linear * n_var)
-          # new_in_nonlinear = np.zeros(self.n_lag_d * n_var)
-          # fcast[0, :, kk, shock_level] = np.zeros((n_var))
 
           new_in_linear = initial_linear.copy()
           new_in_nonlinear = initial_nonlinear.copy()
@@ -110,10 +105,10 @@ class IRFUnconditional:
             
             # Generate MARX transformed variables - for that one new day
             new_data_marx = new_in_nonlinear.copy()
-            for lag in range(2, self.n_lag_d + 1):
-              for var in range(n_var):
-                who_to_avg = list(range(var, n_var * (lag - 1) + var + 1, n_var))
-                new_data_marx[who_to_avg[-1]] = new_in_nonlinear[who_to_avg].mean()
+            # for lag in range(2, self.n_lag_d + 1):
+            #   for var in range(n_var):
+            #     who_to_avg = list(range(var, n_var * (lag - 1) + var + 1, n_var))
+            #     new_data_marx[who_to_avg[-1]] = new_in_nonlinear[who_to_avg].mean()
 
             # Combine the first n_lag_linear lags, with the MARX data, to get the full 325-dim input vector
             new_data_all = np.hstack([new_in_linear, new_data_marx])
@@ -126,7 +121,7 @@ class IRFUnconditional:
 
               # Cholesky the cov mat to get C matrix
               cov = np.squeeze(cov, axis = 0)
-              c_t = np.linalg.cholesky(cov)
+              c_t = np.linalg.cholesky(cov) 
 
               fcast_cov_mat[f, :, :, kk, shock_level] = cov
 
@@ -151,7 +146,9 @@ class IRFUnconditional:
           
       return fcast, fcast_cov_mat, sim_shocks
     except np.linalg.LinAlgError as err:
-      print(f'LinAlgError at time {f}')
+      print(f'LinAlgError at period {f}')
+      print(err)
+      print('Cov Mat', cov)
       return fcast, fcast_cov_mat, sim_shocks
 
   # @title Old IRF Simulation Wrapper Function (without Joint Estimation - time-invariant covariance matrix)

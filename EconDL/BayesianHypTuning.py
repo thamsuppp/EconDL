@@ -36,8 +36,12 @@ class BayesianHypTuning:
     self.dim_names = dim_names
     self.default_parameters = default_parameters
 
+    self.n_bayesian_iterations = None
+
     self.experiments = []
     self.num_experiments = 0
+
+    self.experiment_records = []
 
     self._load_params()
 
@@ -84,6 +88,7 @@ class BayesianHypTuning:
 
     self.n_var = all_params['run_params']['n_var']
     self.var_names = all_params['run_params']['var_names']
+    self.n_bayesian_iterations = all_params['run_params'].get('n_bayesian_iterations', 50)
 
     # Load the default nn_hyps
     default_nn_hyps_path = self.run_params['default_nn_hyps']
@@ -118,20 +123,27 @@ class BayesianHypTuning:
     ExperimentObj.train(self.dataset, self.exog_dataset, self.device)
     results = ExperimentObj.results_uncompiled[0]
 
-    preds = results['train_preds']
+    train_preds = results['train_preds']
+    test_preds = results['test_preds']
     Y_train = results['y']
     Y_test = results['y_test']
 
     # Get the median prediction across all bootstraps
-    preds_median = np.nanmedian(preds, axis = 1)
-    error = np.abs(Y_train - preds_median)
+    train_preds_median = np.nanmedian(train_preds, axis = 1)
+    train_error = np.abs(Y_train - train_preds_median)
     # Mean Error (across all variables)
-    mean_error = np.nanmean(error, axis = 0)
+    train_mean_error = np.nanmean(train_error, axis = 0)
     # Divide by each variable's SD (to make each variable be worth the same)
-    mean_error = mean_error / np.std(Y_train, axis = 0)
+    train_mean_error = train_mean_error / np.std(Y_train, axis = 0)
+
+    # Get the test error
+    test_preds_median = np.nanmedian(test_preds, axis = 1)
+    test_error = np.abs(Y_test - test_preds_median)
+    test_mean_error = np.nanmean(test_error, axis = 0)
+    test_mean_error = test_mean_error / np.std(Y_test, axis = 0)
 
     # Save the results (evaluate the experiment?)
-    return mean_error
+    return train_mean_error, test_mean_error
 
   def fitness(self, **kwargs):
     # Create a dictionary to contain the kwargs
@@ -147,10 +159,17 @@ class BayesianHypTuning:
     print(f'Experiment is {self.num_experiments}, new params are {new_params}')
 
     ExperimentObj = self.init_experiment(new_params, self.num_experiments)
-    mean_error = self.train_experiment(ExperimentObj) # returns the standardized MAE for all variables
-    score = np.sum(mean_error) # mean across all variables
-    print('Mean Error: ', mean_error, 'Score:', score)
+    train_mean_error, test_mean_error = self.train_experiment(ExperimentObj) # returns the standardized MAE for all variables
+    score = np.sum(train_mean_error) # mean across all variables
+    print('Mean Error: ', train_mean_error, 'Test Mean Error: ', test_mean_error, 'Score:', score)
 
+    # Save the record
+    self.experiment_records.append({
+      'experiment_id': self.num_experiments,
+      'train_mean_error': train_mean_error,
+      'test_mean_error': test_mean_error,
+      'params': new_params
+    })
     # Increment num_experiments
     self.num_experiments += 1
 
@@ -169,11 +188,13 @@ class BayesianHypTuning:
       func = fitness_wrapper,
       dimensions = self.dimensions,
       acq_func = 'EI', # Expected Improvement
-      n_calls = 100, 
+      n_calls = self.n_bayesian_iterations, 
       x0 = self.default_parameters,
       random_state = 42
     )
 
     dump(search_result, f"{self.folder_path}/opt_results.pkl", store_objective = False)
+    with open(f'{self.folder_path}/experiment_records.npz', 'wb') as f:
+      np.savez(f, experiment_records = self.experiment_records)
 
 

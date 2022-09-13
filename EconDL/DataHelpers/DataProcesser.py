@@ -23,30 +23,30 @@ def process_data(data, nn_hyps, marx = True, test_size = 60, n_time_trends = 0, 
   x_mat = np.array(data.iloc[:, n_var:]) # Explanatory variables (lags of target variables + other exogenous variables)
   x_mat_colnames = data.iloc[:, n_var:].columns
   
-  # if marx == True:
-  #   # Computing MARX (moving averages)
-  #   x_mat_marx = np.array(x_mat)
+  if marx == True:
+    # Computing MARX (moving averages)
+    x_mat_marx = np.array(x_mat)
 
-  #   for lag in range(2, n_lag_d + 1):
-  #     for var in range(n_var):
-  #       # For earlier lags, set earliest lagged value to be the mean of all more recent lags
-  #       who_to_avg = list(range(var, n_var * (lag - 1) + var + 1, n_var))
-  #       x_mat_marx[:, who_to_avg[-1]] = x_mat[:, who_to_avg].mean(axis = 1)
+    # for lag in range(2, n_lag_d + 1):
+    #   for var in range(n_var):
+    #     # For earlier lags, set earliest lagged value to be the mean of all more recent lags
+    #     who_to_avg = list(range(var, n_var * (lag - 1) + var + 1, n_var))
+    #     x_mat_marx[:, who_to_avg[-1]] = x_mat[:, who_to_avg].mean(axis = 1)
 
-  #   x_mat_marx_colnames = ['MARX_' + e for e in x_mat_colnames]
-  #   print('Size of x_mat before appending MARX', x_mat[:, :(n_var * n_lag_linear)].shape)
-  #   print('Size of x_mat_marx', x_mat_marx.shape)
+    x_mat_marx_colnames = ['Nonlinear_' + e for e in x_mat_colnames]
+    print('Size of x_mat before appending Nonlinear', x_mat[:, :(n_var * n_lag_linear)].shape)
+    print('Size of x_mat_marx', x_mat_marx.shape)
 
-  #   # Concatenate
-  #   x_mat_all = np.hstack([x_mat[:, :(n_var * n_lag_linear)], x_mat_marx])
-  #   x_mat_all_colnames = list(x_mat_colnames[:(n_var * n_lag_linear)]) + list(x_mat_marx_colnames)
+    # Concatenate
+    x_mat_all = np.hstack([x_mat[:, :(n_var * n_lag_linear)], x_mat_marx])
+    x_mat_all_colnames = list(x_mat_colnames[:(n_var * n_lag_linear)]) + list(x_mat_marx_colnames)
 
-  #   print('x_mat_all size', x_mat_all.shape)
+    print('x_mat_all size', x_mat_all.shape)
+
   
-  #else: # If no MARX
-  x_mat_all = np.array(x_mat)
-  x_mat_all = x_mat_all[:, :(n_var * n_lag_d)]
-  x_mat_all_colnames = list(x_mat_colnames[:(n_var * n_lag_d)])
+  else: # If no MARX
+    x_mat_all = np.array(x_mat)
+    x_mat_all = x_mat_all[:, :(n_var * n_lag_d)]
 
   print('x_mat_all size', x_mat_all.shape)
 
@@ -183,28 +183,40 @@ def process_data_wrapper(data, nn_hyps):
 
       
     n_betas = n_var * nn_hyps['n_lag_linear'] + 1
-    n_inputs_wo_time = n_var * (nn_hyps['n_lag_linear'] + nn_hyps['n_lag_d'])
 
     X_train, X_test, Y_train, Y_test, x_mat_all, y_mat, nn_hyps = process_data(x_d, nn_hyps, test_size = test_size, n_time_trends = 100,
         time_dummy_setting = nn_hyps['time_dummy_setting'], marx = nn_hyps['marx'], dummy_interval = nn_hyps['dummy_interval'])
 
     n_inputs_total = X_train.shape[1]
-    
+
+    n_endog_inputs = n_var * (nn_hyps['n_lag_linear'] + nn_hyps['n_lag_d'])
+    n_exog_inputs = 0 if nn_hyps['exog'] is None else nn_hyps['exog'].shape[1]
+    n_time_inputs = n_inputs_total - n_endog_inputs - n_exog_inputs
+
+    print(f'Endog: {n_endog_inputs}, Exog: {n_exog_inputs}, Time: {n_time_inputs}')
 
     # If s_pos is already not defined (s_pos can be defined by user)
-    if not nn_hyps.get('s_pos'):
+    if nn_hyps.get('s_pos') is not None:
       # s_pos_setting
-      if nn_hyps['s_pos_setting']['is_hemi'] == False:
-          nn_hyps['s_pos'] = [ list(range(n_inputs_total)) ]
-      else:
-          n_inputs_total_new = n_inputs_wo_time + nn_hyps['s_pos_setting']['n_times']
-          nn_hyps['s_pos'] = [ list(range(n_inputs_wo_time)), list(range(n_inputs_wo_time, n_inputs_total_new))]
-          # Subset the X_train and X_test to only the required columns
-          X_train = X_train[:, :n_inputs_total_new]
-          X_test = X_test[:, :n_inputs_total_new]
+      if nn_hyps['s_pos_setting']['hemis'] == 'combined': # Endog + Time
+        nn_hyps['s_pos'] = [ list(range(n_inputs_total)) ]
+      elif nn_hyps['s_pos_setting']['hemis'] == 'endog':
+        nn_hyps['s_pos'] = [ list(range(n_endog_inputs)) ]
+      elif nn_hyps['s_pos_setting']['hemis'] == 'exog': # Exogenous variables only
+        n_inputs_total_new = n_endog_inputs + n_exog_inputs
+        nn_hyps['s_pos'] = [ list(range(n_endog_inputs, n_inputs_total_new)) ]
+      elif nn_hyps['s_pos_setting']['hemis'] == 'time': # Time variables only
+        nn_hyps['s_pos'] = [ list(range(n_endog_inputs + n_exog_inputs, n_inputs_total)) ]
+      elif nn_hyps['s_pos_setting']['hemis'] == 'endog_time': # now, we need to check n_time
+        nn_hyps['s_pos'] = [ list(range(n_endog_inputs)), list(range(n_endog_inputs + n_exog_inputs, n_inputs_total))]
+      elif nn_hyps['s_pos_setting']['hemis'] == 'endog_exog': 
+        nn_hyps['s_pos'] = [ list(range(n_endog_inputs)), list(range(n_endog_inputs, n_endog_inputs + n_exog_inputs))]
+
     else: # Format s_pos properly
       s_pos = nn_hyps['s_pos']
       nn_hyps['s_pos'] = [list(range(s[0], s[1])) for s in s_pos]
+
+    print('s_pos', nn_hyps['s_pos'])
 
     # Get the max of s_pos
     max_s_pos = max([max(e) for e in nn_hyps['s_pos']])
