@@ -1,7 +1,7 @@
 {
     "run_params": {
         "dataset": "financial_3var",
-        "num_inner_bootstraps": 2,
+        "num_inner_bootstraps": 5,
         "num_repeats": 1,
         "default_nn_hyps": "nn_hyps_default",
         "var_names": [
@@ -60,7 +60,9 @@
                 "VAR_roll",
                 "AR_roll",
                 "VAR_expand",
-                "AR_expand"
+                "AR_expand",
+                "zero",
+                "mean"
             ]
         }
     },
@@ -239,3 +241,4 @@
         }
     ]
 }
+

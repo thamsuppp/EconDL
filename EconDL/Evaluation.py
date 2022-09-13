@@ -591,6 +591,55 @@ class Evaluation:
 
       print(f'Cov Mat plotted at {image_file}')
 
+  # New 9/13: Plot the correlation matrix
+  def plot_corr_mat(self):
+        
+    if self.is_test == False:
+      SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, :-self.test_size,:,:,:]
+    else:
+      SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, -self.test_size:,:,:,:]
+
+    # SIGMAS_ALL_PLOT dims: n_exp, n_time, n_var, n_var, n_boot
+    CORR_PLOT = np.zeros_like(SIGMAS_ALL_PLOT)
+    CORR_PLOT[:] = np.nan
+
+    # Calculate correlation matrix
+    for b in range(SIGMAS_ALL_PLOT.shape[4]):
+      for row in range(self.n_var):
+        for col in range(self.n_var):
+          CORR_PLOT[:, :, row, col, b] = SIGMAS_ALL_PLOT[:, :, row, col, b] / np.sqrt(SIGMAS_ALL_PLOT[:, :, row, row, b] * SIGMAS_ALL_PLOT[:, :, col, col, b])
+
+
+    for i in self.exps_to_plot:
+      fig, axs = plt.subplots(self.n_var, self.n_var, figsize = (6 * self.n_var, 4 * self.n_var), constrained_layout = True)
+
+      for row in range(self.n_var):
+        for col in range(self.n_var):
+          
+          # Plot every bootstrap's value 
+          if self.plot_all_bootstraps == True:
+            for b in range(self.CORR_PLOT.shape[4]):
+              axs[row, col].plot(CORR_PLOT[i, :, row, col, b], lw = 0.5, alpha = 0.25, label = i)
+
+          axs[row, col].plot(np.nanmedian(CORR_PLOT[i, :, row, col, :], axis = -1))
+          axs[row, col].set_title(f'{self.var_names[row]}, {self.var_names[col]}')
+          axs[row, col].set_xlabel('Time')
+          axs[row, col].set_ylabel('Correlation')
+
+          corr_lcl = np.nanquantile(CORR_PLOT[i, :, row, col, :], axis = -1, q = 0.16)
+          corr_ucl = np.nanquantile(CORR_PLOT[i, :, row, col, :], axis = -1, q = 0.84)
+          axs[row, col].fill_between(list(range(CORR_PLOT.shape[1])), corr_lcl, corr_ucl, alpha = 0.5)
+
+          # Set the y-axis limits to be at the min 10% LCL and max 10% UCL
+          axs[row, col].set_ylim(
+            -1, 1
+          )
+
+      fig.suptitle(f'Experiment {i} ({self.experiment_names[i]}) Correlation Matrix', fontsize=16)
+      image_file = f'{self.image_folder_path}/corr_mat_{i}.png'
+      plt.savefig(image_file)
+      plt.close()
+
   def plot_predictions(self):
 
     fig, ax = plt.subplots(self.n_var, 1, figsize = (12, 3 * self.n_var), constrained_layout = True)
@@ -759,6 +808,7 @@ class Evaluation:
     self.plot_cholesky()
     self.plot_precision()
     self.plot_sigmas()
+    self.plot_corr_mat()
     self.plot_betas()
     self.plot_predictions()
     self.plot_errors(data_sample='oob')
@@ -773,13 +823,11 @@ class Evaluation:
     # Save the evaluation_metrics as an npz object
     np.savez(f'{self.image_folder_path}/evaluation_metrics.npz', evaluation_metrics = self.evaluation_metrics)
 
-
   def plot_forecasts(self):
     self.plot_predictions()
     self.plot_errors(data_sample='oob')
     self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
     self.evaluate_multi_step_forecasts()
-
 
   def evaluate_multi_step_forecasts(self, exclude_last = 0):
     multi_forecasting_params = {

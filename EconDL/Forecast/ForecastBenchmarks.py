@@ -64,6 +64,36 @@ class ForecastBenchmarks:
       self.expanding_window_AR()
     if 'AR_roll' in self.benchmarks:
       self.rolling_window_AR()
+    if 'zero' in self.benchmarks:
+      self.zero_forecast()
+    if 'mean' in self.benchmarks:
+      self.mean_forecast()
+
+  def zero_forecast(self):
+    # Test prediction array
+    FCAST = np.zeros((self.h+1, self.n_var, self.test_size, self.R))
+    FCAST[:] = np.nan
+    FCAST[1:, :, :, :] = 0.0
+
+    with open(f'{self.benchmark_folder_path}/benchmark_multi_zero.npz', 'wb') as f:
+        np.save(f, FCAST)
+
+  # Mean of previous h (now 1) observations
+  def mean_forecast(self):
+    # Test prediction array
+    FCAST = np.zeros((self.h+1, self.n_var, self.test_size, self.R))
+    FCAST[:] = np.nan
+
+    for t in range(self.test_size):
+      if t == 0: # Last observation of train set
+        FCAST[1:, :, t, 0] = self.Y_train[-1, :]
+      else:
+        # Set the forecast for all horizons to be the previous observation
+        FCAST[1:, :, t, 0] = self.Y_test[t-1, :]
+    
+    with open(f'{self.benchmark_folder_path}/benchmark_mean.npz', 'wb') as f:
+      np.save(f, FCAST)
+
 
   ### Expanding Window VAR
   def expanding_window_VAR(self):
