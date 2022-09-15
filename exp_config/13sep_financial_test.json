@@ -1,7 +1,7 @@
 {
     "run_params": {
         "dataset": "financial_3var",
-        "num_inner_bootstraps": 5,
+        "num_inner_bootstraps": 10,
         "num_repeats": 1,
         "default_nn_hyps": "nn_hyps_default",
         "var_names": [
@@ -12,7 +12,7 @@
         "n_lag_linear": 10,
         "n_lag_d": 100,
         "n_var": 3,
-        "test_size": 50,
+        "test_size": 25,
         "constant_tvpl": [
             200
         ],
@@ -53,7 +53,7 @@
         },
         "multi_forecasting": {
             "forecast_horizons": 10,
-            "reestimation_window": 50,
+            "reestimation_window": 25,
             "forecast_method": "new",
             "num_sim_bootstraps": 40,
             "benchmarks": [

@@ -22,7 +22,8 @@
                 0,
                 330
             ]
-        ]
+        ],
+        "s_pos_setting": {"hemis": "endog"}
     },
     "execution_params": {
         "benchmarks": true,

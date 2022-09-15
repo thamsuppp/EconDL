@@ -609,7 +609,6 @@ class Evaluation:
         for col in range(self.n_var):
           CORR_PLOT[:, :, row, col, b] = SIGMAS_ALL_PLOT[:, :, row, col, b] / np.sqrt(SIGMAS_ALL_PLOT[:, :, row, row, b] * SIGMAS_ALL_PLOT[:, :, col, col, b])
 
-
     for i in self.exps_to_plot:
       fig, axs = plt.subplots(self.n_var, self.n_var, figsize = (6 * self.n_var, 4 * self.n_var), constrained_layout = True)
 
@@ -818,7 +817,8 @@ class Evaluation:
     self.plot_sigmas_comparison(exps_to_compare = self.experiments_to_compare)
     if cond_irf == True:
       self.plot_conditional_irf_comparison(exps_to_compare = self.experiments_to_compare)
-    self.evaluate_multi_step_forecasts()
+    if self.Run.execution_params['multi_forecasting'] == True:
+      self.evaluate_multi_step_forecasts()
 
     # Save the evaluation_metrics as an npz object
     np.savez(f'{self.image_folder_path}/evaluation_metrics.npz', evaluation_metrics = self.evaluation_metrics)
