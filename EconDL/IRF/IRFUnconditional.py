@@ -64,7 +64,7 @@ class IRFUnconditional:
     success = False
     num_failures = 0
 
-    while success == False or num_failures < 5:
+    while success == False and num_failures < 5:
         
       fcast = np.zeros((self.num_simulations, n_var, n_var, 3))
       fcast[:] = np.nan

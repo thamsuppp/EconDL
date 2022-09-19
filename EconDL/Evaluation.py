@@ -128,6 +128,7 @@ class Evaluation:
       print(f'Evaluation load_results(): load_file: {load_file}')
 
       results = np.load(load_file, allow_pickle = True)['results'].item()
+
       params = results['params']
       self.params.append(params)
 
@@ -245,6 +246,7 @@ class Evaluation:
       return
 
     for i in range(self.M_benchmarks):
+      print(f'Starting to load {i}: {self.benchmark_names[i]}')
       out = np.load(f'{benchmark_folder_path}/benchmark_{self.benchmark_names[i]}.npz')
 
       preds = out['train_preds']

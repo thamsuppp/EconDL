@@ -91,6 +91,6 @@ class MLExperiment(Experiment):
       # After completing all repeats
       self.is_trained = True
 
-      #self._compile_results()
-    # self._compile_unconditional_irf_results()
-    # self._compile_multi_forecasting_results()
+      self._compile_results()
+    self._compile_unconditional_irf_results()
+    self._compile_multi_forecasting_results()

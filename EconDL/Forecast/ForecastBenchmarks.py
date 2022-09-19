@@ -91,7 +91,7 @@ class ForecastBenchmarks:
         # Set the forecast for all horizons to be the previous observation
         FCAST[1:, :, t, 0] = self.Y_test[t-1, :]
     
-    with open(f'{self.benchmark_folder_path}/benchmark_mean.npz', 'wb') as f:
+    with open(f'{self.benchmark_folder_path}/benchmark_multi_mean.npz', 'wb') as f:
       np.save(f, FCAST)
 
 

@@ -17,12 +17,7 @@
             200
         ],
         "end_precision_lambda": 0.025,
-        "s_pos": [
-            [
-                0,
-                330
-            ]
-        ],
+
         "s_pos_setting": {"hemis": "endog"}
     },
     "execution_params": {
