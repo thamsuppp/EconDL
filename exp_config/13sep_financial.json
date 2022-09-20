@@ -105,7 +105,7 @@
             "s_pos_setting": { "hemis": "endog"},
             "joint_estimation": true,
             "exog_data": true,
-            "name": "Endog"
+            "name": "Endog SELU"
         },
         {
             "nodes": [200, 100, 50],
@@ -120,7 +120,7 @@
             "s_pos_setting": { "hemis": "endog_exog"},
             "joint_estimation": true,
             "exog_data": true,
-            "name": "Endog+Exog"
+            "name": "Endog+Exog SELU"
         },
         {
             "nodes": [200, 100, 50],
@@ -135,7 +135,7 @@
             "s_pos_setting": { "hemis": "endog_time"},
             "joint_estimation": true,
             "exog_data": true,
-            "name": "Endog+Time Dummy"
+            "name": "Endog+Time Dummy SELU"
         },
         {
             "nodes": [200, 100, 50],
@@ -150,7 +150,7 @@
             "s_pos_setting": { "hemis": "endog_time"},
             "joint_estimation": true,
             "exog_data": true,
-            "name": "Endog+Time Trend"
+            "name": "Endog+Time Trend SELU"
         },
         {
             "nodes": [200, 100, 50],
@@ -165,7 +165,7 @@
             "s_pos_setting": { "hemis": "endog"},
             "joint_estimation": true,
             "exog_data": true,
-            "name": "Endog"
+            "name": "Endog RELU"
         },
         {
             "nodes": [200, 100, 50],
@@ -180,7 +180,7 @@
             "s_pos_setting": { "hemis": "endog_exog"},
             "joint_estimation": true,
             "exog_data": true,
-            "name": "Endog+Exog"
+            "name": "Endog+Exog RELU"
         },
         {
             "nodes": [200, 100, 50],
@@ -195,7 +195,7 @@
             "s_pos_setting": { "hemis": "endog_time"},
             "joint_estimation": true,
             "exog_data": true,
-            "name": "Endog+Time Dummy"
+            "name": "Endog+Time Dummy RELU"
         },
         {
             "nodes": [200, 100, 50],
@@ -210,7 +210,7 @@
             "s_pos_setting": { "hemis": "endog_time"},
             "joint_estimation": true,
             "exog_data": true,
-            "name": "Endog+Time Trend"
+            "name": "Endog+Time Trend RELU"
         }
         
     ]

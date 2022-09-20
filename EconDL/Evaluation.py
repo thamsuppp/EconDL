@@ -504,7 +504,7 @@ class Evaluation:
       for col in range(self.n_var):
         for i in exps_to_compare:
 
-          axs[row, col].plot(np.nanmedian(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1), label = self.experiment_names[exps_to_compare[i]])
+          axs[row, col].plot(np.nanmedian(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1), label = self.experiment_names[i])
           axs[row, col].set_title(f'{self.var_names[row]}, {self.var_names[col]}')
           axs[row, col].set_xlabel('Time')
           axs[row, col].set_ylabel('Coefficient')

@@ -80,17 +80,17 @@ class ForecastMultiEvaluation:
           out = np.load(f'{self.folder_path}/multi_fcast_params_{benchmark}_compiled.npz')
           FCAST = out['fcast']
           FCAST_nan = FCAST.copy()
-          FCAST_nan[FCAST_nan == 0] = np.nan
           Y_pred = np.nanmedian(FCAST_nan, axis = 2)
           Y_pred_big[self.M_varnn + bid, :,:,:,:] = Y_pred
       else:
         FCAST = np.load(f'{benchmark_folder_path}/benchmark_multi_{benchmark}.npz')
         FCAST_nan = FCAST.copy()
-        FCAST_nan[FCAST_nan == 0] = np.nan
+        #FCAST_nan[FCAST_nan == 0] = np.nan
         Y_pred_big[self.M_varnn + bid, :,:,:,:] = FCAST_nan[:, :, :, 0:1]
 
     self.Y_pred_big = Y_pred_big
     self.Y_pred_big_latest = Y_pred_big[:, :, :, :, -1]
+
     self.experiments_names = experiments_names + self.benchmarks
 
   def plot_different_horizons_same_model(self):
