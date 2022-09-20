@@ -10,7 +10,7 @@ nn_hyps_default = {
     'epochs': 400,
     'num_bootstrap': num_inner_bootstraps, 
     'sampling_rate': 0.75,
-    'block_size': 12,
+    'block_size': 24,
     'cancel_out': False,
     'standardize': True,
     'prior_shift': False,

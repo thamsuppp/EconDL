@@ -1,0 +1,9 @@
+dim_nn_width = Integer(low = 5, high = 800, prior = 'log-uniform', name = 'nn_width')
+dim_nn_depth = Integer(low = 1, high = 6, prior = 'uniform', name = 'nn_depth')
+dim_tvpl_width = Integer(low = 2, high = 100, prior = 'log-uniform', name = 'tvpl')
+dim_tvpl_constant_vs_coef_ratio = Integer(low = 1, high = 10, prior = 'uniform', name = 'tvpl_constant_vs_coef_ratio')
+dim_lr = Real(low = 0.00001, high = 1, prior = 'log-uniform', name = 'lr')
+
+dimensions = [dim_nn_width, dim_nn_depth, dim_tvpl_width, dim_tvpl_constant_vs_coef_ratio, dim_lr]
+dim_names = ['nn_width', 'nn_depth', 'tvpl', 'tvpl_constant_vs_coef_ratio', 'lr']
+default_parameters = [200, 3, 10, 5, 0.001]

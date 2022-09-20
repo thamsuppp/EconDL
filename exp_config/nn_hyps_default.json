@@ -4,7 +4,7 @@
     "epochs": 400,
     "num_bootstrap": 25, 
     "sampling_rate": 0.75,
-    "block_size": 12,
+    "block_size": 24,
     "cancel_out": false,
     "standardize": true,
     "prior_shift": false,

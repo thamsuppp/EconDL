@@ -148,13 +148,14 @@ class BayesianHypTuning:
   def fitness(self, **kwargs):
     # Create a dictionary to contain the kwargs
     new_params = {
-      'dropout_rate': kwargs['dropout_rate'],
+      'dropout_rate': kwargs.get('dropout_rate', 0.25),
       'nodes': [kwargs['nn_width'] for e in range(kwargs['nn_depth'])],
       'tvpl_archi': [kwargs['tvpl']],
-      'constant_tvpl': [kwargs['constant_tvpl']],
-      'precision_lambda': kwargs['precision_lambda'],
+      'constant_tvpl': [int(kwargs['tvpl'] * kwargs['tvpl_constant_vs_coef_ratio'])],
+      'precision_lambda': kwargs.get('precision_lambda', 0.25),
       'lr': kwargs['lr'],
-      'activation': kwargs['activation'],
+      'activation': kwargs.get('activation', 'SELU'),
+      'time_hemi_prior_variance': kwargs.get('time_hemi_prior_variance', 1)
     }
     print(f'Experiment is {self.num_experiments}, new params are {new_params}')
 

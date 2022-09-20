@@ -1,0 +1,101 @@
+{
+
+    "run_params": {
+
+        "dataset": "monthly",
+        "num_inner_bootstraps": 20,
+        "num_repeats": 1,
+        "default_nn_hyps": "nn_hyps_default",
+        
+        "var_names": [
+            "oil",
+            "Ex",
+            "SPY",
+            "DGS3",
+            "inf",
+            "unrate",
+            "house_starts"
+        ],
+        "n_lag_linear": 6, 
+        "n_lag_d": 12,
+        "n_var": 7,
+        "test_size": 100,
+        "constant_tvpl": [200],
+        "s_pos_setting": {"hemis": "endog"}, 
+        
+        "n_bayesian_iterations": 100
+    },
+
+    "execution_params": {
+        "benchmarks": false,
+        "varnn_estimation": true,
+        "conditional_irfs": false,
+        "unconditional_irfs": false,
+        "multi_forecasting": false
+    },
+
+    "extensions_params": {
+
+        "ml_experiments": [],
+
+        "conditional_irfs": {
+            "max_h": 10,
+            "normalize_time_plot": true,
+            "test_exclude_last": 8
+        },
+        "unconditional_irfs": {
+            "num_simulations": 600,
+            "endh": 40, 
+            "start_shock_time": 40,
+            "max_h": 20,
+            "forecast_method": "new",
+            "plot_all_bootstraps": false
+        },
+        "benchmarks": {
+            "window_length": 240,
+            "reestimation_window": 1
+        },
+        "multi_forecasting": {
+            "forecast_horizons": 6,
+            "reestimation_window": 100,
+            "forecast_method": "new",
+            "num_sim_bootstraps": 50,
+            "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand"]
+        }
+    },
+
+    "nn_hyps": [
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [2], 
+            "lr": 0.001, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "joint_estimation": true, 
+            "exog_data": false,
+            "name": "Baseline"
+        }
+    ],
+
+    "evaluation_params": {
+        "is_test": true,
+        "need_to_combine": true,
+        "is_simulation": false,
+        "multiple_datasets": false,
+        "sim_dataset": 2,
+        "benchmarks": ["VAR_whole", "AR_whole", "VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF_whole", "zero", "mean"],
+        "experiments_to_load": null,
+        "plot_all_bootstraps": false,
+        "exps_to_plot": null,
+        "repeats_to_include": null,
+        "test_exclude_last": 20,
+        "normalize_errors_to_benchmark": true,
+        "experiments_to_compare": [0]
+    }
+}
+
+
