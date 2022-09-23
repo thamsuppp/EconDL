@@ -214,7 +214,7 @@ class ForecastMulti:
         pred = predict_ml_model(results, new_data_all)
       else: # VARNN
       # Use estimated model to make prediction with the generated input vector
-        pred, _, _ = predict_nn_old(results, new_data_all, self.device)
+        pred, _, _ = predict_nn_old(results, new_data_all, [], self.device)
 
       # Add the sampled error if not the last period
       if period != self.h:

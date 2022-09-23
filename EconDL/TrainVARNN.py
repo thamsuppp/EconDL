@@ -54,7 +54,7 @@ def training_loop(X_train, Y_train, model, criterion, optimizer, scheduler, trai
     model.train()
     optimizer.zero_grad()
 
-    if nn_hyps['joint_estimation'] == False:
+    if nn_hyps['joint_estimation'] == False or nn_hyps['fcn'] == True:
       ## Getting in-sample errors
       for var in range(n_vars): # Loop through all variables
         Y_pred, _, betas, _, v = model(X_train[train_indices, :])
@@ -515,34 +515,36 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
       else:
         raise NotImplementedError('Not implemented for eqn by eqn True')
 
-      # Add the regularization to the preicision matrix
-      in_precision = in_precision.detach().cpu().numpy()
-      oob_precision = oob_precision.detach().cpu().numpy()
-      test_precision = test_precision.detach().cpu().numpy()
-      
-      if nn_hyps['lambda_temper_epochs'] == False:
-        in_precision = in_precision + (nn_hyps['precision_lambda'] + nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), in_precision.shape[0], axis = 0)
-        oob_precision = oob_precision + (nn_hyps['precision_lambda'] + nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), oob_precision.shape[0], axis = 0)
-        test_precision = test_precision + (nn_hyps['precision_lambda'] + nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), test_precision.shape[0], axis = 0)
-      else:
-        in_precision = in_precision + (nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), in_precision.shape[0], axis = 0)
-        oob_precision = oob_precision + (nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), oob_precision.shape[0], axis = 0)
-        test_precision = test_precision + (nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), test_precision.shape[0], axis = 0)
+      if nn_hyps['fcn'] == False:
 
-      # Save covariance matrices by inverting precision matrix
-      sigmas_in_draws[boot, :, :, j] = np.linalg.inv(in_precision)
-      sigmas_draws[oob, :, :, j] = np.linalg.inv(oob_precision)
-      sigmas_draws[oos, :, :, j] = np.linalg.inv(test_precision)
+        # Add the regularization to the preicision matrix
+        in_precision = in_precision.detach().cpu().numpy()
+        oob_precision = oob_precision.detach().cpu().numpy()
+        test_precision = test_precision.detach().cpu().numpy()
+        
+        if nn_hyps['lambda_temper_epochs'] == False:
+          in_precision = in_precision + (nn_hyps['precision_lambda'] + nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), in_precision.shape[0], axis = 0)
+          oob_precision = oob_precision + (nn_hyps['precision_lambda'] + nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), oob_precision.shape[0], axis = 0)
+          test_precision = test_precision + (nn_hyps['precision_lambda'] + nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), test_precision.shape[0], axis = 0)
+        else:
+          in_precision = in_precision + (nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), in_precision.shape[0], axis = 0)
+          oob_precision = oob_precision + (nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), oob_precision.shape[0], axis = 0)
+          test_precision = test_precision + (nn_hyps['end_precision_lambda']) * np.repeat(np.expand_dims(np.eye((n_vars)), axis = 0), test_precision.shape[0], axis = 0)
 
-      # Save precision matrix
-      precision_in_draws[boot, :, :, j] = in_precision
-      precision_draws[oob, :, :, j] = oob_precision
-      precision_draws[oos, :, :, j] = test_precision
+        # Save covariance matrices by inverting precision matrix
+        sigmas_in_draws[boot, :, :, j] = np.linalg.inv(in_precision)
+        sigmas_draws[oob, :, :, j] = np.linalg.inv(oob_precision)
+        sigmas_draws[oos, :, :, j] = np.linalg.inv(test_precision)
 
-      # Save cholesky
-      cholesky_in_draws[boot, :, :, :, j] = in_cholesky.detach().cpu().numpy()
-      cholesky_draws[oob, :, :, :, j] = oob_cholesky.detach().cpu().numpy()
-      cholesky_draws[oos, :, :, :, j] = test_cholesky.detach().cpu().numpy()
+        # Save precision matrix
+        precision_in_draws[boot, :, :, j] = in_precision
+        precision_draws[oob, :, :, j] = oob_precision
+        precision_draws[oos, :, :, j] = test_precision
+
+        # Save cholesky
+        cholesky_in_draws[boot, :, :, :, j] = in_cholesky.detach().cpu().numpy()
+        cholesky_draws[oob, :, :, :, j] = oob_cholesky.detach().cpu().numpy()
+        cholesky_draws[oos, :, :, :, j] = test_cholesky.detach().cpu().numpy()
 
       if nn_hyps['standardize'] == True:
         pred_in_ensemble[oob, j, :] = invert_scaling(oob_preds.detach().cpu().numpy(), scale_output['mu_y'], scale_output['sigma_y'])
@@ -618,8 +620,8 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
   return {'betas': betas,
           'betas_in_draws': betas_in_draws,
           'betas_draws': betas_draws,
-          'betas_in_draws_std': betas_in_draws_std,
-          'betas_draws_std': betas_draws_std,
+          # 'betas_in_draws_std': betas_in_draws_std,
+          # 'betas_draws_std': betas_draws_std,
           'sigmas_in_draws': sigmas_in_draws,
           'sigmas_draws': sigmas_draws,
           'precision_in_draws': precision_in_draws,

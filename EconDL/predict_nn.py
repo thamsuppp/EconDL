@@ -84,7 +84,7 @@ def predict_nn_new(results, newx, end_precision_lambda = 0.01, bootstraps_to_ign
 
 # @title Predict NN Function OLD (Non-Joint Estimation)
 # Returns: pred
-def predict_nn_old(self, results, newx, bootstraps_to_ignore = [], device = None):
+def predict_nn_old(results, newx, bootstraps_to_ignore = [], device = None):
 
   scale_output = results['scale_output']
   if results['prior_shift'] == True:

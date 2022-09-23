@@ -86,10 +86,13 @@ class ForecastBenchmarks:
 
     for t in range(self.test_size):
       if t == 0: # Last observation of train set
-        FCAST[1:, :, t, 0] = self.Y_train[-1, :]
+        FCAST[1:, :, t, 0] = np.nanmean(self.Y_train[-100:, :], axis = 0)
       else:
+        # Concat Y_train and Y_test
+        Y_combined = np.concatenate((self.Y_train[-(100+t):, :], self.Y_test[:t, :]), axis=0)
+
         # Set the forecast for all horizons to be the previous observation
-        FCAST[1:, :, t, 0] = self.Y_test[t-1, :]
+        FCAST[1:, :, t, 0] = np.nanmean(Y_combined, axis=0)
     
     with open(f'{self.benchmark_folder_path}/benchmark_multi_mean.npz', 'wb') as f:
       np.save(f, FCAST)

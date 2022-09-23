@@ -22,7 +22,7 @@
         "varnn_estimation": true,
         "conditional_irfs": true,
         "unconditional_irfs": true,
-        "multi_forecasting": false
+        "multi_forecasting": true
     },
 
     "extensions_params": {
@@ -35,7 +35,7 @@
             "test_exclude_last": 8
         },
         "unconditional_irfs": {
-            "num_simulations": 300,
+            "num_simulations": 400,
             "endh": 40, 
             "start_shock_time": 40,
             "max_h": 20,
@@ -51,7 +51,7 @@
             "reestimation_window": 20,
             "forecast_method": "new",
             "num_sim_bootstraps": 40,
-            "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "zero", "mean"]
+            "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF", "XGBoost", "zero", "mean"]
         }
     },
 
@@ -70,11 +70,27 @@
             "joint_estimation": true, 
             "exog_data": false,
             "name": "Endog"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [2], 
+            "lr": 0.001, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "joint_estimation": true, 
+            "exog_data": false,
+            "s_pos_setting": {"hemis": "endog"}, 
+            "fcn": true,
+            "name": "FCN Endog"
         }
     ],
 
     "evaluation_params": {
-        "is_test": true,
+        "is_test": false,
         "need_to_combine": true,
         "is_simulation": false,
         "multiple_datasets": false,
@@ -86,7 +102,7 @@
         "repeats_to_include": null,
         "test_exclude_last": 8,
         "normalize_errors_to_benchmark": true,
-        "experiments_to_compare": [0, 1]
+        "experiments_to_compare": [0]
     }
 }
 

@@ -364,52 +364,55 @@ class Evaluation:
       self.evaluation_metrics.append({'metric': 'betas_vol', 'experiment': i, 'value': betas_vol})
 
   def plot_betas_comparison(self, exps_to_compare = [0, 1]):
-    if self.is_test == False:
-      BETAS_ALL_PLOT = self.BETAS_IN_ALL[:, :-self.test_size,:,:,:,:]
-    else:
-      BETAS_ALL_PLOT = self.BETAS_ALL[:, -self.test_size:,:,:,:, :]
+    try:
+      if self.is_test == False:
+        BETAS_ALL_PLOT = self.BETAS_IN_ALL[:, :-self.test_size,:,:,:,:]
+      else:
+        BETAS_ALL_PLOT = self.BETAS_ALL[:, -self.test_size:,:,:,:, :]
 
-    BETAS_COMPARE = np.zeros((len(exps_to_compare), BETAS_ALL_PLOT.shape[1], BETAS_ALL_PLOT.shape[2], BETAS_ALL_PLOT.shape[3], BETAS_ALL_PLOT.shape[4]))
-    for i, exp in enumerate(exps_to_compare):
-      BETAS_EXP_PLOT = BETAS_ALL_PLOT[exp, :, :, :, :]
-      n_hemis = 0
-      for hemi in range(BETAS_ALL_PLOT.shape[5]):
-        # Check that the entire array is not nan
-        if np.isnan(BETAS_EXP_PLOT[:, :, :, :, hemi]).all() == False:
-          n_hemis += 1
+      BETAS_COMPARE = np.zeros((len(exps_to_compare), BETAS_ALL_PLOT.shape[1], BETAS_ALL_PLOT.shape[2], BETAS_ALL_PLOT.shape[3], BETAS_ALL_PLOT.shape[4]))
+      for i, exp in enumerate(exps_to_compare):
+        BETAS_EXP_PLOT = BETAS_ALL_PLOT[exp, :, :, :, :]
+        n_hemis = 0
+        for hemi in range(BETAS_ALL_PLOT.shape[5]):
+          # Check that the entire array is not nan
+          if np.isnan(BETAS_EXP_PLOT[:, :, :, :, hemi]).all() == False:
+            n_hemis += 1
 
-      BETAS_EXP_PLOT = BETAS_EXP_PLOT[:, :, :, :, :n_hemis]
-      BETAS_SUM = np.sum(BETAS_EXP_PLOT, axis = -1)
-      BETAS_COMPARE[i, :, :, :, :] = BETAS_SUM
+        BETAS_EXP_PLOT = BETAS_EXP_PLOT[:, :, :, :, :n_hemis]
+        BETAS_SUM = np.sum(BETAS_EXP_PLOT, axis = -1)
+        BETAS_COMPARE[i, :, :, :, :] = BETAS_SUM
+        
+      n_obs = BETAS_COMPARE.shape[1]
+      n_betas = BETAS_COMPARE.shape[2]
+      n_vars = BETAS_COMPARE.shape[4]
+
+      fig, axs = plt.subplots(n_vars, n_betas, figsize = (6 * n_betas, 4 * n_vars), constrained_layout = True)
+
+      for var in range(n_vars):
+        for beta in range(n_betas):
+          for i, exp in enumerate(exps_to_compare):
+            axs[var, beta].plot(np.nanmedian(BETAS_COMPARE[i, :, beta, :, var], axis = 1), label = f'{self.experiment_names[exp]}')
+            axs[var, beta].fill_between(
+                np.arange(n_obs),
+                np.nanquantile(BETAS_COMPARE[i, :, beta, :, var], axis = 1, q = 0.16),
+                np.nanquantile(BETAS_COMPARE[i, :, beta, :, var], axis = 1, q = 0.84),
+                alpha = 0.5
+            )
+            axs[var, beta].set_title(f'{self.var_names[var]}, {self.beta_names[beta]}')
+            axs[var, beta].set_xlabel('Time')
+            axs[var, beta].set_ylabel('Coefficient')
+
+            if var == 0 and beta == 0:
+              axs[var, beta].legend()
       
-    n_obs = BETAS_COMPARE.shape[1]
-    n_betas = BETAS_COMPARE.shape[2]
-    n_vars = BETAS_COMPARE.shape[4]
+      fig.suptitle(f'Comparison of Betas', fontsize=16)
+      image_file = f'{self.image_folder_path}/betas_comparison.png'
+      plt.savefig(image_file)
+      plt.close()
+    except:
+      pass
 
-    fig, axs = plt.subplots(n_vars, n_betas, figsize = (6 * n_betas, 4 * n_vars), constrained_layout = True)
-
-    for var in range(n_vars):
-      for beta in range(n_betas):
-        for i, exp in enumerate(exps_to_compare):
-          axs[var, beta].plot(np.nanmedian(BETAS_COMPARE[i, :, beta, :, var], axis = 1), label = f'{self.experiment_names[exp]}')
-          axs[var, beta].fill_between(
-              np.arange(n_obs),
-              np.nanquantile(BETAS_COMPARE[i, :, beta, :, var], axis = 1, q = 0.16),
-              np.nanquantile(BETAS_COMPARE[i, :, beta, :, var], axis = 1, q = 0.84),
-              alpha = 0.5
-          )
-          axs[var, beta].set_title(f'{self.var_names[var]}, {self.beta_names[beta]}')
-          axs[var, beta].set_xlabel('Time')
-          axs[var, beta].set_ylabel('Coefficient')
-
-          if var == 0 and beta == 0:
-            axs[var, beta].legend()
-    
-    fig.suptitle(f'Comparison of Betas', fontsize=16)
-    image_file = f'{self.image_folder_path}/betas_comparison.png'
-    plt.savefig(image_file)
-    plt.close()
-  
   def plot_precision(self):
 
       # Don't show test (change this code to show in-sample)
@@ -419,6 +422,11 @@ class Evaluation:
       PRECISION_ALL_PLOT = self.PRECISION_ALL[:, -self.test_size:,:,:,:]
 
     for i in self.exps_to_plot:
+
+      # If all values of precision_all_plot are nan, skip
+      if np.isnan(PRECISION_ALL_PLOT[i, :, :, :, :]).all() == True:
+        continue
+
       fig, axs = plt.subplots(self.n_var, self.n_var, figsize = (6 * self.n_var, 4 * self.n_var), constrained_layout = True)
 
       for row in range(self.n_var):
@@ -458,6 +466,11 @@ class Evaluation:
       CHOLESKY_ALL_PLOT = self.CHOLESKY_ALL[:, -self.test_size:,:,:,:,:]
 
     for i in self.exps_to_plot:
+
+      # If all values of precision_all_plot are nan, skip
+      if np.isnan(CHOLESKY_ALL_PLOT[i, :, :, :, :]).all() == True:
+        continue
+
       fig, axs = plt.subplots(self.n_var, self.n_var, figsize = (6 * self.n_var, 4 * self.n_var), constrained_layout = True)
 
       for row in range(self.n_var):
@@ -493,42 +506,50 @@ class Evaluation:
       print(f'Cholesky plotted at {image_file}')
 
   def plot_sigmas_comparison(self, exps_to_compare = [0, 1]):
-    if self.is_test == False:
-      SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, :-self.test_size,:,:,:]
-    else:
-      SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, -self.test_size:,:,:,:]
 
-    fig, axs = plt.subplots(self.n_var, self.n_var, figsize = (6 * self.n_var, 4 * self.n_var), constrained_layout = True)
-    
-    for row in range(self.n_var):
-      for col in range(self.n_var):
-        for i in exps_to_compare:
+    try:
+      if self.is_test == False:
+        SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, :-self.test_size,:,:,:]
+      else:
+        SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, -self.test_size:,:,:,:]
 
-          axs[row, col].plot(np.nanmedian(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1), label = self.experiment_names[i])
-          axs[row, col].set_title(f'{self.var_names[row]}, {self.var_names[col]}')
-          axs[row, col].set_xlabel('Time')
-          axs[row, col].set_ylabel('Coefficient')
+      fig, axs = plt.subplots(self.n_var, self.n_var, figsize = (6 * self.n_var, 4 * self.n_var), constrained_layout = True)
+      
+      for row in range(self.n_var):
+        for col in range(self.n_var):
+          for i in exps_to_compare:
 
-          sigmas_lcl = np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.16)
-          sigmas_ucl = np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.84)
-          axs[row, col].fill_between(list(range(SIGMAS_ALL_PLOT.shape[1])), sigmas_lcl, sigmas_ucl, alpha = 0.5)
+            # If all values of precision_all_plot are nan, skip
+            if np.isnan(SIGMAS_ALL_PLOT[i, :, :, :, :]).all() == True:
+              continue
 
-        # Set the y-axis limits to be at the min 10% LCL and max 10% UCL
-        axs[row, col].set_ylim(
-            np.nanmin(np.nanquantile(SIGMAS_ALL_PLOT[exps_to_compare, :, row, col, :], axis = -1, q = 0.35)),
-            np.nanmax(np.nanquantile(SIGMAS_ALL_PLOT[exps_to_compare, :, row, col, :], axis = -1, q = 0.65))
-        )
-        # Plot the time-invariant covariance matrix
-        axs[row, col].axhline(y = np.nanmedian(self.SIGMAS_CONS_ALL[i, row, col, :]), color = 'red', label = 'Time-Invariant')
+            axs[row, col].plot(np.nanmedian(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1), label = self.experiment_names[i])
+            axs[row, col].set_title(f'{self.var_names[row]}, {self.var_names[col]}')
+            axs[row, col].set_xlabel('Time')
+            axs[row, col].set_ylabel('Coefficient')
 
-        if row == 0 and col == 0:
-          axs[row, col].legend()
+            sigmas_lcl = np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.16)
+            sigmas_ucl = np.nanquantile(SIGMAS_ALL_PLOT[i, :, row, col, :], axis = -1, q = 0.84)
+            axs[row, col].fill_between(list(range(SIGMAS_ALL_PLOT.shape[1])), sigmas_lcl, sigmas_ucl, alpha = 0.5)
+
+          # Set the y-axis limits to be at the min 10% LCL and max 10% UCL
+          axs[row, col].set_ylim(
+              np.nanmin(np.nanquantile(SIGMAS_ALL_PLOT[exps_to_compare, :, row, col, :], axis = -1, q = 0.35)),
+              np.nanmax(np.nanquantile(SIGMAS_ALL_PLOT[exps_to_compare, :, row, col, :], axis = -1, q = 0.65))
+          )
+          # Plot the time-invariant covariance matrix
+          axs[row, col].axhline(y = np.nanmedian(self.SIGMAS_CONS_ALL[i, row, col, :]), color = 'red', label = 'Time-Invariant')
+
+          if row == 0 and col == 0:
+            axs[row, col].legend()
 
 
-    fig.suptitle(f'Sigmas Comparison', fontsize=16)
-    image_file = f'{self.image_folder_path}/sigmas_comparison.png'
-    plt.savefig(image_file)
-    plt.close()
+      fig.suptitle(f'Sigmas Comparison', fontsize=16)
+      image_file = f'{self.image_folder_path}/sigmas_comparison.png'
+      plt.savefig(image_file)
+      plt.close()
+    except:
+      print('Error plotting sigmas comparison')
 
   def plot_sigmas(self):
         
@@ -541,6 +562,11 @@ class Evaluation:
       #cov_mat_tv_plot = cov_mat_tv[-test_size:, :, :] if self.is_simulation == True else None
 
     for i in self.exps_to_plot:
+
+      # If all values of precision_all_plot are nan, skip
+      if np.isnan(SIGMAS_ALL_PLOT[i, :, :, :, :]).all() == True:
+        continue
+
       fig, axs = plt.subplots(self.n_var, self.n_var, figsize = (6 * self.n_var, 4 * self.n_var), constrained_layout = True)
 
       for row in range(self.n_var):
@@ -763,43 +789,47 @@ class Evaluation:
 
   def plot_conditional_irf_comparison(self, exps_to_compare = [0, 1]):
 
-    print('Experiments to Compare', exps_to_compare)
-    
-    for i, exp in enumerate(exps_to_compare):
-      IRFS = self.Run.experiments[exp].evaluations['conditional_irf'].IRFS
-      if i == 0:
-        IRFS_ALL = np.zeros((len(exps_to_compare), IRFS.shape[0], IRFS.shape[1], IRFS.shape[2], IRFS.shape[3], IRFS.shape[4]))
-      IRFS_ALL[i, :,:,:,:,:] = IRFS
-    
-    print(IRFS_ALL.shape)
+    try:
 
-    IRFS_MEDIAN_ALL = np.nanmedian(IRFS_ALL, axis = 2)
-    # Shape of IRFS_MEDIAN_ALL: n_models x n_obs, n_var n_var, self.max_h
-    cmap = plt.cm.tab10
-    fig, ax = plt.subplots(self.n_var, self.n_var, constrained_layout = True, figsize = (6 * self.n_var, 4 * self.n_var))
+      print('Experiments to Compare', exps_to_compare)
+      
+      for i, exp in enumerate(exps_to_compare):
+        IRFS = self.Run.experiments[exp].evaluations['conditional_irf'].IRFS
+        if i == 0:
+          IRFS_ALL = np.zeros((len(exps_to_compare), IRFS.shape[0], IRFS.shape[1], IRFS.shape[2], IRFS.shape[3], IRFS.shape[4]))
+        IRFS_ALL[i, :,:,:,:,:] = IRFS
+      
+      print(IRFS_ALL.shape)
 
-    alphas = [1, 0.6, 0.2]
-    weights = [2, 1.5, 1]
+      IRFS_MEDIAN_ALL = np.nanmedian(IRFS_ALL, axis = 2)
+      # Shape of IRFS_MEDIAN_ALL: n_models x n_obs, n_var n_var, self.max_h
+      cmap = plt.cm.tab10
+      fig, ax = plt.subplots(self.n_var, self.n_var, constrained_layout = True, figsize = (6 * self.n_var, 4 * self.n_var))
 
-    for shock_var in range(self.n_var):
-      for response_var in range(self.n_var):
-        for exp in range(len(exps_to_compare)):
-          for h in [1,2,3]:
-            irf_df = IRFS_MEDIAN_ALL[exp, :, shock_var, response_var, h]
-            # if normalize == True:
-            irf_df = irf_df / IRFS_MEDIAN_ALL[exp, :, response_var, response_var, 0] # Divide IRF by the time-0 of 
-            ax[response_var, shock_var].plot(irf_df, label = f'h={h} ({self.experiment_names[exps_to_compare[exp]]})', color = cmap(exp), lw = weights[h-1], alpha = alphas[h-1])
+      alphas = [1, 0.6, 0.2]
+      weights = [2, 1.5, 1]
 
-            ax[response_var, shock_var].set_xlabel('Horizon')
-            ax[response_var, shock_var].set_ylabel('Impulse Response')
-            ax[response_var, shock_var].axhline(y = 0, color = 'black', ls = '--')
-            ax[response_var, shock_var].set_title(f'{self.var_names[shock_var]} -> {self.var_names[response_var]}')
-          if shock_var == 0 and response_var == 0:
-            ax[response_var, shock_var].legend()
+      for shock_var in range(self.n_var):
+        for response_var in range(self.n_var):
+          for exp in range(len(exps_to_compare)):
+            for h in [1,2,3]:
+              irf_df = IRFS_MEDIAN_ALL[exp, :, shock_var, response_var, h]
+              # if normalize == True:
+              irf_df = irf_df / IRFS_MEDIAN_ALL[exp, :, response_var, response_var, 0] # Divide IRF by the time-0 of 
+              ax[response_var, shock_var].plot(irf_df, label = f'h={h} ({self.experiment_names[exps_to_compare[exp]]})', color = cmap(exp), lw = weights[h-1], alpha = alphas[h-1])
 
-    fig.suptitle(f'Conditional IRF over Time Comparison', fontsize = 16)
-    image_file = f'{self.image_folder_path}/irf_conditional_over_time_comparison.png'
-    plt.savefig(image_file)
+              ax[response_var, shock_var].set_xlabel('Horizon')
+              ax[response_var, shock_var].set_ylabel('Impulse Response')
+              ax[response_var, shock_var].axhline(y = 0, color = 'black', ls = '--')
+              ax[response_var, shock_var].set_title(f'{self.var_names[shock_var]} -> {self.var_names[response_var]}')
+            if shock_var == 0 and response_var == 0:
+              ax[response_var, shock_var].legend()
+
+      fig.suptitle(f'Conditional IRF over Time Comparison', fontsize = 16)
+      image_file = f'{self.image_folder_path}/irf_conditional_over_time_comparison.png'
+      plt.savefig(image_file)
+    except:
+      print('Error plotting conditional IRF comparison')
 
   # Wrapper function to do all plots
   def plot_all(self, cond_irf = False):

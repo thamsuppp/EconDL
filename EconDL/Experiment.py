@@ -105,14 +105,13 @@ class Experiment:
         'model': 'VARNN'
       }
 
-    # Check if multiple hemispheres
-    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']) or (len(self.nn_hyps['s_pos']) > 1):
-      print('Experiment compute_unconditional_irfs(): Experiment has multiple hemispheres / exogenous data, not training unconditional IRFs')
+    # Check if multiple hemispheres, or FCN
+    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']) or (len(self.nn_hyps['s_pos']) > 1) or self.nn_hyps['fcn'] == True:
+      print('Experiment compute_unconditional_irfs(): Experiment has multiple hemispheres / exogenous data / FCN, not training unconditional IRFs')
       fcast = np.zeros((self.extensions_params['unconditional_irfs']['num_simulations'], len(self.nn_hyps['var_names']), len(self.nn_hyps['var_names']), 3))
       fcast[:] = np.nan
       with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
         np.savez(f, fcast = fcast, fcast_cov_mat = None)
-    
 
     else:
 
@@ -139,7 +138,7 @@ class Experiment:
       'n_lag_linear': self.nn_hyps['n_lag_linear'],
       'n_lag_d': self.nn_hyps['n_lag_d'],
       'n_var': len(self.nn_hyps['var_names']),
-      'forecast_method': self.extensions_params['multi_forecasting']['forecast_method'], # old or new
+      'forecast_method': self.extensions_params['multi_forecasting']['forecast_method'] if self.nn_hyps['fcn'] == False else 'old', # old or new
       'var_names': self.nn_hyps['var_names'],
       'end_precision_lambda': self.nn_hyps['end_precision_lambda'],
       'model': 'VARNN'

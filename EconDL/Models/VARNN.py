@@ -148,7 +148,7 @@ class VARNN(nn.Module):
       # Pure Fully-connected network if only that is enabled
       if self.fcn_enabled == True:
         y_hat = self.fcn(S)
-        return y_hat, [], []
+        return y_hat, [], [], [], []
 
       # Pure VSN layer if only that is enabled
       if self.vsn_enabled == True:
