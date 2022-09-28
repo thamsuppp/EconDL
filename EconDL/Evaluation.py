@@ -35,6 +35,10 @@ class Evaluation:
     self.beta_names = ['Constant'] + self.var_names
     self.test_size = self.Run.run_params['test_size']
 
+    self.dataset_name = self.Run.dataset_name
+    self.exclude_2020 = evaluation_params.get('exclude_2020', False)
+    self.first_test_id_to_exclude = None
+
     self.exps_to_plot = evaluation_params['exps_to_plot'] if evaluation_params['exps_to_plot'] is not None else list(range(self.Run.num_experiments))
     self.need_to_combine = evaluation_params['need_to_combine']
     self.is_simulation = evaluation_params['is_simulation']
@@ -90,6 +94,8 @@ class Evaluation:
     # Load the results and params
     self.compile_results()
     self.load_results()
+    if self.exclude_2020 == True:
+      self.exclude_2020_results()
 
   def check_results_sizes(self):
     return {
@@ -113,6 +119,34 @@ class Evaluation:
       self.Run.compile_ml_experiments(repeats_to_include = self.repeats_to_include)
     else:
       print('Need to combine off, no need to compile')
+
+  # Removes the COVID era data
+  def exclude_2020_results(self):
+    if self.dataset_name == 'monthly_new':
+      n_obs_total = self.BETAS_ALL.shape[1]
+      indices_to_exclude = [(n_obs_total + i) for i in range(-31, -19, 1)]
+    elif self.dataset_name == 'quarterly_new':
+      n_obs_total = self.BETAS_ALL.shape[1]
+      indices_to_exclude = [(n_obs_total + i) for i in range(-10, -6, 1)]
+
+    indices_to_include = [e for e in range(n_obs_total) if e not in indices_to_exclude]
+
+    test_indices_to_exclude = [(e - (n_obs_total - self.test_size)) for e in indices_to_exclude if e >= (n_obs_total - self.test_size)]
+    self.first_test_id_to_exclude = min(test_indices_to_exclude)
+    test_indices_to_include = [(e - (n_obs_total - self.test_size)) for e in indices_to_include if e >= (n_obs_total - self.test_size)]
+
+    # Resize these arrays to exclude the 2020 data
+    self.BETAS_IN_ALL = self.BETAS_IN_ALL[:, indices_to_include, :, :, :, :]
+    self.BETAS_ALL = self.BETAS_ALL[:, indices_to_include, :, :, :, :]
+    self.SIGMAS_IN_ALL = self.SIGMAS_IN_ALL[:, indices_to_include, :, :, :]
+    self.SIGMAS_ALL = self.SIGMAS_ALL[:, indices_to_include, :, :, :]
+    self.PRECISION_IN_ALL = self.PRECISION_IN_ALL[:, indices_to_include, :, :, :]
+    self.PRECISION_ALL = self.PRECISION_ALL[:, indices_to_include, :, :, :]
+    self.CHOLESKY_IN_ALL = self.CHOLESKY_IN_ALL[:, indices_to_include, :, :, :, :]
+    self.CHOLESKY_ALL = self.CHOLESKY_ALL[:, indices_to_include, :, :, :, :]
+    self.PREDS_TEST_ALL = self.PREDS_TEST_ALL[:, test_indices_to_include, :, :] # Only need to resize the test set
+    self.Y_test = self.Y_test[test_indices_to_include, :]
+      
 
   # Loads the compiled results and benchmarks into the object
   def load_results(self):
@@ -657,10 +691,10 @@ class Evaluation:
           corr_ucl = np.nanquantile(CORR_PLOT[i, :, row, col, :], axis = -1, q = 0.84)
           axs[row, col].fill_between(list(range(CORR_PLOT.shape[1])), corr_lcl, corr_ucl, alpha = 0.5)
 
-          # Set the y-axis limits to be at the min 10% LCL and max 10% UCL
-          axs[row, col].set_ylim(
-            -1, 1
-          )
+          # # Set the y-axis limits to be at the min 10% LCL and max 10% UCL
+          # axs[row, col].set_ylim(
+          #   -1, 1
+          # )
 
       fig.suptitle(f'Experiment {i} ({self.experiment_names[i]}) Correlation Matrix', fontsize=16)
       image_file = f'{self.image_folder_path}/corr_mat_{i}.png'
@@ -691,6 +725,10 @@ class Evaluation:
           ax[var].set_title(self.var_names[var])
         if i >= self.M_varnn:
           ax[var].plot(preds_plot[:, var], lw = 0.75, label = self.all_names[i - self.M_varnn], ls = 'dotted')
+
+        # Draw a vertical line at the point where we excluded data
+        if self.is_test == True and self.exclude_2020 == True:
+          ax[var].axvline(x = self.first_test_id_to_exclude - 0.5, ls = 'dashed', color = 'black')
 
         if var == 0:
           ax[var].legend()
@@ -730,6 +768,10 @@ class Evaluation:
           ax[var].plot(error[:, var], lw = 0.5, label = self.all_names[i], color = palette[i])
         if var == 0:
           ax[var].legend()
+        
+        # Draw a vertical line at the point where we excluded data
+        if data_sample == 'test' and self.exclude_2020 == True:
+          ax[var].axvline(x = self.first_test_id_to_exclude - 0.5, ls = 'dashed', color = 'black')
 
     plt.savefig(f'{self.image_folder_path}/error_{data_sample}.png')
     plt.close()
@@ -772,6 +814,10 @@ class Evaluation:
 
         if var == 0:
           ax[var].legend()
+        
+        # Draw a vertical line at the point where we excluded data
+        if data_sample == 'test' and self.exclude_2020 == True:
+          ax[var].axvline(x = self.first_test_id_to_exclude - 0.5, ls = 'dashed', color = 'black')
 
     image_file = f'{self.image_folder_path}/cum_errors_{data_sample}.png'
     plt.savefig(image_file)
@@ -872,7 +918,10 @@ class Evaluation:
       'M_varnn': self.M_varnn,
       'exclude_last': self.Run.evaluation_params['test_exclude_last'],
       'normalize_errors_to_benchmark': self.Run.evaluation_params['normalize_errors_to_benchmark'],
-      'window_length': self.Run.extensions_params['benchmarks']['window_length']
+      'window_length': self.Run.extensions_params['benchmarks']['window_length'],
+
+      'dataset_name': self.dataset_name,
+      'exclude_2020': self.exclude_2020,
     }
       
     ForecastMultiEvaluationObj = ForecastMultiEvaluation(self.run_name, multi_forecasting_params, 

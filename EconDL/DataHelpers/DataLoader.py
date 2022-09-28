@@ -15,7 +15,21 @@ def load_data(dataset_name):
         x_d_all = data[['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L_0y', 'L0_UNRATE', 'L0_HOUST']]
         x_d_all.columns = ['oil', 'Ex', 'SPY', 'DGS3', 'inf', 'unrate', 'house_starts']
         exog_data = data[[e for e in data.columns if e not in ['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L_0y', 'L0_UNRATE', 'L0_HOUST']]]
-        
+    
+    if dataset_name == 'monthly_new':
+        data = pd.read_csv('data/monthlyData_updated.csv')
+
+        # Exclude the columns that have any missing values
+        data = data.dropna(axis=1, how='any')
+        data['L0_HOUST'] = data['L0_HOUST'].diff()
+        data = data.dropna().reset_index(drop = True)
+        # Rename a column
+        data = data.rename(columns = {'Unnamed: 0': 'Date'})
+
+        x_d_all = data[['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L_0y', 'L0_UNRATE', 'L0_HOUST']]
+        x_d_all.columns = ['oil', 'Ex', 'SPY', 'DGS3', 'inf', 'unrate', 'house_starts']
+        exog_data = data[[e for e in data.columns if e not in ['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L_0y', 'L0_UNRATE', 'L0_HOUST']]]
+
     elif dataset_name == 'quarterly':
         data = pd.read_csv('data/monthlyData.csv')
         data['quarter'] = ((data['trend'] ) / 3).astype(int)
@@ -26,6 +40,16 @@ def load_data(dataset_name):
         x_d_all = data[['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L_0y', 'L0_UNRATE', 'L0_HOUST']]
         x_d_all.columns = ['oil', 'Ex', 'SPY', 'DGS3', 'inf', 'unrate', 'house_starts']
         exog_data = data[[e for e in data.columns if e not in ['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L_0y', 'L0_UNRATE', 'L0_HOUST']]]
+
+    elif dataset_name == 'quarterly_new':
+        data = pd.read_csv('data/quarterlyData_updated.csv')
+        # No need to difference the housing data
+        data = data.rename(columns = {'Unnamed: 0': 'Date'})
+
+        x_d_all = data[['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L0_GDPC1', 'L_0y', 'L0_UNRATE', 'L0_HOUST']]
+        x_d_all.columns = ['oil', 'Ex', 'SPY', 'DGS3', 'GDP', 'inf', 'unrate', 'house_starts']
+        exog_data = data[[e for e in data.columns if e not in ['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L0_GDPC1', 'L_0y', 'L0_UNRATE', 'L0_HOUST']]]
+
 
     elif dataset_name == 'varctic':
         data = pd.read_csv('data/VARCTIC8.csv')

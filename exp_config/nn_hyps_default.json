@@ -35,6 +35,7 @@
     "fcn": false, 
     "eqn_by_eqn": false,
     "time_hemi_prior_variance": 1,
+    "vol_hemi_prior_variance": 1,
     "fix_bootstrap": true,
     "loss_weight_param": 0.5,
     

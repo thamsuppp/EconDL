@@ -27,7 +27,10 @@ class ForecastMultiEvaluation:
     self.reestimation_window = multi_forecasting_params['reestimation_window']
     self.R = int(self.test_size / self.reestimation_window)
 
+    self.dataset_name = multi_forecasting_params['dataset_name']
     self.exclude_last = multi_forecasting_params['exclude_last']
+    self.exclude_2020 = multi_forecasting_params['exclude_2020']
+    self.first_test_id_to_exclude = None
 
     self.n_var = multi_forecasting_params['n_var']
     self.var_names = multi_forecasting_params['var_names']
@@ -37,11 +40,34 @@ class ForecastMultiEvaluation:
     self.M_varnn = multi_forecasting_params['M_varnn']
     self.normalize_errors_to_benchmark = multi_forecasting_params.get('normalize_errors_to_benchmark', True)
 
+    # Y_pred_big and Y_pred_big_latest are of shape (M, h, n_var, T, R), indexed by the time when the prediction was made
     self.Y_pred_big = None
     self.Y_pred_big_latest = None
 
+    # Y_pred_big_shifted_latest is of shape (M, h, n_var, T), indexed by the time which the prediction was MADE FOR - i.e. shifted forward by h periods
+    self.Y_pred_big_shifted_latest = None
+
 
     self._load_results()
+    if self.exclude_2020 == True:
+      self.exclude_2020_results()
+  
+  def exclude_2020_results(self):
+    if self.dataset_name == 'monthly_new':
+      test_indices_to_exclude = [(self.test_size + i) for i in range(-31, -19, 1)]
+    elif self.dataset_name == 'quaterly_new':
+      test_indices_to_exclude = [(self.test_size + i) for i in range(-10, -6, 1)]
+
+    test_indices_to_include = [e for e in range(self.test_size) if e not in test_indices_to_exclude]
+    self.first_test_id_to_exclude = min(test_indices_to_exclude)
+    print('test_indices_to_exclude', test_indices_to_exclude)
+    print('test_indices_to_include', test_indices_to_include)
+
+    self.Y_pred_big = self.Y_pred_big[:, :, :, test_indices_to_include, :]
+    self.Y_pred_big_latest = self.Y_pred_big_latest[:, :, :, test_indices_to_include]
+    self.Y_pred_big_latest_shifted = self.Y_pred_big_latest_shifted[:, :, :, test_indices_to_include]
+    print('Multiforecasting Evaluation after excluding 2020, Y_pred_big shape: ', self.Y_pred_big.shape, 'Y_pred_big_latest shape: ', self.Y_pred_big_latest.shape, 
+      'Y_pred_big_latest_shifted shape: ', self.Y_pred_big_latest_shifted.shape)
 
   def _load_results(self): 
 
@@ -62,9 +88,7 @@ class ForecastMultiEvaluation:
 
         FCAST = out['fcast']
         experiments_names.append(experiment_name)
-        FCAST_nan = FCAST.copy()
-        FCAST_nan[FCAST_nan == 0] = np.nan
-        Y_pred = np.nanmedian(FCAST_nan, axis = 2)
+        Y_pred = np.nanmedian(FCAST, axis = 2)
         Y_pred_big[i, :,:,:,:] = Y_pred
       else: # If there no multi-forecasting results, then just skip (add the experiment name so that self.experiments_names is the same length as self.M_varnn )
         results = np.load(f'{self.folder_path}/params_{i}_compiled.npz', allow_pickle=True)['results'].item()
@@ -79,17 +103,24 @@ class ForecastMultiEvaluation:
       if benchmark in ['XGBoost', 'RF']:  # Load the ML results - different as their results are saved w the ML models
           out = np.load(f'{self.folder_path}/multi_fcast_params_{benchmark}_compiled.npz')
           FCAST = out['fcast']
-          FCAST_nan = FCAST.copy()
-          Y_pred = np.nanmedian(FCAST_nan, axis = 2)
+          Y_pred = np.nanmedian(FCAST, axis = 2)
           Y_pred_big[self.M_varnn + bid, :,:,:,:] = Y_pred
       else:
         FCAST = np.load(f'{benchmark_folder_path}/benchmark_multi_{benchmark}.npz')
-        FCAST_nan = FCAST.copy()
-        #FCAST_nan[FCAST_nan == 0] = np.nan
-        Y_pred_big[self.M_varnn + bid, :,:,:,:] = FCAST_nan[:, :, :, 0:1]
+        Y_pred_big[self.M_varnn + bid, :,:,:,:] = FCAST[:, :, :, 0:1]
 
+    # Y_pred_big: M_total x horizon x variable x bootstraps x test x re-estimation window
     self.Y_pred_big = Y_pred_big
     self.Y_pred_big_latest = Y_pred_big[:, :, :, :, -1]
+
+    # Conduct the shifting of Y_pred_big_latest to Y_pred_big_latest_shifted so that the predictions are indexed by the time which the prediction was MADE FOR - i.e. shifted forward by h periods
+    Y_pred_big_latest_shifted = np.zeros_like(self.Y_pred_big_latest)
+    Y_pred_big_latest_shifted[:] = np.nan
+    for horizon in range(1, self.Y_pred_big_latest.shape[1]):
+      Y_pred_big_latest_shifted[:, horizon, :, horizon:] = self.Y_pred_big_latest[:, horizon, :, :-horizon]
+    self.Y_pred_big_latest_shifted = Y_pred_big_latest_shifted
+
+    print('Multiforecasting Evaluation, Y_pred_big shape: ', self.Y_pred_big.shape, 'Y_pred_big_latest shape: ', self.Y_pred_big_latest.shape, 'Y_pred_big_latest_shifted shape: ', self.Y_pred_big_latest_shifted.shape)
 
     self.experiments_names = experiments_names + self.benchmarks
 
@@ -110,14 +141,15 @@ class ForecastMultiEvaluation:
           ax[model, var].plot(self.Y_test[:-self.exclude_last, var], label = 'Actual', color = 'black')
         else:
           ax[model, var].plot(self.Y_test[:, var], label = 'Actual', color = 'black')
+        
+        # Draw a vertical line at the point where we excluded data
+        if self.exclude_2020 == True:
+          ax[model, var].axvline(x = self.first_test_id_to_exclude - 0.5, ls = 'dashed', color = 'black')
       
       # Plot predicted for each horizon
       for horizon in range(1, self.h+1):
 
-        Y_pred_h = np.transpose(self.Y_pred_big_latest[model, horizon, :, :]).copy()
-        # Shift forward by horizon
-        Y_pred_h[(horizon-1):, :] = Y_pred_h[:(self.test_size-(horizon-1)), :]
-        Y_pred_h[:(horizon-1), :] = np.nan
+        Y_pred_h = np.transpose(self.Y_pred_big_latest_shifted[model, horizon, :, :])
 
         for var in range(self.n_var):
           if self.exclude_last > 0:
@@ -147,14 +179,15 @@ class ForecastMultiEvaluation:
           ax[horizon-1, var].plot(self.Y_test[:-self.exclude_last, var], label = 'Actual', color = 'black')
         else:
           ax[horizon-1, var].plot(self.Y_test[:, var], label = 'Actual', color = 'black')
+        
+        # Draw a vertical line at the point where we excluded data
+        if self.exclude_2020 == True:
+          ax[horizon-1, var].axvline(x = self.first_test_id_to_exclude - 0.5, ls = 'dashed', color = 'black')
       
       # Plot predicted
       for model in range(self.Y_pred_big_latest.shape[0]):
 
-        Y_pred_h = np.transpose(self.Y_pred_big_latest[model, horizon, :, :]).copy()
-        # Shift forward by horizon
-        Y_pred_h[(horizon-1):, :] = Y_pred_h[:(self.test_size-(horizon-1)), :]
-        Y_pred_h[:(horizon-1), :] = np.nan
+        Y_pred_h = np.transpose(self.Y_pred_big_latest_shifted[model, horizon, :, :])
 
         for var in range(self.n_var):
           if self.exclude_last > 0:
@@ -165,6 +198,8 @@ class ForecastMultiEvaluation:
                                     ls = 'solid' if model < self.M_varnn else 'dotted')
       if var == (self.n_var - 1) and horizon == 1:
         ax[horizon-1, var].legend()
+      
+      
 
     image_file = f'{self.image_folder_path}/multi_forecast_preds_diff_horizons.png'
     plt.savefig(image_file)
@@ -175,21 +210,25 @@ class ForecastMultiEvaluation:
     n_models = self.Y_pred_big_latest.shape[0]
 
     fig, ax = plt.subplots(self.h ,self.n_var, figsize = (self.n_var * 6, self.h * 4), constrained_layout = True)
-  
-    errors = np.zeros((n_models, self.test_size - self.exclude_last, self.h, self.n_var))
+
+    if self.exclude_2020 == True:
+      errors = np.zeros((n_models, self.Y_test.shape[0], self.h, self.n_var))
+    else:
+      errors = np.zeros((n_models, self.test_size - self.exclude_last, self.h, self.n_var))
   
     for horizon in range(1, self.h+1):
 
       # Plot actual
       for var in range(self.n_var):
         ax[horizon-1, var].set_title(f'{self.var_names[var]}, h = {horizon}')
+
+        # Draw a vertical line at the point where we excluded data
+        if self.exclude_2020 == True:
+          ax[horizon-1, var].axvline(x = self.first_test_id_to_exclude - 0.5, ls = 'dashed', color = 'black')
         
       # Plot predicted
       for model in range(n_models):
-        Y_pred_h = np.transpose(self.Y_pred_big_latest[model, horizon, :, :]).copy()
-        # Shift forward by horizon
-        Y_pred_h[(horizon-1):, :] = Y_pred_h[:(self.test_size-(horizon-1)), :]
-        Y_pred_h[:(horizon-1), :] = np.nan
+        Y_pred_h = np.transpose(self.Y_pred_big_latest_shifted[model, horizon, :, :])
 
         for var in range(self.n_var):
           if self.exclude_last > 0:
@@ -199,13 +238,7 @@ class ForecastMultiEvaluation:
             actual = self.Y_test[:, var]
             pred = Y_pred_h[:, var]
           error = np.abs(actual - pred)
-
-          #if horizon == 1 and var == 1 and model == 3:
-            #print('Multi-forecasting Actual', actual)
-            #print('Multi-forecasting Pred', pred)
-            #print('Multi-forecasting Error', error)
-            
-
+    
           # Store the errors in the errors array
           errors[model, :, horizon-1, var] = error
 

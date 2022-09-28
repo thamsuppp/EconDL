@@ -42,6 +42,7 @@ nn_hyps_default = {
     'fcn': False, 
     'eqn_by_eqn': False,
     'time_hemi_prior_variance': 1,
+    'vol_hemi_prior_variance': 1,
     'fix_bootstrap': False,
     'loss_weight_param': 0.5,
     

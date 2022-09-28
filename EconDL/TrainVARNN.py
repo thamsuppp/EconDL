@@ -231,6 +231,7 @@ def build_VARNN(X, Y, train_indices, nn_hyps, device):
                 fcn = nn_hyps['fcn'],
                 neurons_weights = nn_hyps['neurons_weights'],
                 time_hemi_prior_variance = nn_hyps['time_hemi_prior_variance'],
+                vol_hemi_prior_variance = nn_hyps['vol_hemi_prior_variance'],
                 actv = nn_hyps['actv'],
                 device = device,
                 s_pos = nn_hyps['s_pos'])
@@ -270,6 +271,7 @@ def build_VARNN(X, Y, train_indices, nn_hyps, device):
                   fcn = nn_hyps['fcn'],
                   neurons_weights = nn_hyps['neurons_weights'],
                   time_hemi_prior_variance = nn_hyps['time_hemi_prior_variance'],
+                  vol_hemi_prior_variance = nn_hyps['vol_hemi_prior_variance'],
                   actv = nn_hyps['actv'],
                   device = device,
                   s_pos = nn_hyps['s_pos'])

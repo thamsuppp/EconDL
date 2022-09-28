@@ -26,7 +26,7 @@ class CancelOut(nn.Module):
 
 class VARNN(nn.Module):
     def __init__(self, n_features, n_outputs, nodes, x_pos, dropout_rate, input_dropout_rate, 
-                 cancel_out, vsn, fcn, neurons_weights, time_hemi_prior_variance,
+                 cancel_out, vsn, fcn, neurons_weights, time_hemi_prior_variance, vol_hemi_prior_variance,
                  device, actv = 'ReLU()', s_pos = None):
         super(VARNN, self).__init__()
 
@@ -53,6 +53,7 @@ class VARNN(nn.Module):
         # Number of hemispheres is number of lists within the s_pos list
         self.num_hemispheres = len(self.s_pos)
         self.time_hemi_prior_variance = time_hemi_prior_variance
+        self.vol_hemi_prior_variance = vol_hemi_prior_variance
 
         self.hemispheres = nn.ModuleList()
 
@@ -216,6 +217,9 @@ class VARNN(nn.Module):
         # betas
         betas_combined = torch.stack(betas, axis = 1)
         betas_hemispheres.append(betas_combined)
+
+        # Multiply by vol hemisphere prior variance
+        S_hemi = S_hemi * (self.vol_hemi_prior_variance ** 0.5)
 
         # ALPHAS: Pass the data through alpha hemispheres, output alphas
         x = self.actv(self.hemispheres[hemi_id]['alphas']['input'](S_hemi))
