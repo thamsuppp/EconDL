@@ -3,15 +3,15 @@
     "run_params": {
 
         "dataset": "quarterly_new",
-        "num_inner_bootstraps": 10,
+        "num_inner_bootstraps": 20,
         "num_repeats": 1,
         "default_nn_hyps": "nn_hyps_default",
         
-        "var_names": ["DGS3", "GDP", "inf", "unrate"],
+        "var_names": ["DGS3", "inf", "unrate"],
         "n_lag_linear": 1, 
         "n_lag_d": 2,
-        "n_var": 4,
-        "test_size": 40,
+        "n_var": 3,
+        "test_size": 30,
         "constant_tvpl": [50],
 
         "s_pos_setting": {"hemis": "endog"}
@@ -35,9 +35,9 @@
             "test_exclude_last": 0
         },
         "unconditional_irfs": {
-            "num_simulations": 200,
-            "endh": 40, 
-            "start_shock_time": 40,
+            "num_simulations": 300,
+            "endh": 25, 
+            "start_shock_time": 25,
             "max_h": 20,
             "forecast_method": "new",
             "plot_all_bootstraps": false
@@ -48,7 +48,7 @@
         },
         "multi_forecasting": {
             "forecast_horizons": 2,
-            "reestimation_window": 40,
+            "reestimation_window": 30,
             "forecast_method": "new",
             "num_sim_bootstraps": 20,
             "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF", "XGBoost", "zero", "mean"]
@@ -69,7 +69,24 @@
             "s_pos_setting": {"hemis": "endog"}, 
             "joint_estimation": true, 
             "exog_data": false,
+            "vol_hemi_prior_variance": 1,
             "name": "Endog"
+        },
+        {
+            "nodes": [200, 100, 50], 
+            "actv": "nn.ReLU()", 
+            "tvpl_archi": [2], 
+            "lr": 0.001, 
+            "time_dummy_setting": 2, 
+            "dropout_rate": 0.25, 
+            "precision_lambda": 0.25, 
+            "lambda_temper_epochs": 50, 
+            "optimizer": "Adam",
+            "s_pos_setting": {"hemis": "endog"}, 
+            "joint_estimation": true, 
+            "exog_data": false,
+            "vol_hemi_prior_variance": 9,
+            "name": "Endog PriorVol9"
         }
     ],
 

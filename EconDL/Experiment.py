@@ -106,7 +106,7 @@ class Experiment:
       }
 
     # Check if multiple hemispheres, or FCN
-    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']) or (len(self.nn_hyps['s_pos']) > 1) or self.nn_hyps['fcn'] == True:
+    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']) or self.nn_hyps['fcn'] == True:
       print('Experiment compute_unconditional_irfs(): Experiment has multiple hemispheres / exogenous data / FCN, not training unconditional IRFs')
       fcast = np.zeros((self.extensions_params['unconditional_irfs']['num_simulations'], len(self.nn_hyps['var_names']), len(self.nn_hyps['var_names']), 3))
       fcast[:] = np.nan
@@ -297,7 +297,7 @@ class Experiment:
     if self.execution_params['unconditional_irfs'] == False:
       print('Experiment _compile_unconditional_irf_results(): Unconditional IRFs turned off')
       return 
-    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']) or (len(self.nn_hyps['s_pos']) > 1):
+    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']):
       print('Experiment _compile_unconditional_irf_results(): Experiment has multiple hemispheres, not training unconditional IRFs')
       return
       
@@ -334,7 +334,9 @@ class Experiment:
 
   def evaluate_unconditional_irf_results(self, Y_train):
 
-    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']) or (len(self.nn_hyps['s_pos']) > 1):
+    print('s_pos', self.nn_hyps['s_pos_setting'])
+
+    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']):
       print('Experiment _compile_unconditional_irf_results(): Experiment has multiple hemispheres, no unconditional IRF results to compile')
       return
 

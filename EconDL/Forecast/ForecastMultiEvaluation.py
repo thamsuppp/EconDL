@@ -55,7 +55,7 @@ class ForecastMultiEvaluation:
   def exclude_2020_results(self):
     if self.dataset_name == 'monthly_new':
       test_indices_to_exclude = [(self.test_size + i) for i in range(-31, -19, 1)]
-    elif self.dataset_name == 'quaterly_new':
+    elif self.dataset_name == 'quarterly_new':
       test_indices_to_exclude = [(self.test_size + i) for i in range(-10, -6, 1)]
 
     test_indices_to_include = [e for e in range(self.test_size) if e not in test_indices_to_exclude]
