@@ -18,6 +18,7 @@ def load_data(dataset_name):
     
     if dataset_name == 'monthly_new':
         data = pd.read_csv('data/monthlyData_updated.csv')
+        data = data.drop('Unnamed: 0', axis = 1)
 
         # Exclude the columns that have any missing values
         data = data.dropna(axis=1, how='any')
@@ -43,6 +44,7 @@ def load_data(dataset_name):
 
     elif dataset_name == 'quarterly_new':
         data = pd.read_csv('data/quarterlyData_updated.csv')
+        data = data.drop('Unnamed: 0', axis = 1)
         # No need to difference the housing data
         data = data.rename(columns = {'Unnamed: 0': 'Date'})
 

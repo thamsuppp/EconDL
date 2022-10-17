@@ -8,8 +8,8 @@ import numpy as np
 
 class MLExperiment(Experiment):
 
-  def __init__(self, run_name, experiment_id, nn_hyps, run_params, execution_params, extensions_params, job_id = None):
-    Experiment.__init__(self, run_name, experiment_id, nn_hyps, run_params, execution_params, extensions_params, job_id)
+  def __init__(self, run_name, experiment_id, nn_hyps, run_params, execution_params, extensions_params, job_id = None, reestim_id = None):
+    Experiment.__init__(self, run_name, nn_hyps['model'], nn_hyps, run_params, execution_params, extensions_params, job_id, reestim_id)
     
     self.extensions_params = extensions_params
     self.model = nn_hyps['model']
@@ -17,6 +17,7 @@ class MLExperiment(Experiment):
 
   def compile_all(self, repeats_to_include = None):
     self._compile_multi_forecasting_results(repeats_to_include = repeats_to_include)
+    self._compile_multi_forecasting_reestims()
     self._compile_unconditional_irf_results(repeats_to_include = repeats_to_include)
 
   def compute_unconditional_irfs(self, Y_train, Y_test, X_train, results, repeat_id):
@@ -37,7 +38,7 @@ class MLExperiment(Experiment):
     IRFUnconditionalObj = IRFUnconditional(unconditional_irf_params, None)
     fcast, _, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, X_train, results)
 
-    with open(f'{self.folder_path}/fcast_params_{self.model}_repeat_{repeat_id}.npz', 'wb') as f:
+    with open(f'{self.folder_path}/fcast_params_{self.model}_repeat_{repeat_id}_reestim_{self.reestim_id}.npz', 'wb') as f:
       np.savez(f, fcast = fcast)
 
   def compute_multi_forecasts(self, X_train, X_test, Y_train, Y_test, results, nn_hyps, repeat_id):
@@ -62,7 +63,7 @@ class MLExperiment(Experiment):
     FCAST = ForecastMultiObj.conduct_multi_forecasting_wrapper(X_train, X_test, results, nn_hyps)
 
     print('Done with Multiforecasting')
-    with open(f'{self.folder_path}/multi_fcast_params_{self.model}_repeat_{repeat_id}.npz', 'wb') as f:
+    with open(f'{self.folder_path}/multi_fcast_params_{self.model}_repeat_{repeat_id}_reestim_{self.reestim_id}.npz', 'wb') as f:
       np.savez(f, fcast = FCAST)
 
   def train(self, dataset):

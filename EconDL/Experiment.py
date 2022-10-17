@@ -12,7 +12,7 @@ from EconDL.constants import keys_to_keep
 
 
 class Experiment:
-  def __init__(self, run_name, experiment_id, nn_hyps, run_params, execution_params, extensions_params, job_id = None):
+  def __init__(self, run_name, experiment_id, nn_hyps, run_params, execution_params, extensions_params, job_id = None, reestim_id = None):
 
     '''
     Notes:
@@ -25,6 +25,7 @@ class Experiment:
     self.run_name = run_name
     self.experiment_id = experiment_id
     self.job_id = job_id
+    self.reestim_id = reestim_id
     
     self.nn_hyps = nn_hyps
     self.run_params = run_params # run_inner_bootstraps, num_repeats, default_nn_hyps
@@ -34,8 +35,20 @@ class Experiment:
     self.folder_path = self.run_params['folder_path']
     self.nn_hyps['num_bootstrap'] = self.run_params['num_inner_bootstraps']
 
+    self.max_test_size = self.run_params['test_size']
+
+    # Calculate the new test size for this instance for the reestim = True
+    if self.nn_hyps['reestim_params']['reestim'] == True:
+      self.reestimation_window = self.nn_hyps['reestim_params']['reestimation_window']
+      self.num_reestims = self.nn_hyps['test_size'] // self.reestimation_window
+      test_size = self.nn_hyps['test_size'] - (self.reestim_id if self.reestim_id else 0) * self.reestimation_window
+      self.nn_hyps['test_size'] = test_size
+    else:
+      self.num_reestims = 1
+      self.reestimation_window = self.nn_hyps['test_size']
+
     self.results_uncompiled = []
-    self.results = None
+    self.results = []
     self.is_trained = False
     self.is_compiled = False
 
@@ -45,7 +58,7 @@ class Experiment:
       'multi_forecasting': None
     }
 
-    print(f'Experiment Initialized: experiment {self.experiment_id}, repeat {self.job_id}')
+    print(f'Experiment Initialized: experiment {self.experiment_id}, repeat {self.job_id}, reestim {self.reestim_id}, num reestims {self.num_reestims}')
     self.load_results()
 
   def check_results_sizes(self):
@@ -82,11 +95,8 @@ class Experiment:
       IRFConditionalObj.plot_irfs_3d(image_folder_path)
       IRFConditionalObj.plot_irfs_over_time(image_folder_path, normalize = self.extensions_params['conditional_irfs']['normalize_time_plot'])
       self.evaluations['conditional_irf'] = IRFConditionalObj
-      # except Exception as e:
-      #   print('Error in Experiment compute_conditional_irfs():', e)
-        
 
-  def compute_unconditional_irfs(self, Y_train, Y_test, X_train, results, device, repeat_id):
+  def compute_unconditional_irfs(self, Y_train, Y_test, X_train, results, device):
     if self.execution_params['unconditional_irfs'] == False:
       print('Experiment compute_unconditional_irfs(): Unconditional IRFs turned off')
       return 
@@ -106,11 +116,11 @@ class Experiment:
       }
 
     # Check if multiple hemispheres, or FCN
-    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']) or self.nn_hyps['fcn'] == True:
+    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog', 'endog_exog_time']) or self.nn_hyps['fcn'] == True:
       print('Experiment compute_unconditional_irfs(): Experiment has multiple hemispheres / exogenous data / FCN, not training unconditional IRFs')
       fcast = np.zeros((self.extensions_params['unconditional_irfs']['num_simulations'], len(self.nn_hyps['var_names']), len(self.nn_hyps['var_names']), 3))
       fcast[:] = np.nan
-      with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
+      with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{self.job_id}_reestim_{self.reestim_id}.npz', 'wb') as f:
         np.savez(f, fcast = fcast, fcast_cov_mat = None)
 
     else:
@@ -118,10 +128,10 @@ class Experiment:
       IRFUnconditionalObj = IRFUnconditional(unconditional_irf_params, device)
       fcast, fcast_cov_mat, sim_shocks = IRFUnconditionalObj.get_irfs_wrapper(Y_train, Y_test, X_train, results)
 
-      with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
+      with open(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{self.job_id}_reestim_{self.reestim_id}.npz', 'wb') as f:
         np.savez(f, fcast = fcast, fcast_cov_mat = fcast_cov_mat)
 
-  def compute_multi_forecasts(self, X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id):
+  def compute_multi_forecasts(self, X_train, X_test, Y_train, Y_test, results, nn_hyps, device):
 
     if self.execution_params['multi_forecasting'] == False:
       print('Experiment compute_multi_forecasts(): Multi Forecasting turned off')
@@ -130,7 +140,7 @@ class Experiment:
     multi_forecasting_params = {
       'test_size': self.nn_hyps['test_size'], 
       'forecast_horizons': self.extensions_params['multi_forecasting']['forecast_horizons'],
-      'reestimation_window': self.extensions_params['multi_forecasting']['reestimation_window'],
+      'reestimation_window': self.reestimation_window,
       'num_inner_bootstraps': self.nn_hyps['num_inner_bootstraps'],
       'num_sim_bootstraps': self.extensions_params['multi_forecasting']['num_sim_bootstraps'],
       'num_repeats': 1, 
@@ -150,7 +160,7 @@ class Experiment:
     FCAST = ForecastMultiObj.conduct_multi_forecasting_wrapper(X_train, X_test, results, nn_hyps)
 
     print('Experiment compute_multi_forecasts(): Done with Multiforecasting')
-    with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
+    with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{self.job_id}_reestim_{self.reestim_id}.npz', 'wb') as f:
       np.savez(f, fcast = FCAST)
 
   # @DEV: Don't pass in the dataset in the _init_() because if not then there will be multiple copies of
@@ -194,15 +204,14 @@ class Experiment:
             'params': nn_hyps
         }
 
-        with open(f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz', 'wb') as f:
+        with open(f'{folder_path}/params_{self.experiment_id}_repeat_{repeat_id}_reestim_{self.reestim_id}.npz', 'wb') as f:
           np.savez(f, results = results_saved)
 
         self.results_uncompiled.append(results_saved)
-
         print(f'Experiment train(): Finished training repeat {repeat_id} of experiment {self.experiment_id} at {datetime.now()}')
 
-        self.compute_unconditional_irfs(Y_train, Y_test, X_train, results, device = device, repeat_id = repeat_id)
-        self.compute_multi_forecasts(X_train, X_test, Y_train, Y_test, results, nn_hyps, device, repeat_id)
+        self.compute_unconditional_irfs(Y_train, Y_test, X_train, results, device = device)
+        self.compute_multi_forecasts(X_train, X_test, Y_train, Y_test, results, nn_hyps, device)
 
       # After completing all repeats
       self.is_trained = True
@@ -211,8 +220,110 @@ class Experiment:
   # If repeats_to_include is None, then call all
   def compile_all(self, repeats_to_include = None):
     self._compile_results()
+    self._compile_reestims()
     self._compile_multi_forecasting_results(repeats_to_include)
+    self._compile_multi_forecasting_reestims()
     self._compile_unconditional_irf_results(repeats_to_include)
+
+  def _compile_reestims(self):
+
+    # Assume that the repeats are already compiled
+    
+    ''' 
+    Compiling the Reestimations:
+    Latest combine all the TEST betas, sigmas, cholesky, precision, preds
+    '''
+    # Return if the reestims are already compiled
+    if self.is_compiled == True:
+      print('Experiment _compile_reestims(): Compiled results already')
+      return
+
+    all_size = self.results[0]['betas'].shape[0]
+    train_size = all_size - self.max_test_size
+    self.train_size = train_size
+
+    for reestim in range(self.num_reestims):
+      reestim_results = self.results[reestim]
+      BETAS = reestim_results['betas']
+      SIGMAS = reestim_results['sigmas']
+      PRECISION = reestim_results['precision']
+      CHOLESKY = reestim_results['cholesky']
+      TEST_PREDS = reestim_results['test_preds']
+      print('BETAS', BETAS.shape, 'SIGMAS', SIGMAS.shape, 'PRECISION', PRECISION.shape, 'CHOLESKY', CHOLESKY.shape, 'TEST_PREDS', TEST_PREDS.shape)
+      if reestim == 0:
+        BETAS_TEST_ALL = np.expand_dims(BETAS[:, (-self.max_test_size):], axis = -1)
+        SIGMAS_TEST_ALL = np.expand_dims(SIGMAS[:, (-self.max_test_size):], axis = -1)
+        PRECISION_TEST_ALL = np.expand_dims(PRECISION[:, (-self.max_test_size):], axis = -1)
+        CHOLESKY_TEST_ALL = np.expand_dims(CHOLESKY[:, (-self.max_test_size):], axis = -1)
+        TEST_PREDS_ALL = np.expand_dims(TEST_PREDS, axis = -1)
+      else: # hstack
+        BETAS_TEST_ALL = np.concatenate((BETAS_TEST_ALL, np.expand_dims(BETAS[:, (-self.max_test_size):], axis = -1)), axis = -1)
+        SIGMAS_TEST_ALL = np.concatenate((SIGMAS_TEST_ALL, np.expand_dims(SIGMAS[:, (-self.max_test_size):], axis = -1)), axis = -1)
+        PRECISION_TEST_ALL = np.concatenate((PRECISION_TEST_ALL, np.expand_dims(PRECISION[:, (-self.max_test_size):], axis = -1)), axis = -1)
+        CHOLESKY_TEST_ALL = np.concatenate((CHOLESKY_TEST_ALL, np.expand_dims(CHOLESKY[:, (-self.max_test_size):], axis = -1)), axis = -1)
+
+        TEST_PREDS_TEMP = np.zeros_like(TEST_PREDS_ALL)[:,:,:,0] # Create this so that TEST_PREDS.shape[0] is max_test_size instead of the test_size for that reestim
+        TEST_PREDS_TEMP[((reestim * self.reestimation_window)):,:,:] = TEST_PREDS
+        TEST_PREDS_ALL = np.concatenate((TEST_PREDS_ALL, np.expand_dims(TEST_PREDS_TEMP, axis = -1)), axis = -1)
+
+    print('BETAS_TEST_ALL', BETAS_TEST_ALL.shape, 'SIGMAS_TEST_ALL', SIGMAS_TEST_ALL.shape, 'PRECISION_TEST_ALL', PRECISION_TEST_ALL.shape, 'CHOLESKY_TEST_ALL', CHOLESKY_TEST_ALL.shape, 'TEST_PREDS_ALL', TEST_PREDS_ALL.shape)
+    BETAS_OUT = np.zeros_like(BETAS_TEST_ALL)[:,:,:,:,:,-1]
+    SIGMAS_OUT = np.zeros_like(SIGMAS_TEST_ALL)[:,:,:,:,-1]
+    PRECISION_OUT = np.zeros_like(PRECISION_TEST_ALL)[:,:,:,:,-1]
+    CHOLESKY_OUT = np.zeros_like(CHOLESKY_TEST_ALL)[:,:,:,:,:,-1]
+    TEST_OUT = np.zeros_like(TEST_PREDS_ALL)[:,:,:,-1]
+    BETAS_OUT[:] = np.nan
+    SIGMAS_OUT[:] = np.nan
+    PRECISION_OUT[:] = np.nan
+    CHOLESKY_OUT[:] = np.nan
+    TEST_OUT[:] = np.nan
+    # Assign the least updated (with longest test set) betas as the train beta
+    BETAS_OUT[:train_size, :, :, :, :] = BETAS_TEST_ALL[:train_size, :, :, :, :, 0]
+    SIGMAS_OUT[:train_size, :, :, :] = SIGMAS_TEST_ALL[:train_size, :, :, :, 0]
+    PRECISION_OUT[:train_size, :, :, :] = PRECISION_TEST_ALL[:train_size, :, :, :, 0]
+    CHOLESKY_OUT[:train_size, :, :, :, :] = CHOLESKY_TEST_ALL[:train_size, :, :, :, :, 0]
+
+    for reestim in range(BETAS_TEST_ALL.shape[-1]): # for num_reestims
+      # Assign the test betas according to the reestimation results
+      BETAS_OUT[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, :] \
+        = BETAS_TEST_ALL[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, :, reestim]
+      
+      SIGMAS_OUT[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :] \
+        = SIGMAS_TEST_ALL[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, reestim]
+      
+      PRECISION_OUT[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :] \
+        = PRECISION_TEST_ALL[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, reestim]
+      
+      CHOLESKY_OUT[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, :] \
+        = CHOLESKY_TEST_ALL[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, :, reestim]
+
+      TEST_OUT[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :] \
+        = TEST_PREDS_ALL[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, reestim]
+
+    print('Compiled Re-estimations', 'BETAS_OUT', BETAS_OUT.shape, 'SIGMAS_OUT', SIGMAS_OUT.shape, 'PRECISION_OUT', PRECISION_OUT.shape, 'CHOLESKY_OUT', CHOLESKY_OUT.shape, 'TEST_OUT', TEST_OUT.shape)
+
+    reestim_results = self.results[0] # Load the first reestimation results
+    results_reestim_compiled = {
+      'betas': BETAS_OUT,
+      'betas_in': reestim_results['betas_in'],
+      'sigmas': SIGMAS_OUT,
+      'sigmas_in': reestim_results['sigmas_in'],
+      'precision': PRECISION_OUT,
+      'precision_in': reestim_results['precision_in'],
+      'cholesky': CHOLESKY_OUT,
+      'cholesky_in': reestim_results['cholesky_in'],
+      'train_preds': reestim_results['train_preds'],
+      'test_preds': TEST_OUT,
+      'y': reestim_results['y'],
+      'y_test': reestim_results['y_test'],
+      'params': reestim_results['params']
+    }
+
+    self.results = results_reestim_compiled
+
+    with open(f'{self.folder_path}/params_{self.experiment_id}_compiled.npz', 'wb') as f:
+      np.savez(f, results = results_reestim_compiled)
+
 
   # Compile results if there are multiple repeats (in results)
   def _compile_results(self):
@@ -223,29 +334,60 @@ class Experiment:
     if self.is_compiled == True:
       print('Experiment _compile_results(): Compiled results already')
       return
+    
+    print('results_uncompiled num_reestims', len(self.results_uncompiled))
+    print('number of repeats', len(self.results_uncompiled[0]))
 
-    repeat_id = 0
-    # While there are more repeats to process, stack the fields
-    while repeat_id < len(self.results_uncompiled):
-      results_repeat = self.results_uncompiled[repeat_id]
+    for reestim in range(self.num_reestims):
 
-      if repeat_id == 0:
-        results_compiled = {k:v for k,v in results_repeat.items() if k in keys_to_keep.keys()}
+      reestim_results_uncompiled = self.results_uncompiled[reestim]
+
+      repeat_id = 0
+      # While there are more repeats to process, stack the fields
+      while repeat_id < len(reestim_results_uncompiled):
+        results_repeat = reestim_results_uncompiled[repeat_id]
+
+        if repeat_id == 0:
+          results_compiled = {k:v for k,v in results_repeat.items() if k in keys_to_keep.keys()}
+        else:
+          for k, v in results_compiled.items():
+            results_compiled[k] = np.concatenate([results_compiled[k], results_repeat[k]], axis = keys_to_keep[k])
+        repeat_id += 1
+
+      results_compiled['y'] = results_repeat['y']
+      results_compiled['y_test'] = results_repeat['y_test']
+      results_compiled['params'] = results_repeat['params']
+
+      # Assign the compiled results back to the original results
+      self.results.append(results_compiled)
+      with open(f'{self.folder_path}/params_{self.experiment_id}_reestim_{reestim}_compiled.npz', 'wb') as f:
+        np.savez(f, results = results_compiled)
+    
+    # self.is_compiled = True
+
+  def _compile_multi_forecasting_reestims(self):
+
+    for reestim in range(self.num_reestims):
+      FCAST = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_reestim_{reestim}_compiled.npz')['fcast']
+
+      print('FCAST', FCAST.shape)
+      if reestim == 0:
+        FCAST_ALL = FCAST
       else:
-        for k, v in results_compiled.items():
-          results_compiled[k] = np.concatenate([results_compiled[k], results_repeat[k]], axis = keys_to_keep[k])
-      repeat_id += 1
+        FCAST_TEMP = np.zeros_like(FCAST_ALL)[:,:,:,:,0] # Create this so that TEST_PREDS.shape[0] is max_test_size instead of the test_size for that reestim
+        FCAST_TEMP[:, :, :, (reestim * self.reestimation_window):] = FCAST[:,:,:,:,0]
+        FCAST_ALL = np.concatenate((FCAST_ALL, np.expand_dims(FCAST_TEMP, axis = -1)), axis = -1)
+    
+    print('FCAST_ALL', FCAST_ALL.shape)
+    FCAST_OUT = np.zeros_like(FCAST_ALL)[:,:,:,:,-1]
+    for reestim in range(self.num_reestims):
+      FCAST_OUT[:,:,:,(reestim * self.reestimation_window):] = FCAST_ALL[:,:,:,(reestim * self.reestimation_window):, reestim]
+    FCAST_OUT = np.expand_dims(FCAST_OUT, axis = -1)
 
-    results_compiled['y'] = results_repeat['y']
-    results_compiled['y_test'] = results_repeat['y_test']
-    results_compiled['params'] = results_repeat['params']
+    print('Compiled Multi-Forecasting Re-estimations', 'FCAST_OUT', FCAST_OUT.shape)
+    with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_compiled.npz', 'wb') as f:
+      np.savez(f, fcast = FCAST_OUT)
 
-    # Assign the compiled results back to the original results
-    self.results = results_compiled
-    self.is_compiled = True
-
-    with open(f'{self.folder_path}/params_{self.experiment_id}_compiled.npz', 'wb') as f:
-      np.savez(f, results = self.results)
 
   def _compile_multi_forecasting_results(self, repeats_to_include = None):
 
@@ -257,37 +399,44 @@ class Experiment:
       return
 
     if repeats_to_include is None:
+
+      for reestim_id in range(self.num_reestims):
+          
+        num_repeats = self.run_params['num_repeats']
+        if os.path.exists(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_0_reestim_{reestim_id}.npz') == False:
+          print('Experiment _compile_multi_forecasting_results(): No Multi-forecasting results')
+          return
+
+        repeat_id = 0
+        while repeat_id < num_repeats:
+
+          fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}_reestim_{reestim_id}.npz', allow_pickle=True)['fcast']
+          if repeat_id == 0:
+            fcast_all = fcast_repeat # horizons x variables x bootstraps x time x reestimation_window
+          else:
+            fcast_all = np.concatenate([fcast_all, fcast_repeat], axis = 2)
+          repeat_id += 1
         
-      num_repeats = self.run_params['num_repeats']
-      repeat_id = 0
-
-      if os.path.exists(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_0.npz') == False:
-        print('Experiment _compile_multi_forecasting_results(): No Multi-forecasting results')
-        return
-
-      while repeat_id < num_repeats:
-
-        fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)['fcast']
-        if repeat_id == 0:
-          fcast_all = fcast_repeat # horizons x variables x bootstraps x time x reestimation_window
-        else:
-          fcast_all = np.concatenate([fcast_all, fcast_repeat], axis = 2)
-        repeat_id += 1
+        with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_reestim_{reestim_id}_compiled.npz', 'wb') as f:
+          np.savez(f, fcast = fcast_all)
     
     else:
       if os.path.exists(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeats_to_include[0]}.npz') == False:
         print('Experiment _compile_multi_forecasting_results(): No Multi-forecasting results')
         return
-        
-      for i, repeat_id in enumerate(repeats_to_include):
-        fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)['fcast']
-        if i == 0:
-          fcast_all = fcast_repeat # horizons x variables x bootstraps x time x reestimation_window
-        else:
-          fcast_all = np.concatenate([fcast_all, fcast_repeat], axis = 2)
+
+      for reestim_id in range(self.num_reestims):
+        for i, repeat_id in enumerate(repeats_to_include):
+          fcast_repeat = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)['fcast']
+          if i == 0:
+            fcast_all = fcast_repeat # horizons x variables x bootstraps x time x reestimation_window
+          else:
+            fcast_all = np.concatenate([fcast_all, fcast_repeat], axis = 2)
+      
+      with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_reestim_{reestim_id}_compiled.npz', 'wb') as f:
+          np.savez(f, fcast = fcast_all)
             
-    with open(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_compiled.npz', 'wb') as f:
-      np.savez(f, fcast = fcast_all)
+    
 
   def _compile_unconditional_irf_results(self, repeats_to_include = None):
 
@@ -297,7 +446,7 @@ class Experiment:
     if self.execution_params['unconditional_irfs'] == False:
       print('Experiment _compile_unconditional_irf_results(): Unconditional IRFs turned off')
       return 
-    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']):
+    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog', 'endog_exog_time']):
       print('Experiment _compile_unconditional_irf_results(): Experiment has multiple hemispheres, not training unconditional IRFs')
       return
       
@@ -307,7 +456,7 @@ class Experiment:
       repeat_id = 0
       while repeat_id < num_repeats:
 
-        out_repeat = np.load(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)
+        out_repeat = np.load(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}_reestim_0.npz', allow_pickle=True)
         fcast = out_repeat['fcast']
         #fcast_cov_mat = out_repeat['fcast_cov_mat']
         if repeat_id == 0:
@@ -319,7 +468,7 @@ class Experiment:
         repeat_id += 1
     else:
       for i, repeat_id in enumerate(repeats_to_include):
-        out_repeat = np.load(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}.npz', allow_pickle=True)
+        out_repeat = np.load(f'{self.folder_path}/fcast_params_{self.experiment_id}_repeat_{repeat_id}_reestim_0.npz', allow_pickle=True)
         fcast = out_repeat['fcast']
         if i == 0:
           fcast_all = np.zeros((len(repeats_to_include), fcast.shape[0], fcast.shape[1], fcast.shape[2], fcast.shape[3]))
@@ -336,7 +485,7 @@ class Experiment:
 
     print('s_pos', self.nn_hyps['s_pos_setting'])
 
-    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog']):
+    if ('s_pos_setting' in self.nn_hyps.keys() and self.nn_hyps['s_pos_setting']['hemis'] in ['combined', 'time', 'endog_time', 'endog_exog', 'exog', 'endog_exog_time']):
       print('Experiment _compile_unconditional_irf_results(): Experiment has multiple hemispheres, no unconditional IRF results to compile')
       return
 
@@ -367,7 +516,8 @@ class Experiment:
     self.evaluations['unconditional_irf'] = IRFUnconditionalEvaluationObj
     
   def load_results(self, repeats_to_include = None):
-    print(f'Experiment load_results(): Loading results for Experiment id {self.experiment_id}, repeats_to_include: {repeats_to_include}')
+
+    print(f'Experiment load_results(): Loading results for Experiment id {self.experiment_id}, reestims: {self.num_reestims}, repeats_to_include: {repeats_to_include}')
     # Check if the compiled results exist
     if os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_compiled.npz'):
       self.is_trained = True
@@ -379,32 +529,47 @@ class Experiment:
       return
 
     # Check if results for this repeat exist
-    elif repeats_to_include == None and os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{self.job_id if self.job_id else 0}.npz'):
-      
-      self.results_uncompiled = []
-      # Print the repeats that are done:
-      repeat_id = 0
-      while os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'):
-        self.is_trained = True
-        load_file = f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'
-        results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
-        self.results_uncompiled.append(results_loaded)
 
-        print(f'Experiment load_results(): Loaded results for repeat {repeat_id}')
-        repeat_id += 1
+    # If all repeats are to be included
+    elif repeats_to_include == None and os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{self.job_id if self.job_id else 0}_reestim_{self.reestim_id if self.reestim_id else 0}.npz'):
+
+      # self.results_uncompiled is List of lists, each inner list is one reestim, each element is one repeat in that reestim 
+      self.results_uncompiled = []
+      for reestim_id in range(self.num_reestims):
+        
+        reestim_results_uncompiled = []
+        repeat_id = 0
+        
+        while os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}_reestim_{reestim_id}.npz'):
+          self.is_trained = True
+          load_file = f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}_reestim_{reestim_id}.npz'
+          results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
+          reestim_results_uncompiled.append(results_loaded)
+
+          print(f'Experiment load_results(): Loaded results for reestim {reestim_id}, repeat {repeat_id}')
+          repeat_id += 1
+        
+        self.results_uncompiled.append(reestim_results_uncompiled)
 
       return
-
-    elif repeats_to_include is not None and os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeats_to_include[0]}.npz'):
+    
+    # If some repeats are to be skipped - deprecated
+    elif repeats_to_include is not None and os.path.exists(f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeats_to_include[0]}_reestim_{self.reestim_id if self.reestim_id else 0}.npz'):
 
       self.results_uncompiled = []
       self.is_trained = True
-      for repeat_id in repeats_to_include:
-        load_file = f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'
-        results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
-        self.results_uncompiled.append(results_loaded)
+      
+      for reestim_id in range(self.num_reestims):
+        reestim_results_uncompiled = []
+      
+        for repeat_id in repeats_to_include:
+          load_file = f'{self.folder_path}/params_{self.experiment_id}_repeat_{repeat_id}.npz'
+          results_loaded = np.load(load_file, allow_pickle = True)['results'].item()
+          reestim_results_uncompiled.append(results_loaded)
 
-        print(f'Experiment load_results(): Loaded results for repeat {repeat_id}')
+          print(f'Experiment load_results(): Loaded results for reestim {reestim_id}, repeat {repeat_id}')
+        
+        self.results_uncompiled.append(reestim_results_uncompiled)
 
     else:
       print('Experiment load_results(): Not trained yet')

@@ -194,11 +194,11 @@ class Evaluation:
       n_hemis = BETAS.shape[4]
 
       if i == 0:
-        BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], 2))
+        BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], 3))
         #BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], BETAS.shape[4]))
         BETAS_ALL[:] = np.nan
         # n_models x n_obs x n_betas x n_bootstraps x n_vars x n_hemispheres
-        BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], BETAS.shape[2], BETAS_IN.shape[3], 2))
+        BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], BETAS.shape[2], BETAS_IN.shape[3], 3))
         #BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], BETAS.shape[2], BETAS_IN.shape[3], BETAS_IN.shape[4]))
         BETAS_IN_ALL[:] = np.nan 
 
@@ -207,7 +207,7 @@ class Evaluation:
         SIGMAS_ALL[:] = np.nan
         PRECISION_ALL = np.zeros_like(SIGMAS_ALL)
         PRECISION_ALL[:] = np.nan
-        CHOLESKY_ALL = np.zeros((self.M_total, SIGMAS.shape[0], SIGMAS.shape[1], SIGMAS.shape[2], 2, SIGMAS.shape[3]))
+        CHOLESKY_ALL = np.zeros((self.M_total, SIGMAS.shape[0], SIGMAS.shape[1], SIGMAS.shape[2], 3, SIGMAS.shape[3]))
         CHOLESKY_ALL[:] = np.nan 
 
         SIGMAS_IN_ALL = np.zeros((self.M_total, SIGMAS_IN.shape[0], SIGMAS_IN.shape[1], SIGMAS_IN.shape[2], SIGMAS_IN.shape[3]))
@@ -229,9 +229,9 @@ class Evaluation:
 
       # If >1 hemis, Demean the time hemisphere and add the mean to the endogenous hemisphere
       # (note: the means are the in-sample means, not the oob ones)
-      if BETAS.shape[4] > 1:
-        time_hemi_means = np.nanmean(BETAS_IN[:,:,:,:,1], axis = 0)
-        time_hemi_means_expand = np.repeat(np.expand_dims(time_hemi_means, axis = 0), BETAS.shape[0], axis = 0)
+      # if BETAS.shape[4] > 1:
+      #   time_hemi_means = np.nanmean(BETAS_IN[:,:,:,:,1], axis = 0)
+      #   time_hemi_means_expand = np.repeat(np.expand_dims(time_hemi_means, axis = 0), BETAS.shape[0], axis = 0)
         # BETAS_IN[:, :, :, :, 0] = BETAS_IN[:, :, :, :, 0] + time_hemi_means_expand
         # BETAS_IN[:, :, :, :, 1] = BETAS_IN[:, :, :, :, 1] - time_hemi_means_expand
         # BETAS[:, :, :, :, 0] = BETAS[:, :, :, :, 0] + time_hemi_means_expand
@@ -357,9 +357,9 @@ class Evaluation:
 
     print(f'Betas plotted at {image_file}')
 
-  def plot_betas(self):
+  def plot_betas(self, is_test = False):
     # Plot individual hemisphere and summed betas
-    if self.is_test == False:
+    if is_test == False:
       BETAS_ALL_PLOT = self.BETAS_IN_ALL[:, :-self.test_size,:,:,:,:]
       #coefs_tv_plot = coefs_tv[:-test_size, :, :] if is_simulation == True else None
     else:
@@ -380,10 +380,10 @@ class Evaluation:
       print(f'Experiment {i} has {n_hemis} hemispheres')
 
       for hemi in range(n_hemis):
-        image_file = f'{self.image_folder_path}/betas_{i}_hemi_{hemi}.png'
+        image_file = f"{self.image_folder_path}/betas_{i}_hemi_{hemi}{'_test' if is_test == True else ''}.png"
         self._plot_betas_inner(BETAS_EXP_PLOT[:, :, :, :, hemi], self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Hemisphere {hemi}', actual = None)
       
-      image_file = f'{self.image_folder_path}/betas_{i}_sum.png'
+      image_file = f"{self.image_folder_path}/betas_{i}_sum{'_test' if is_test == True else ''}.png"
       self._plot_betas_inner(np.sum(BETAS_EXP_PLOT, axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Sum', actual = None)
 
       # @evalmetric
@@ -397,9 +397,9 @@ class Evaluation:
       self.evaluation_metrics.append({'metric': 'const_vol', 'experiment': i, 'value': const_vol})
       self.evaluation_metrics.append({'metric': 'betas_vol', 'experiment': i, 'value': betas_vol})
 
-  def plot_betas_comparison(self, exps_to_compare = [0, 1]):
+  def plot_betas_comparison(self, exps_to_compare = [0, 1], is_test = False):
     try:
-      if self.is_test == False:
+      if is_test == False:
         BETAS_ALL_PLOT = self.BETAS_IN_ALL[:, :-self.test_size,:,:,:,:]
       else:
         BETAS_ALL_PLOT = self.BETAS_ALL[:, -self.test_size:,:,:,:, :]
@@ -441,16 +441,16 @@ class Evaluation:
               axs[var, beta].legend()
       
       fig.suptitle(f'Comparison of Betas', fontsize=16)
-      image_file = f'{self.image_folder_path}/betas_comparison.png'
+      image_file = f"{self.image_folder_path}/betas_comparison{'_test' if is_test == True else ''}.png"
       plt.savefig(image_file)
       plt.close()
     except:
       pass
 
-  def plot_precision(self):
+  def plot_precision(self, is_test = False):
 
       # Don't show test (change this code to show in-sample)
-    if self.is_test == False:
+    if is_test == False:
       PRECISION_ALL_PLOT = self.PRECISION_ALL[:, :-self.test_size,:,:,:]
     else:
       PRECISION_ALL_PLOT = self.PRECISION_ALL[:, -self.test_size:,:,:,:]
@@ -487,14 +487,14 @@ class Evaluation:
           )
 
       fig.suptitle(f'Experiment {i} ({self.experiment_names[i]}) Precision', fontsize=16)
-      image_file = f'{self.image_folder_path}/precision_{i}.png'
+      image_file = f"{self.image_folder_path}/precision_{i}{'_test' if is_test == True else ''}.png"
       plt.savefig(image_file)
       plt.close()
 
       print(f'Precision plotted at {image_file}')
 
-  def plot_cholesky(self):
-    if self.is_test == False:
+  def plot_cholesky(self, is_test = False):
+    if is_test == False:
       CHOLESKY_ALL_PLOT = self.CHOLESKY_ALL[:, :-self.test_size,:,:,:,:]
     else:
       CHOLESKY_ALL_PLOT = self.CHOLESKY_ALL[:, -self.test_size:,:,:,:,:]
@@ -533,16 +533,16 @@ class Evaluation:
             if row == 0 and col == 0:
               axs[row,col].legend()
       fig.suptitle(f'Experiment {i} ({self.experiment_names[i]}) Cholesky', fontsize=16)
-      image_file = f'{self.image_folder_path}/cholesky_{i}.png'
+      image_file = f"{self.image_folder_path}/cholesky_{i}{'_test' if is_test == True else ''}.png"
       plt.savefig(image_file)
       plt.close()
 
       print(f'Cholesky plotted at {image_file}')
 
-  def plot_sigmas_comparison(self, exps_to_compare = [0, 1]):
+  def plot_sigmas_comparison(self, exps_to_compare = [0, 1], is_test = False):
 
     try:
-      if self.is_test == False:
+      if is_test == False:
         SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, :-self.test_size,:,:,:]
       else:
         SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, -self.test_size:,:,:,:]
@@ -579,16 +579,16 @@ class Evaluation:
 
 
       fig.suptitle(f'Sigmas Comparison', fontsize=16)
-      image_file = f'{self.image_folder_path}/sigmas_comparison.png'
+      image_file = f"{self.image_folder_path}/sigmas_comparison{'_test' if is_test == True else ''}.png"
       plt.savefig(image_file)
       plt.close()
     except:
       print('Error plotting sigmas comparison')
 
-  def plot_sigmas(self):
+  def plot_sigmas(self, is_test = False):
         
     # Don't show test (change this code to show in-sample)
-    if self.is_test == False:
+    if is_test == False:
       SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, :-self.test_size,:,:,:]
       #cov_mat_tv_plot = cov_mat_tv[:-test_size, :, :] if self.is_simulation == True else None
     else:
@@ -635,7 +635,7 @@ class Evaluation:
       print('Mean Median Time-varying Cov Mat', np.nanmean(np.nanmedian(SIGMAS_ALL_PLOT[i, :, :, :, :], axis = -1), axis = 0))
 
       fig.suptitle(f'Experiment {i} ({self.experiment_names[i]}) Sigma', fontsize=16)
-      image_file = f'{self.image_folder_path}/sigmas_{i}.png'
+      image_file = f"{self.image_folder_path}/sigmas_{i}{'_test' if is_test == True else ''}.png"
       plt.savefig(image_file)
       plt.close()
 
@@ -654,9 +654,9 @@ class Evaluation:
       print(f'Cov Mat plotted at {image_file}')
 
   # New 9/13: Plot the correlation matrix
-  def plot_corr_mat(self):
+  def plot_corr_mat(self, is_test = False):
         
-    if self.is_test == False:
+    if is_test == False:
       SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, :-self.test_size,:,:,:]
     else:
       SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, -self.test_size:,:,:,:]
@@ -697,7 +697,7 @@ class Evaluation:
           # )
 
       fig.suptitle(f'Experiment {i} ({self.experiment_names[i]}) Correlation Matrix', fontsize=16)
-      image_file = f'{self.image_folder_path}/corr_mat_{i}.png'
+      image_file = f"{self.image_folder_path}/corr_mat_{i}{'_test' if is_test == True else ''}.png"
       plt.savefig(image_file)
       plt.close()
 
@@ -793,6 +793,22 @@ class Evaluation:
     cum_errors = np.nancumsum(errors, axis = 1)
     # dim of cum_errors: 
 
+    # If exclude_2020, then also output the errors pre and post COVID (as well as the total errors)
+    if self.exclude_2020 == True:
+      errors_pre_covid = errors[:, :self.first_test_id_to_exclude, :]
+      mean_absolute_errors_pre_covid = np.nanmean(errors_pre_covid, axis = 1)
+      mean_absolute_errors_pre_covid_df = pd.DataFrame(mean_absolute_errors_pre_covid, columns = self.var_names, index = self.all_names)
+      if self.normalize_errors_to_benchmark == True:
+        mean_absolute_errors_pre_covid_df = mean_absolute_errors_pre_covid_df.div(mean_absolute_errors_pre_covid_df.iloc[self.M_varnn+3, :])
+      mean_absolute_errors_pre_covid_df.to_csv(f'{self.image_folder_path}/mean_absolute_errors_pre_covid.csv')
+
+      errors_post_covid = errors[:, self.first_test_id_to_exclude:, :]
+      mean_absolute_errors_post_covid = np.nanmean(errors_post_covid, axis = 1)
+      mean_absolute_errors_post_covid_df = pd.DataFrame(mean_absolute_errors_post_covid, columns = self.var_names, index = self.all_names)
+      if self.normalize_errors_to_benchmark == True:
+        mean_absolute_errors_post_covid_df = mean_absolute_errors_post_covid_df.div(mean_absolute_errors_post_covid_df.iloc[self.M_varnn+3, :])
+      mean_absolute_errors_post_covid_df.to_csv(f'{self.image_folder_path}/mean_absolute_errors_post_covid.csv')
+
     mean_absolute_errors = np.nanmean(errors, axis = 1)
     mean_absolute_errors_df = pd.DataFrame(mean_absolute_errors, columns = self.var_names, index = self.all_names)
     if self.normalize_errors_to_benchmark == True: # Standardize errors by benchmark model
@@ -887,12 +903,25 @@ class Evaluation:
     self.plot_sigmas()
     self.plot_corr_mat()
     self.plot_betas()
+
+    if self.is_test == True:
+      self.plot_cholesky(is_test = True)
+      self.plot_precision(is_test = True)
+      self.plot_sigmas(is_test = True)
+      self.plot_corr_mat(is_test = True)
+      self.plot_betas(is_test = True)
+
     self.plot_predictions()
     self.plot_errors(data_sample='oob')
     self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
 
     self.plot_betas_comparison(exps_to_compare = self.experiments_to_compare)
     self.plot_sigmas_comparison(exps_to_compare = self.experiments_to_compare)
+  
+    if self.is_test == True:
+      self.plot_betas_comparison(exps_to_compare = self.experiments_to_compare, is_test = True)
+      self.plot_sigmas_comparison(exps_to_compare = self.experiments_to_compare, is_test = True)
+
     if cond_irf == True:
       self.plot_conditional_irf_comparison(exps_to_compare = self.experiments_to_compare)
     if self.Run.execution_params['multi_forecasting'] == True:

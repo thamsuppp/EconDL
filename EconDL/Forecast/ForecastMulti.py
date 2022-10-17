@@ -24,7 +24,9 @@ class ForecastMulti:
     self.h = multi_forecasting_params['forecast_horizons']
     self.test_size = multi_forecasting_params['test_size'] #T
     self.reestimation_window = multi_forecasting_params['reestimation_window']
-    self.R = int(self.test_size / self.reestimation_window)
+    #self.R = int(self.test_size / self.reestimation_window) 
+    self.R = 1
+
     self.num_repeats = multi_forecasting_params['num_repeats']
     self.num_inner_bootstraps = multi_forecasting_params['num_inner_bootstraps']
     self.num_sim_bootstraps =  multi_forecasting_params['num_sim_bootstraps'] # B
@@ -255,7 +257,8 @@ class ForecastMulti:
 
     r = 0
     # For every timestep (in the future), for every bootstrap, get the self.h-th self.horizon prediction
-    for t in range(r * self.reestimation_window, self.test_size):
+    for t in range(self.reestimation_window):
+    #for t in range(r * self.reestimation_window, self.test_size):
       if t % 5 == 0:
         print(f'Time {t}, {datetime.now()}')
       for b in range(self.num_sim_bootstraps):

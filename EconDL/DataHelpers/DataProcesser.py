@@ -211,6 +211,8 @@ def process_data_wrapper(data, nn_hyps):
         nn_hyps['s_pos'] = [ list(range(n_endog_inputs)), list(range(n_endog_inputs + n_exog_inputs, n_inputs_total))]
       elif nn_hyps['s_pos_setting']['hemis'] == 'endog_exog': 
         nn_hyps['s_pos'] = [ list(range(n_endog_inputs)), list(range(n_endog_inputs, n_endog_inputs + n_exog_inputs))]
+      elif nn_hyps['s_pos_setting']['hemis'] == 'endog_exog_time':
+        nn_hyps['s_pos'] = [ list(range(n_endog_inputs)), list(range(n_endog_inputs, n_endog_inputs + n_exog_inputs)), list(range(n_endog_inputs + n_exog_inputs, n_inputs_total))]
 
     else: # Format s_pos properly
       s_pos = nn_hyps['s_pos']

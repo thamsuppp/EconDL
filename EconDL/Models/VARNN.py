@@ -259,6 +259,21 @@ class VARNN(nn.Module):
 
         betas_hemispheres = [endog_hemi, exog_hemi]
 
+      # Endog, exog and time hemisphere
+      elif len(betas_hemispheres) == 3:
+        endog_hemi = betas_hemispheres[0]
+        exog_hemi = betas_hemispheres[1]
+        time_hemi = betas_hemispheres[2]
+        # Take the mean of the endog hemi and exog hemi over time
+        endog_hemi_mean = torch.nanmean(endog_hemi, axis = 0)
+        exog_hemi_mean = torch.nanmean(exog_hemi, axis = 0)
+        # Impose the endog and exog hemi mean to be 0
+        endog_hemi = endog_hemi - endog_hemi_mean
+        exog_hemi = exog_hemi - exog_hemi_mean
+        time_hemi = time_hemi + endog_hemi_mean + exog_hemi_mean
+
+        betas_hemispheres = [endog_hemi, exog_hemi, time_hemi]
+
       # Reorder alphas to the cholesky matrix
       cholesky_hemispheres = []
 

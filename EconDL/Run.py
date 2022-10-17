@@ -9,12 +9,13 @@ from EconDL.MLExperiment import MLExperiment
 
 class Run:
   
-  def __init__(self, run_name, device, experiment_id = None, job_id = None, bootstrap_indices = None):
+  def __init__(self, run_name, device, experiment_id = None, job_id = None, reestim_id = None, bootstrap_indices = None):
 
     self.run_name = run_name
     self.device = device
-    self.job_id = job_id
     self.experiment_id = experiment_id
+    self.reestim_id = reestim_id
+    self.job_id = job_id
 
     self.dataset_name = None
     self.dataset = None
@@ -57,8 +58,6 @@ class Run:
     
     self._load_data()
 
-    train_size = self.dataset.shape[0] - self.run_params['test_size'] - self.run_params['n_lag_d']
-
     self._init_experiments()
     self._init_ml_experiments()
 
@@ -96,7 +95,7 @@ class Run:
       all_nn_hyps = default_nn_hyps.copy()
       all_nn_hyps.update({'model': ml_model})
 
-      MLExperimentObj = MLExperiment(self.run_name, None, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id)
+      MLExperimentObj = MLExperiment(self.run_name, None, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id, self.reestim_id)
       self.ml_experiments.append(MLExperimentObj)
 
   def _init_experiments(self): # Only if experiments are not already initialized
@@ -113,7 +112,7 @@ class Run:
       # Update the bootstrap indices
       all_nn_hyps['bootstrap_indices'] = self.bootstrap_indices
 
-      ExperimentObj = Experiment(self.run_name, self.experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id)
+      ExperimentObj = Experiment(self.run_name, self.experiment_id, all_nn_hyps, self.run_params, self.execution_params, self.extensions_params, self.job_id, self.reestim_id)
       self.experiments.append(ExperimentObj)
       self.num_experiments = 1
 
