@@ -45,7 +45,7 @@ class MLExperiment(Experiment):
     multi_forecasting_params = {
       'test_size': self.nn_hyps['test_size'], 
       'forecast_horizons': self.extensions_params['multi_forecasting']['forecast_horizons'],
-      'reestimation_window': self.extensions_params['multi_forecasting']['reestimation_window'],
+      'reestimation_window': self.reestimation_window,
       'num_inner_bootstraps': self.nn_hyps['num_inner_bootstraps'],
       'num_sim_bootstraps': self.extensions_params['multi_forecasting']['num_sim_bootstraps'],
       'num_repeats': 1, 

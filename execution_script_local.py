@@ -11,8 +11,6 @@ print('Device', device)
 # Experiment name is the command-line argument
 run_name = sys.argv[1]
 num_repeats = int(sys.argv[2])
-# num_experiments = int(sys.argv[2])
-# num_repeats = int(sys.argv[3])
 
 folder_path = f'results/{run_name}'
 if os.path.isdir(folder_path) == False:
@@ -71,18 +69,6 @@ for instance in range(num_instances):
 
   if experiment_id == 0: # Oly train the ML experiments once per across all experiments (only needed once)
     RunObj.train_ml_experiments()
-
-
-### Evaluating
-# If we are doing this in parallel, then we pass in the job_id parameter here
-# RunObj = Run(run_name, device)
-
-# EvaluationObj = Evaluation(RunObj)
-# EvaluationObj.Run.compute_conditional_irfs()
-
-# print(EvaluationObj.check_results_sizes())
-# EvaluationObj.plot_all()
-
 
 '''
 Note: 

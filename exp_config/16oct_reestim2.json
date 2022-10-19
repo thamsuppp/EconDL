@@ -16,7 +16,7 @@
 
         "reestim_params": {
             "reestim": true,
-            "reestimation_window": 10
+            "reestimation_window": 5
         },
         "s_pos_setting": {"hemis": "endog"}
     },
@@ -36,7 +36,7 @@
         "conditional_irfs": {
             "max_h": 10,
             "normalize_time_plot": true,
-            "test_exclude_last": 10
+            "test_exclude_last": 0
         },
         "unconditional_irfs": {
             "num_simulations": 300,
@@ -64,7 +64,7 @@
         {
             "nodes": [200, 100, 50], 
             "actv": "nn.SELU()", 
-            "tvpl_archi": [10], 
+            "tvpl_archi": [5], 
             "lr": 0.00025, 
             "time_dummy_setting": 2, 
             "dropout_rate": 0.25, 
@@ -78,13 +78,13 @@
             "name": "Endog Time Reestim",
             "reestim_params": {
                 "reestim": true,
-                "reestimation_window": 10
+                "reestimation_window": 5
             }
         },
         {
             "nodes": [200, 100, 50], 
             "actv": "nn.SELU()", 
-            "tvpl_archi": [10], 
+            "tvpl_archi": [5], 
             "lr": 0.00025, 
             "time_dummy_setting": 2, 
             "dropout_rate": 0.25, 
@@ -98,7 +98,7 @@
             "name": "Endog Time No Reestim",
             "reestim_params": {
                 "reestim": false,
-                "reestimation_window": 6
+                "reestimation_window": 5
             }
         }
     ],
@@ -115,8 +115,8 @@
         "plot_all_bootstraps": false,
         "exps_to_plot": null,
         "repeats_to_include": null,
-        "test_exclude_last": 10,
-        "exclude_2020": false,
+        "test_exclude_last": 0,
+        "exclude_2020": true,
         "normalize_errors_to_benchmark": true,
         "experiments_to_compare": [0, 1]
     }
