@@ -85,6 +85,7 @@ class Experiment:
         'n_betas': self.nn_hyps['n_var'] * self.nn_hyps['n_lag_linear'] + 1,
         'max_h': self.extensions_params['conditional_irfs']['max_h'],
         'test_exclude_last': self.extensions_params['conditional_irfs']['test_exclude_last'],
+        'test_size': self.max_test_size,
         'dataset': self.run_params['dataset'],
         'experiment_id': self.experiment_id,
         'experiment_name': self.nn_hyps['name']
@@ -92,7 +93,8 @@ class Experiment:
       #try:
       IRFConditionalObj = IRFConditional(self.results, conditional_irf_params)
       IRFConditionalObj.plot_irfs(image_folder_path)
-      IRFConditionalObj.plot_irfs_3d(image_folder_path)
+      IRFConditionalObj.plot_irfs_3d(image_folder_path, is_test = False)
+      IRFConditionalObj.plot_irfs_3d(image_folder_path, is_test = True)
       IRFConditionalObj.plot_irfs_over_time(image_folder_path, normalize = self.extensions_params['conditional_irfs']['normalize_time_plot'])
       self.evaluations['conditional_irf'] = IRFConditionalObj
 
@@ -335,8 +337,8 @@ class Experiment:
       print('Experiment _compile_results(): Compiled results already')
       return
     
-    print('results_uncompiled num_reestims', len(self.results_uncompiled))
-    print('number of repeats', len(self.results_uncompiled[0]))
+    #print('results_uncompiled num_reestims', len(self.results_uncompiled))
+    #print('number of repeats', len(self.results_uncompiled[0]))
 
     for reestim in range(self.num_reestims):
 
@@ -370,7 +372,7 @@ class Experiment:
     for reestim in range(self.num_reestims):
       FCAST = np.load(f'{self.folder_path}/multi_fcast_params_{self.experiment_id}_reestim_{reestim}_compiled.npz')['fcast']
 
-      print('FCAST', FCAST.shape)
+      #print('FCAST', FCAST.shape)
       if reestim == 0:
         FCAST_ALL = FCAST
       else:

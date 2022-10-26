@@ -22,6 +22,7 @@ class IRFConditional:
     self.n_var = irf_params['n_var']
     self.max_h = irf_params['max_h']
     self.var_names = irf_params['var_names']
+    self.test_size = irf_params['test_size']
     self.test_exclude_last = irf_params['test_exclude_last']
     self.dataset_name = irf_params['dataset']
 
@@ -128,12 +129,14 @@ class IRFConditional:
 
     self.IRFS = IRFS
 
-    # Save the IRFs
-    np.savez(f'IRF_conditional.npz', IRFS = IRFS)
-
-  def plot_irfs_3d(self, image_folder_path):
+  def plot_irfs_3d(self, image_folder_path, is_test = False):
+    
+    if is_test == True:
+      IRFS_median = np.nanmedian(self.IRFS[-self.test_size:, :, :, :, :], axis = 1)
+    else:
+      IRFS_median = np.nanmedian(self.IRFS[:(-self.test_size), :, :, :, :], axis = 1)
+      
     # Take the median 
-    IRFS_median = np.nanmedian(self.IRFS, axis = 1)
     n_var = IRFS_median.shape[1]
         
     fig = make_subplots(rows = n_var, cols = n_var,
@@ -167,7 +170,7 @@ class IRFConditional:
                       width = 350 * n_var, height = 350 * n_var,
                       margin=dict(l=25, r=25, b=65, t=90))
 
-    image_path = f'{image_folder_path}/irf_conditional_3d_{self.experiment_id}.html'
+    image_path = f"{image_folder_path}/irf_conditional_3d_{self.experiment_id}{'_test' if is_test == True else ''}.html"
     fig.write_html(image_path)
 
 

@@ -16,7 +16,12 @@
         "block_size": 12,
         "dummy_interval": 8,
         "s_pos_setting": {"hemis": "endog"},
-        "num_experiments": 6
+        "num_experiments": 6,
+
+        "reestim_params": {
+            "reestim": false,
+            "reestimation_window": 10
+        }
     },
 
     "execution_params": {
