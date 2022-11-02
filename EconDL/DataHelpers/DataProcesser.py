@@ -160,6 +160,7 @@ def process_data_wrapper(data, nn_hyps):
     # nn_hyps needed: test_size, variables, num_bootstrap, time_dummy_setting, marx, dummy_interval, s_pos, s_pos_setting, model
 
     test_size = nn_hyps['test_size']
+    max_test_size = nn_hyps['max_test_size']
     variable_list = nn_hyps['var_names']
 
     # Subset variables
@@ -170,7 +171,10 @@ def process_data_wrapper(data, nn_hyps):
 
     # Get the bootstraps
     if nn_hyps['model'] == 'VARNN':
-      train_size = x_d.shape[0] - test_size - nn_hyps['n_lag_d']
+      if nn_hyps['same_train'] == True:
+        train_size = x_d.shape[0] - nn_hyps['max_test_size'] - nn_hyps['n_lag_d']
+      else:
+        train_size = x_d.shape[0] - test_size - nn_hyps['n_lag_d']
       if nn_hyps.get('bootstrap_indices', None) != None: # If there are bootstrap indices set already
         pass 
       else:
@@ -181,11 +185,18 @@ def process_data_wrapper(data, nn_hyps):
         else:
             nn_hyps['bootstrap_indices'] = None
 
-      
-    n_betas = n_var * nn_hyps['n_lag_linear'] + 1
-
-    X_train, X_test, Y_train, Y_test, x_mat_all, y_mat, nn_hyps = process_data(x_d, nn_hyps, test_size = test_size, n_time_trends = 100,
+    if nn_hyps['same_train'] == True: # If same train - use the same train-test split (split at max_test_size), and cut down X_test to test_size
+      X_train, X_test, Y_train, Y_test, x_mat_all, y_mat, nn_hyps = process_data(x_d, nn_hyps, test_size = max_test_size, n_time_trends = 100,
         time_dummy_setting = nn_hyps['time_dummy_setting'], marx = nn_hyps['marx'], dummy_interval = nn_hyps['dummy_interval'])
+      
+      X_test = X_test[(-test_size):, :]
+      Y_test = Y_test[(-test_size):, :]
+      print(f'Cut down X_test and Y_test by {max_test_size - test_size}')
+    
+    else:
+      X_train, X_test, Y_train, Y_test, x_mat_all, y_mat, nn_hyps = process_data(x_d, nn_hyps, test_size = test_size, n_time_trends = 100,
+        time_dummy_setting = nn_hyps['time_dummy_setting'], marx = nn_hyps['marx'], dummy_interval = nn_hyps['dummy_interval'])
+
 
     n_inputs_total = X_train.shape[1]
 

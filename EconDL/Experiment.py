@@ -34,6 +34,7 @@ class Experiment:
 
     self.folder_path = self.run_params['folder_path']
     self.nn_hyps['num_bootstrap'] = self.run_params['num_inner_bootstraps']
+    self.nn_hyps['same_train'] = self.nn_hyps['reestim_params']['same_train'] if self.nn_hyps['reestim_params']['reestim'] == True else False
 
     self.max_test_size = self.run_params['test_size']
 
@@ -43,9 +44,11 @@ class Experiment:
       self.num_reestims = self.nn_hyps['test_size'] // self.reestimation_window
       test_size = self.nn_hyps['test_size'] - (self.reestim_id if self.reestim_id else 0) * self.reestimation_window
       self.nn_hyps['test_size'] = test_size
+      self.nn_hyps['max_test_size'] = self.max_test_size
     else:
       self.num_reestims = 1
       self.reestimation_window = self.nn_hyps['test_size']
+      self.nn_hyps['max_test_size'] = self.max_test_size
 
     self.results_uncompiled = []
     self.results = []
@@ -228,7 +231,6 @@ class Experiment:
     self._compile_unconditional_irf_results(repeats_to_include)
 
   def _compile_reestims(self):
-
     # Assume that the repeats are already compiled
     
     ''' 
@@ -240,69 +242,90 @@ class Experiment:
       print('Experiment _compile_reestims(): Compiled results already')
       return
 
-    all_size = self.results[0]['betas'].shape[0]
-    train_size = all_size - self.max_test_size
-    self.train_size = train_size
+    all_size = self.results[0]['betas'].shape[0] # This will be the size of the entire train+test
+    orig_train_size = all_size - self.max_test_size # Train size for first reestim is the size of the training set because we start from largest test set
 
     for reestim in range(self.num_reestims):
       reestim_results = self.results[reestim]
-      BETAS = reestim_results['betas']
-      SIGMAS = reestim_results['sigmas']
-      PRECISION = reestim_results['precision']
-      CHOLESKY = reestim_results['cholesky']
-      TEST_PREDS = reestim_results['test_preds']
-      print('BETAS', BETAS.shape, 'SIGMAS', SIGMAS.shape, 'PRECISION', PRECISION.shape, 'CHOLESKY', CHOLESKY.shape, 'TEST_PREDS', TEST_PREDS.shape)
+      
+      BETAS_ALL = reestim_results['betas']
+      SIGMAS_ALL = reestim_results['sigmas']
+      PRECISION_ALL = reestim_results['precision']
+      CHOLESKY_ALL = reestim_results['cholesky']
+      PREDS_TEST = reestim_results['test_preds']
+      print('BETAS', BETAS_ALL.shape, 'SIGMAS', SIGMAS_ALL.shape, 'PRECISION', PRECISION_ALL.shape, 'CHOLESKY', CHOLESKY_ALL.shape, 'PREDS_TEST', PREDS_TEST.shape)
+      
+      train_size_this_reestim = all_size - PREDS_TEST.shape[0]
+      test_size_this_reestim = PREDS_TEST.shape[0]
+      print(f'Reestim {reestim}: Train size {train_size_this_reestim}, Test size {test_size_this_reestim}')
+      
+      # Break into train and test
+      # Train has same length for all reestims
+      
+      # Test has different length for each reestim (getting shorter and shorter)
+      BETAS_TEST = BETAS_ALL[(-test_size_this_reestim):, :, :, :, :]
+      SIGMAS_TEST = SIGMAS_ALL[(-test_size_this_reestim):, :, :, :]
+      PRECISION_TEST = PRECISION_ALL[(-test_size_this_reestim):, :, :, :]
+      CHOLESKY_TEST = CHOLESKY_ALL[(-test_size_this_reestim):, :, :, :, :]
+
       if reestim == 0:
-        BETAS_TEST_ALL = np.expand_dims(BETAS[:, (-self.max_test_size):], axis = -1)
-        SIGMAS_TEST_ALL = np.expand_dims(SIGMAS[:, (-self.max_test_size):], axis = -1)
-        PRECISION_TEST_ALL = np.expand_dims(PRECISION[:, (-self.max_test_size):], axis = -1)
-        CHOLESKY_TEST_ALL = np.expand_dims(CHOLESKY[:, (-self.max_test_size):], axis = -1)
-        TEST_PREDS_ALL = np.expand_dims(TEST_PREDS, axis = -1)
-      else: # hstack
-        BETAS_TEST_ALL = np.concatenate((BETAS_TEST_ALL, np.expand_dims(BETAS[:, (-self.max_test_size):], axis = -1)), axis = -1)
-        SIGMAS_TEST_ALL = np.concatenate((SIGMAS_TEST_ALL, np.expand_dims(SIGMAS[:, (-self.max_test_size):], axis = -1)), axis = -1)
-        PRECISION_TEST_ALL = np.concatenate((PRECISION_TEST_ALL, np.expand_dims(PRECISION[:, (-self.max_test_size):], axis = -1)), axis = -1)
-        CHOLESKY_TEST_ALL = np.concatenate((CHOLESKY_TEST_ALL, np.expand_dims(CHOLESKY[:, (-self.max_test_size):], axis = -1)), axis = -1)
+        # Ensures that we get the 1st reestim's BETAS_TRAIN
+        BETAS_TRAIN = BETAS_ALL[:orig_train_size, :, :, :, :]
+        SIGMAS_TRAIN = SIGMAS_ALL[:orig_train_size, :, :, :]
+        PRECISION_TRAIN = PRECISION_ALL[:orig_train_size, :, :, :]
+        CHOLESKY_TRAIN = CHOLESKY_ALL[:orig_train_size, :, :, :, :]
+        
+        # Create TEST_ALL which is the size of max_test_size
+        BETAS_TEST_ALL = np.zeros((self.max_test_size, BETAS_TEST.shape[1], BETAS_TEST.shape[2], BETAS_TEST.shape[3], BETAS_TEST.shape[4], self.num_reestims))
+        SIGMAS_TEST_ALL = np.zeros((self.max_test_size, SIGMAS_TEST.shape[1], SIGMAS_TEST.shape[2], SIGMAS_TEST.shape[3], self.num_reestims))
+        PRECISION_TEST_ALL = np.zeros((self.max_test_size, PRECISION_TEST.shape[1], PRECISION_TEST.shape[2], PRECISION_TEST.shape[3], self.num_reestims))
+        CHOLESKY_TEST_ALL = np.zeros((self.max_test_size, CHOLESKY_TEST.shape[1], CHOLESKY_TEST.shape[2], CHOLESKY_TEST.shape[3], CHOLESKY_TEST.shape[4], self.num_reestims))
+        PREDS_TEST_ALL = np.zeros((self.max_test_size, PREDS_TEST.shape[1], PREDS_TEST.shape[2], self.num_reestims))
+        
+        BETAS_TEST_ALL[:] = np.nan
+        SIGMAS_TEST_ALL[:] = np.nan
+        PRECISION_TEST_ALL[:] = np.nan
+        CHOLESKY_TEST_ALL[:] = np.nan
+        PREDS_TEST_ALL[:] = np.nan
+        
+      # Fill in the results for this reestim
+      BETAS_TEST_ALL[-test_size_this_reestim:, :, :, :, :, reestim] = BETAS_TEST
+      SIGMAS_TEST_ALL[-test_size_this_reestim:, :, :, :, reestim] = SIGMAS_TEST
+      PRECISION_TEST_ALL[-test_size_this_reestim:, :, :, :, reestim] = PRECISION_TEST
+      CHOLESKY_TEST_ALL[-test_size_this_reestim:, :, :, :, :, reestim] = CHOLESKY_TEST
+      PREDS_TEST_ALL[-test_size_this_reestim:, :, :, reestim] = PREDS_TEST
 
-        TEST_PREDS_TEMP = np.zeros_like(TEST_PREDS_ALL)[:,:,:,0] # Create this so that TEST_PREDS.shape[0] is max_test_size instead of the test_size for that reestim
-        TEST_PREDS_TEMP[((reestim * self.reestimation_window)):,:,:] = TEST_PREDS
-        TEST_PREDS_ALL = np.concatenate((TEST_PREDS_ALL, np.expand_dims(TEST_PREDS_TEMP, axis = -1)), axis = -1)
+    print('BETAS_TEST_ALL', BETAS_TEST_ALL.shape, 'SIGMAS_TEST_ALL', SIGMAS_TEST_ALL.shape, 'PRECISION_TEST_ALL', PRECISION_TEST_ALL.shape, 'CHOLESKY_TEST_ALL', CHOLESKY_TEST_ALL.shape, 'TEST_PREDS_ALL', PREDS_TEST_ALL.shape)
+    
+    # TEST_LATEST which stores the results of the latest reestim for the test set
+    BETAS_TEST_LATEST = np.zeros_like(BETAS_TEST_ALL)[:,:,:,:,:,-1]
+    SIGMAS_TEST_LATEST = np.zeros_like(SIGMAS_TEST_ALL)[:,:,:,:,-1]
+    PRECISION_TEST_LATEST = np.zeros_like(PRECISION_TEST_ALL)[:,:,:,:,-1]
+    CHOLESKY_TEST_LATEST = np.zeros_like(CHOLESKY_TEST_ALL)[:,:,:,:,:,-1]
+    PREDS_TEST_LATEST = np.zeros_like(PREDS_TEST_ALL)[:,:,:,-1]
+    
+    # TRAIN_LATEST which stores the results of the latest reestim for the train set
+    BETAS_TEST_LATEST[:] = np.nan
+    SIGMAS_TEST_LATEST[:] = np.nan
+    PRECISION_TEST_LATEST[:] = np.nan
+    CHOLESKY_TEST_LATEST[:] = np.nan
+    PREDS_TEST_LATEST[:] = np.nan
 
-    print('BETAS_TEST_ALL', BETAS_TEST_ALL.shape, 'SIGMAS_TEST_ALL', SIGMAS_TEST_ALL.shape, 'PRECISION_TEST_ALL', PRECISION_TEST_ALL.shape, 'CHOLESKY_TEST_ALL', CHOLESKY_TEST_ALL.shape, 'TEST_PREDS_ALL', TEST_PREDS_ALL.shape)
-    BETAS_OUT = np.zeros_like(BETAS_TEST_ALL)[:,:,:,:,:,-1]
-    SIGMAS_OUT = np.zeros_like(SIGMAS_TEST_ALL)[:,:,:,:,-1]
-    PRECISION_OUT = np.zeros_like(PRECISION_TEST_ALL)[:,:,:,:,-1]
-    CHOLESKY_OUT = np.zeros_like(CHOLESKY_TEST_ALL)[:,:,:,:,:,-1]
-    TEST_OUT = np.zeros_like(TEST_PREDS_ALL)[:,:,:,-1]
-    BETAS_OUT[:] = np.nan
-    SIGMAS_OUT[:] = np.nan
-    PRECISION_OUT[:] = np.nan
-    CHOLESKY_OUT[:] = np.nan
-    TEST_OUT[:] = np.nan
-    # Assign the least updated (with longest test set) betas as the train beta
-    BETAS_OUT[:train_size, :, :, :, :] = BETAS_TEST_ALL[:train_size, :, :, :, :, 0]
-    SIGMAS_OUT[:train_size, :, :, :] = SIGMAS_TEST_ALL[:train_size, :, :, :, 0]
-    PRECISION_OUT[:train_size, :, :, :] = PRECISION_TEST_ALL[:train_size, :, :, :, 0]
-    CHOLESKY_OUT[:train_size, :, :, :, :] = CHOLESKY_TEST_ALL[:train_size, :, :, :, :, 0]
-
-    for reestim in range(BETAS_TEST_ALL.shape[-1]): # for num_reestims
+    for reestim in range(self.num_reestims): # for num_reestims
       # Assign the test betas according to the reestimation results
-      BETAS_OUT[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, :] \
-        = BETAS_TEST_ALL[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, :, reestim]
+      BETAS_TEST_LATEST[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, :, :] = BETAS_TEST_ALL[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, :, :, reestim]
+      SIGMAS_TEST_LATEST[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, :] = SIGMAS_TEST_ALL[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, :, reestim]
+      PRECISION_TEST_LATEST[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, :] = PRECISION_TEST_ALL[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, :, reestim]
+      CHOLESKY_TEST_LATEST[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, :, :] = CHOLESKY_TEST_ALL[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, :, :, reestim]
+      PREDS_TEST_LATEST[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :] = PREDS_TEST_ALL[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, reestim]
       
-      SIGMAS_OUT[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :] \
-        = SIGMAS_TEST_ALL[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, reestim]
-      
-      PRECISION_OUT[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :] \
-        = PRECISION_TEST_ALL[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, reestim]
-      
-      CHOLESKY_OUT[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, :] \
-        = CHOLESKY_TEST_ALL[(train_size + reestim * self.reestimation_window):(train_size + (reestim + 1) * self.reestimation_window), :, :, :, :, reestim]
+    # Combine TRAIN and TEST to get output
+    BETAS_OUT = np.concatenate((BETAS_TRAIN, BETAS_TEST_LATEST), axis=0)
+    SIGMAS_OUT = np.concatenate((SIGMAS_TRAIN, SIGMAS_TEST_LATEST), axis=0)
+    PRECISION_OUT = np.concatenate((PRECISION_TRAIN, PRECISION_TEST_LATEST), axis=0)
+    CHOLESKY_OUT = np.concatenate((CHOLESKY_TRAIN, CHOLESKY_TEST_LATEST), axis=0)
 
-      TEST_OUT[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :] \
-        = TEST_PREDS_ALL[(reestim * self.reestimation_window):((reestim + 1) * self.reestimation_window), :, :, reestim]
-
-    print('Compiled Re-estimations', 'BETAS_OUT', BETAS_OUT.shape, 'SIGMAS_OUT', SIGMAS_OUT.shape, 'PRECISION_OUT', PRECISION_OUT.shape, 'CHOLESKY_OUT', CHOLESKY_OUT.shape, 'TEST_OUT', TEST_OUT.shape)
+    print('Compiled Re-estimations', 'BETAS_OUT', BETAS_OUT.shape, 'SIGMAS_OUT', SIGMAS_OUT.shape, 'PRECISION_OUT', PRECISION_OUT.shape, 'CHOLESKY_OUT', CHOLESKY_OUT.shape, 'TEST_OUT', PREDS_TEST_ALL.shape)
 
     reestim_results = self.results[0] # Load the first reestimation results
     results_reestim_compiled = {
@@ -315,7 +338,7 @@ class Experiment:
       'cholesky': CHOLESKY_OUT,
       'cholesky_in': reestim_results['cholesky_in'],
       'train_preds': reestim_results['train_preds'],
-      'test_preds': TEST_OUT,
+      'test_preds': PREDS_TEST_LATEST,
       'y': reestim_results['y'],
       'y_test': reestim_results['y_test'],
       'params': reestim_results['params']
@@ -327,7 +350,7 @@ class Experiment:
       np.savez(f, results = results_reestim_compiled)
 
 
-  # Compile results if there are multiple repeats (in results)
+  # Compile results if there are multiple repeats (in results)slack
   def _compile_results(self):
     
     if self.job_id is not None:

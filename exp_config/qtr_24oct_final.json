@@ -81,6 +81,7 @@
             "name": "Endog Exog Time Reestim",
             "reestim_params": {
                 "reestim": true,
+                "same_train": false,
                 "reestimation_window": 2
             }
         },
