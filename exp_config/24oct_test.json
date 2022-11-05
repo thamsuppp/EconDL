@@ -19,7 +19,7 @@
         "reestim_params": {
             "reestim": true,
             "same_train": false,
-            "reestimation_window": 5
+            "reestimation_window": 20
         },
 
         "s_pos_setting": {"hemis": "endog"}
@@ -74,38 +74,16 @@
             "precision_lambda": 0.1, 
             "lambda_temper_epochs": 20, 
             "optimizer": "Adam",
-            "s_pos_setting": {"hemis": "endog_time"}, 
+            "s_pos_setting": {"hemis": "endog_exog_time"}, 
             "joint_estimation": true, 
-            "exog_data": false,
-            "time_hemi_prior_variance": 1,
+            "exog_data": true,
+            "time_hemi_prior_variance": 0,
             "vol_hemi_prior_variance": 1,
-            "name": "Endog Time Same Train",
-            "reestim_params": {
-                "reestim": true,
-                "same_train": true,
-                "reestimation_window": 5
-            }
-        },
-        {
-            "nodes": [200, 100, 50], 
-            "actv": "nn.SELU()", 
-            "tvpl_archi": [10], 
-            "lr": 0.00025, 
-            "time_dummy_setting": 2, 
-            "dropout_rate": 0.25, 
-            "precision_lambda": 0.1, 
-            "lambda_temper_epochs": 20, 
-            "optimizer": "Adam",
-            "s_pos_setting": {"hemis": "endog_time"}, 
-            "joint_estimation": true, 
-            "exog_data": false,
-            "time_hemi_prior_variance": 1,
-            "vol_hemi_prior_variance": 1,
-            "name": "Endog Time Reestim",
+            "name": "Endog Exog Time, Time Hemi 0",
             "reestim_params": {
                 "reestim": true,
                 "same_train": false,
-                "reestimation_window": 5
+                "reestimation_window": 20
             }
         }
     ],

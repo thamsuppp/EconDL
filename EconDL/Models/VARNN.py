@@ -178,9 +178,12 @@ class VARNN(nn.Module):
         num_params = len(self.s_pos[hemi_id])
         S_hemi = S_hemi / (num_params ** 0.5)
 
-        # Multiply by time hemisphere prior variance
+        # Multiply by time hemisphere prior variance - now the code does this to the LAST hemisphere
         if self.num_hemispheres > 1 and hemi_id == self.num_hemispheres - 1:
           S_hemi = S_hemi * (self.time_hemi_prior_variance ** 0.5)
+          
+          print(f'Hemi {hemi_id} multipled by {self.time_hemi_prior_variance ** 0.5}')
+          print('S_hemi', S_hemi.shape, S_hemi)
         
         # BETAS: Pass the data through beta hemispheres, output betas
 
