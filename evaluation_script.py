@@ -32,6 +32,7 @@ RunObj.train_multi_forecast_benchmarks()
 EvaluationObj = Evaluation(RunObj)
 if cond_irf == True:
   EvaluationObj.Run.compute_conditional_irfs()
+  EvaluationObj.plot_conditional_irf_comparison_3d()
 
 print(EvaluationObj.check_results_sizes())
 if fcast_only == True:

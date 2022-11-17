@@ -41,8 +41,12 @@ for exp in range(num_experiments):
       instance_exp_mapping[num_instances] = {'exp': exp, 'reestim': 0, 'repeat': repeat}
       num_instances += 1
 
-  else:
-    num_reestims = int(test_size / all_params['nn_hyps'][exp]['reestim_params']['reestimation_window'])
+  else: # More than 1 reestim
+    if all_params['nn_hyps'][exp]['reestim_params'].get('manual_reestim_times', False) == False: # If regular reestimations
+      num_reestims = int(test_size / all_params['nn_hyps'][exp]['reestim_params']['reestimation_window'])
+    else: # If manual reestimations
+      num_reestims = len(all_params['nn_hyps'][exp]['reestim_params']['manual_reestim_times'])
+    
     for reestim in range(num_reestims):
       for repeat in range(num_repeats):
         instance_exp_mapping[num_instances] = {'exp': exp, 'reestim': reestim, 'repeat': repeat}

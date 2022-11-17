@@ -197,7 +197,6 @@ def process_data_wrapper(data, nn_hyps):
       X_train, X_test, Y_train, Y_test, x_mat_all, y_mat, nn_hyps = process_data(x_d, nn_hyps, test_size = test_size, n_time_trends = 100,
         time_dummy_setting = nn_hyps['time_dummy_setting'], marx = nn_hyps['marx'], dummy_interval = nn_hyps['dummy_interval'])
 
-
     n_inputs_total = X_train.shape[1]
 
     n_endog_inputs = n_var * (nn_hyps['n_lag_linear'] + nn_hyps['n_lag_d'])
@@ -208,7 +207,6 @@ def process_data_wrapper(data, nn_hyps):
 
     # If s_pos is already not defined (s_pos can be defined by user)
     if nn_hyps.get('s_pos') is not None:
-      # s_pos_setting
       if nn_hyps['s_pos_setting']['hemis'] == 'combined': # Endog + Time
         nn_hyps['s_pos'] = [ list(range(n_inputs_total)) ]
       elif nn_hyps['s_pos_setting']['hemis'] == 'endog':
@@ -224,6 +222,9 @@ def process_data_wrapper(data, nn_hyps):
         nn_hyps['s_pos'] = [ list(range(n_endog_inputs)), list(range(n_endog_inputs, n_endog_inputs + n_exog_inputs))]
       elif nn_hyps['s_pos_setting']['hemis'] == 'endog_exog_time':
         nn_hyps['s_pos'] = [ list(range(n_endog_inputs)), list(range(n_endog_inputs, n_endog_inputs + n_exog_inputs)), list(range(n_endog_inputs + n_exog_inputs, n_inputs_total))]
+      # For testing: 2 repeated endog hemispheres
+      elif nn_hyps['s_pos_setting']['hemis'] == 'endog_endog': 
+        nn_hyps['s_pos'] = [ list(range(n_endog_inputs)), list(range(n_endog_inputs))]
 
     else: # Format s_pos properly
       s_pos = nn_hyps['s_pos']

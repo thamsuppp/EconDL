@@ -10,6 +10,16 @@ import matplotlib.cm as cm
 import matplotlib.colors as colors
 from EconDL.Forecast.ForecastMultiEvaluation import ForecastMultiEvaluation
 
+from datetime import datetime
+import chart_studio
+import chart_studio.plotly as py
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+
+plotly_api_key = 'Dns1gp04h4QpiskQPFT3'
+chart_studio.tools.set_credentials_file(username= 'thamsuppp', api_key = plotly_api_key)
+
 palette = sns.color_palette(cc.glasbey, n_colors = 30)
 
 class Evaluation:
@@ -180,6 +190,7 @@ class Evaluation:
       CHOLESKY_IN = results['cholesky_in']
       PREDS = results['train_preds']
       PREDS_TEST = results['test_preds']
+      
 
       # Estimate time-invariant cov mat from the residuals
       Y_train = results['y']
@@ -191,14 +202,14 @@ class Evaluation:
       BETAS_IN = BETAS_IN[:, beta_ids_to_keep, :,:,:]
       BETAS = BETAS[:, beta_ids_to_keep, :,:,:]
 
-      n_hemis = BETAS.shape[4]
+      n_hemis = CHOLESKY.shape[3] # no longer betas as there is the mean hemisphere
 
       if i == 0:
-        BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], 3))
+        BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], 4))
         #BETAS_ALL = np.zeros((self.M_total, BETAS.shape[0], BETAS.shape[1], BETAS.shape[2], BETAS.shape[3], BETAS.shape[4]))
         BETAS_ALL[:] = np.nan
         # n_models x n_obs x n_betas x n_bootstraps x n_vars x n_hemispheres
-        BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], BETAS.shape[2], BETAS_IN.shape[3], 3))
+        BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], BETAS.shape[2], BETAS_IN.shape[3], 4))
         #BETAS_IN_ALL = np.zeros((self.M_total, BETAS_IN.shape[0], BETAS_IN.shape[1], BETAS.shape[2], BETAS_IN.shape[3], BETAS_IN.shape[4]))
         BETAS_IN_ALL[:] = np.nan 
 
@@ -237,8 +248,8 @@ class Evaluation:
         # BETAS[:, :, :, :, 0] = BETAS[:, :, :, :, 0] + time_hemi_means_expand
         # BETAS[:, :, :, :, 1] = BETAS[:, :, :, :, 1] - time_hemi_means_expand
 
-      BETAS_ALL[i,:,:,:,:, :n_hemis] = BETAS
-      BETAS_IN_ALL[i,:,:,:,:, :n_hemis] = BETAS_IN
+      BETAS_ALL[i,:,:,:,:, :(n_hemis+1)] = BETAS
+      BETAS_IN_ALL[i,:,:,:,:, :(n_hemis+1)] = BETAS_IN
       SIGMAS_ALL[i, :,:,:,:] = SIGMAS
       SIGMAS_IN_ALL[i, :,:,:,:] = SIGMAS_IN
       PRECISION_ALL[i, :,:,:,:] = PRECISION
@@ -250,6 +261,7 @@ class Evaluation:
 
       for b in range(num_bootstraps):
         SIGMAS_CONS_ALL[i, :,:,b] = pd.DataFrame(resids[:, b, :]).dropna().cov()
+        
 
     self.BETAS_ALL = BETAS_ALL
     self.BETAS_IN_ALL = BETAS_IN_ALL
@@ -264,12 +276,36 @@ class Evaluation:
     self.PREDS_TEST_ALL = PREDS_TEST_ALL
     self.Y_train = Y_train
     self.Y_test = Y_test
+    
+    # Shift the means of the BETAS
+    #self._shift_betas_means()
 
     # Load the benchmarks
     self._load_benchmarks()
 
     # Update all_names
     self.all_names = self.experiment_names + self.benchmark_names
+    
+  # Normalize such that all have mean of 0 (create mean hemisphere)
+  # def _shift_betas_means(self):
+    
+  #   print('_shift_betas_means: Test size', self.test_size)
+  #   # Take the training OOB mean of the betas
+  #   BETAS_ALL_MEANS = np.nanmean(self.BETAS_ALL[:, :(-self.test_size), :, :, :, :], axis = 1)
+    
+  #   #np.save('BETAS_ALL.npy', self.BETAS_ALL)
+    
+  #   print('_shift_betas_means: BETAS_ALL_MEANS.shape = ', BETAS_ALL_MEANS.shape)
+  #   # n_models x n_betas x n_bootstraps x n_vars x n_hemispheres
+  #   BETAS_ALL_MEANS_expand = np.repeat(np.expand_dims(BETAS_ALL_MEANS, axis = 1), self.BETAS_ALL.shape[1], axis = 1)
+  #   print('_shift_betas_means: BETAS_ALL_MEANS_expand.shape = ', BETAS_ALL_MEANS_expand.shape)
+  #   print('_shift_betas_means: self.BETAS_ALL.shape = ', self.BETAS_ALL.shape)
+  #   # Remove training OOB mean from BETAS_ALL
+  #   self.BETAS_ALL = self.BETAS_ALL - BETAS_ALL_MEANS_expand
+  #   self.BETAS_MEAN_ALL = BETAS_ALL_MEANS # n_betas x n_bootstraps x n_vars x n_hemispheres
+  #   # Remove training OOB mean from BETAS_ALL
+  #   self.BETAS_IN_ALL = self.BETAS_IN_ALL - BETAS_ALL_MEANS_expand
+    
 
   def _load_benchmarks(self):
     
@@ -368,7 +404,8 @@ class Evaluation:
 
     for i in self.exps_to_plot:
 
-      BETAS_EXP_PLOT = BETAS_ALL_PLOT[i, :, :, :, :]
+      BETAS_EXP_PLOT = BETAS_ALL_PLOT[i, :, :, :, :, : ]
+      #BETAS_MEAN_EXP_PLOT = np.nansum(self.BETAS_MEAN_ALL[i, :, :, :, :], axis = -1) # Sum the means across all the hemis
 
       n_hemis = 0
       for hemi in range(BETAS_ALL_PLOT.shape[5]):
@@ -382,6 +419,18 @@ class Evaluation:
       for hemi in range(n_hemis):
         image_file = f"{self.image_folder_path}/betas_{i}_hemi_{hemi}{'_test' if is_test == True else ''}.png"
         self._plot_betas_inner(BETAS_EXP_PLOT[:, :, :, :, hemi], self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Hemisphere {hemi}', actual = None)
+      
+      # betas_mean_exp_plot_repeat = np.repeat(np.expand_dims(BETAS_MEAN_EXP_PLOT, axis = 0), BETAS_EXP_PLOT.shape[0], axis = 0)
+      # print('betas_mean_exp_plot_repeat', betas_mean_exp_plot_repeat.shape)
+      # #np.save('betas_mean_exp_plot_repeat.npy', betas_mean_exp_plot_repeat)
+      # # Plot the mean hemisphere
+      # image_file = f"{self.image_folder_path}/betas_{i}_mean{'_test' if is_test == True else ''}.png"
+      # self._plot_betas_inner(betas_mean_exp_plot_repeat, 
+      #                        self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Mean Hemisphere', actual = None)
+        
+      
+      # Plot the summed betas from all hemispheres (need to add the mean back in)
+      #BETAS_EXP_PLOT_SUM = np.sum(BETAS_EXP_PLOT, axis = -1) + betas_mean_exp_plot_repeat
       
       image_file = f"{self.image_folder_path}/betas_{i}_sum{'_test' if is_test == True else ''}.png"
       self._plot_betas_inner(np.sum(BETAS_EXP_PLOT, axis = -1), self.var_names, self.beta_names, image_file, q = 0.16, title = f'Experiment {i} ({self.experiment_names[i]}) Betas, Sum', actual = None)
@@ -849,6 +898,76 @@ class Evaluation:
       irf_vol = np.nanstd(IRFS_MEDIAN, axis = 0) #  n_var x n_var x max_h
       self.evaluation_metrics.append({'metric': 'conditional_irf_vol', 'experiment': exp, 'value': irf_vol})
 
+
+  def plot_conditional_irf_comparison_3d(self, exps_to_compare = [0, 1], is_test = False):
+    print('Experiments to Compare', exps_to_compare)
+    if len(exps_to_compare) > 2: # only can compare 2 experiments
+      exps_to_compare = exps_to_compare[:2]
+    
+    for i, exp in enumerate(exps_to_compare):
+      IRFS = self.Run.experiments[exp].evaluations['conditional_irf'].IRFS
+      if i == 0:
+        IRFS_ALL = np.zeros((len(exps_to_compare), IRFS.shape[0], IRFS.shape[1], IRFS.shape[2], IRFS.shape[3], IRFS.shape[4]))
+      IRFS_ALL[i, :,:,:,:,:] = IRFS
+      
+    if is_test == True:
+      IRFS_ALL = IRFS_ALL[:, -self.test_size:, :, :, :, :]
+    else:
+      IRFS_ALL = IRFS_ALL[:, :(-self.test_size), :, :, :, :]
+    
+    print(IRFS_ALL.shape)
+    IRFS_MEDIAN_ALL = np.nanmedian(IRFS_ALL, axis = 2)
+
+    n_exp = IRFS_MEDIAN_ALL.shape[0]
+    n_var = IRFS_MEDIAN_ALL.shape[2]
+    fig = make_subplots(rows = n_var, cols = n_var,
+                        subplot_titles = [f'IRF {self.var_names[shock_var]} -> {self.var_names[response_var]}' for response_var in range(n_var) 
+                          for shock_var in range(n_var)],
+                        specs = [[{'is_3d': True} for e in range(n_var)] for e in range(n_var)],
+                        shared_xaxes = False,
+                        shared_yaxes = False,
+                        horizontal_spacing = 0,
+                        vertical_spacing = 0.05
+    )
+
+    cmap = plt.get_cmap("tab10")
+    colorscale = [[0, 'rgb' + str(cmap(1)[0:3])], 
+                  [1, 'rgb' + str(cmap(2)[0:3])]]
+
+    colors = []
+    colors_0 = np.zeros(shape = IRFS_MEDIAN_ALL[0, :, 0, 0, :].shape)
+    colors_1 = np.ones(shape = IRFS_MEDIAN_ALL[0, :, 0, 0, :].shape)
+    colors.append(colors_0)
+    colors.append(colors_1)
+
+    for shock_var in range(n_var):
+      for response_var in range(n_var):
+        for exp in range(n_exp):
+          fig.add_trace(go.Surface(name = f'Experiment {exp}', z = IRFS_MEDIAN_ALL[exp, :, shock_var, response_var, :], 
+                showscale = False, showlegend = True, 
+                surfacecolor = colors[exp],
+                cmin = 0, cmax = 1,
+                opacity = 0.4),
+                row = response_var + 1, col = shock_var + 1)
+
+    fig.update_scenes(xaxis_title = 'Horizon',
+                      yaxis_title = 'Time', 
+                      zaxis_title = 'Value',
+                      camera = {
+                      'up': {'x': 0, 'y': 0, 'z': 1},
+                      'center': {'x': 0, 'y': 0, 'z': 0},
+                      'eye': {'x': 1.25, 'y': -1.5, 'z': 0.75}
+                      })
+
+
+    fig.update_layout(title = f'Conditional IRF Comparison', autosize=False,
+                      width = 350 * n_var, height = 350 * n_var,
+                      margin=dict(l=25, r=25, b=65, t=90))
+    
+    image_path = f"{self.image_folder_path}/irf_conditional_3d_comparison{'_test' if is_test == True else ''}.html"
+    fig.write_html(image_path)
+
+
   def plot_conditional_irf_comparison(self, exps_to_compare = [0, 1]):
 
     try:
@@ -923,6 +1042,8 @@ class Evaluation:
       self.plot_sigmas_comparison(exps_to_compare = self.experiments_to_compare, is_test = True)
 
     if cond_irf == True:
+      self.plot_conditional_irf_comparison_3d(exps_to_compare = self.experiments_to_compare, is_test = False)
+      self.plot_conditional_irf_comparison_3d(exps_to_compare = self.experiments_to_compare, is_test = True)
       self.plot_conditional_irf_comparison(exps_to_compare = self.experiments_to_compare)
     if self.Run.execution_params['multi_forecasting'] == True:
       self.evaluate_multi_step_forecasts()

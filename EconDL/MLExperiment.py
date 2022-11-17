@@ -70,6 +70,8 @@ class MLExperiment(Experiment):
     
     if self.is_trained == True:
       print('Trained already')
+    elif self.nn_hyps['test_size'] == 0:
+      print('Not training, test size is 0')
     else:
       print(self.nn_hyps)
       # nn_hyps needed: test_size, variables, num_bootstrap, time_dummy_setting, marx, dummy_interval, s_pos, s_pos_setting, model

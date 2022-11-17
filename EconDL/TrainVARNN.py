@@ -574,8 +574,8 @@ def conduct_bootstrap(X_train, X_test, Y_train, Y_test, nn_hyps, device):
             for i in range(n_vars):
               # Invert scaling for the constant term
               for hemi in range(n_hemispheres):
-                betas_draws[:, 0, j, i, hemi] = betas_draws[:, 0, j, i, hemi] * scale_output['sigma_y'][i] + (scale_output['mu_y'][i] if hemi == 0 else 0)
-                betas_in_draws[:, 0, j, i, hemi] = betas_in_draws[:, 0, j, i, hemi] * scale_output['sigma_y'][i] + (scale_output['mu_y'][i] if hemi == 0 else 0)
+                betas_draws[:, 0, j, i, hemi] = betas_draws[:, 0, j, i, hemi] * scale_output['sigma_y'][i] + (scale_output['mu_y'][i] if hemi == n_hemispheres else 0)
+                betas_in_draws[:, 0, j, i, hemi] = betas_in_draws[:, 0, j, i, hemi] * scale_output['sigma_y'][i] + (scale_output['mu_y'][i] if hemi == n_hemispheres else 0)
     
               # For non-constant terms
               for k in range(1, n_betas):

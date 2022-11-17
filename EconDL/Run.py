@@ -84,7 +84,7 @@ class Run:
     if self.experiment_id is not None:
       self.experiment_params = [self.experiment_params[self.experiment_id]]
 
-      print(f'Run _load_params(): Load params for only Expeirment {self.experiment_id}')
+      print(f'Run _load_params(): Load params for only Experiment {self.experiment_id}')
 
   def _init_ml_experiments(self):
     default_nn_hyps = self.default_nn_hyps.copy()

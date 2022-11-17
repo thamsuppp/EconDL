@@ -45,13 +45,17 @@ for exp in range(num_experiments):
       instance_exp_mapping[num_instances] = {'exp': exp, 'reestim': 0, 'repeat': repeat}
       num_instances += 1
 
-  else:
-    num_reestims = int(test_size / all_params['nn_hyps'][exp]['reestim_params']['reestimation_window'])
+  else: # More than 1 reestim
+    if all_params['nn_hyps'][exp]['reestim_params'].get('manual_reestim_times', False) == False: # If regular reestimations
+      num_reestims = int(test_size / all_params['nn_hyps'][exp]['reestim_params']['reestimation_window'])
+    else: # If manual reestimations
+      num_reestims = len(all_params['nn_hyps'][exp]['reestim_params']['manual_reestim_times'])
+    
     for reestim in range(num_reestims):
       for repeat in range(num_repeats):
         instance_exp_mapping[num_instances] = {'exp': exp, 'reestim': reestim, 'repeat': repeat}
         num_instances += 1
-
+      
 print(f'# Experiments: {num_experiments}, # Instances: {num_instances}')
 print(f'Instance to experiment mapping: {instance_exp_mapping}')
 
@@ -63,11 +67,11 @@ for instance in range(num_instances):
   repeat = instance_exp_mapping[instance]['repeat']
 
   print(f'Instance {instance}, {instance_exp_mapping[instance]}')
-  # Train the specific experiment_id and speciifc repeat_id
+  # Train the specific experiment_id and specific repeat_id
   RunObj = Run(run_name, device, experiment_id = experiment_id, job_id = repeat, reestim_id = reestim)
   RunObj.train_all()
 
-  if experiment_id == 0: # Oly train the ML experiments once per across all experiments (only needed once)
+  if experiment_id == 0: # Only train the ML experiments once per across all experiments (only needed once)
     RunObj.train_ml_experiments()
 
 '''

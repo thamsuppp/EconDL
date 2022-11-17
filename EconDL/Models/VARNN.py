@@ -153,7 +153,6 @@ class VARNN(nn.Module):
 
       # Pure VSN layer if only that is enabled
       if self.vsn_enabled == True:
-        #print('input to vsn', S.shape)
         v = self.vsn(S)
         # NEW
         v = torch.mean(v, dim = 0)
@@ -182,8 +181,8 @@ class VARNN(nn.Module):
         if self.num_hemispheres > 1 and hemi_id == self.num_hemispheres - 1:
           S_hemi = S_hemi * (self.time_hemi_prior_variance ** 0.5)
           
-          print(f'Hemi {hemi_id} multipled by {self.time_hemi_prior_variance ** 0.5}')
-          print('S_hemi', S_hemi.shape, S_hemi)
+          #print(f'Hemi {hemi_id} multipled by {self.time_hemi_prior_variance ** 0.5}')
+          #print('S_hemi', S_hemi.shape, S_hemi)
         
         # BETAS: Pass the data through beta hemispheres, output betas
 
@@ -247,35 +246,53 @@ class VARNN(nn.Module):
         
         alphas_combined = torch.stack(alphas, axis = 1)
         alphas_hemispheres.append(alphas_combined)
-      
-      # Impose that the mean of the endog hemisphere is 0
-      if len(betas_hemispheres) == 2:
-        endog_hemi = betas_hemispheres[0]
-        exog_hemi = betas_hemispheres[1]
         
-        # hemi dim: n_obs x n_var x n_betas
-        # Take the mean of the endog hemi over time
-        endog_hemi_mean = torch.nanmean(endog_hemi, axis = 0)
-        # Impose the endog hemi mean to be 0
-        endog_hemi = endog_hemi - endog_hemi_mean
-        exog_hemi = exog_hemi + endog_hemi_mean
+      ### Impose that the mean of the endog hemisphere is 0 - by adding a final mean hemisphere
+      
+      # if len(betas_hemispheres) == 1:
+      #   endog_hemi = betas_hemispheres[0]
+      #   endog_hemi_mean = torch.nanmean(endog_hemi, axis = 0)
+      #   mean_hemi = endog_hemi_mean
+      #   # Expand dimensions of mean_hemi
+      #   mean_hemi = torch.repeat_interleave(torch.unsqueeze(mean_hemi, axis = 0), endog_hemi.shape[0], dim = 0)
+        
+      #   betas_hemispheres_out = [endog_hemi, mean_hemi]
+      
+      # elif len(betas_hemispheres) == 2:
+      #   endog_hemi = betas_hemispheres[0]
+      #   exog_hemi = betas_hemispheres[1]
+        
+      #   # hemi dim: n_obs x n_var x n_betas
+      #   # Take the mean of the endog hemi over time
+      #   endog_hemi_mean = torch.nanmean(endog_hemi, axis = 0)
+      #   exog_hemi_mean = torch.nanmean(exog_hemi, axis = 0)
+      #   # Impose the endog hemi mean to be 0
+      #   endog_hemi = endog_hemi - endog_hemi_mean
+      #   exog_hemi = exog_hemi - exog_hemi_mean
+      #   mean_hemi = endog_hemi_mean + exog_hemi_mean
+        
+      #   mean_hemi = torch.repeat_interleave(torch.unsqueeze(mean_hemi, axis = 0), endog_hemi.shape[0], dim = 0)
 
-        betas_hemispheres = [endog_hemi, exog_hemi]
+      #   betas_hemispheres_out = [endog_hemi, exog_hemi, mean_hemi]
 
-      # Endog, exog and time hemisphere
-      elif len(betas_hemispheres) == 3:
-        endog_hemi = betas_hemispheres[0]
-        exog_hemi = betas_hemispheres[1]
-        time_hemi = betas_hemispheres[2]
-        # Take the mean of the endog hemi and exog hemi over time
-        endog_hemi_mean = torch.nanmean(endog_hemi, axis = 0)
-        exog_hemi_mean = torch.nanmean(exog_hemi, axis = 0)
-        # Impose the endog and exog hemi mean to be 0
-        endog_hemi = endog_hemi - endog_hemi_mean
-        exog_hemi = exog_hemi - exog_hemi_mean
-        time_hemi = time_hemi + endog_hemi_mean + exog_hemi_mean
-
-        betas_hemispheres = [endog_hemi, exog_hemi, time_hemi]
+      # # Endog, exog and time hemisphere
+      # elif len(betas_hemispheres) == 3:
+      #   endog_hemi = betas_hemispheres[0]
+      #   exog_hemi = betas_hemispheres[1]
+      #   time_hemi = betas_hemispheres[2]
+      #   # Take the mean of the endog hemi and exog hemi over time
+      #   endog_hemi_mean = torch.nanmean(endog_hemi, axis = 0)
+      #   exog_hemi_mean = torch.nanmean(exog_hemi, axis = 0)
+      #   time_hemi_mean = torch.nanmean(time_hemi, axis = 0)
+      #   # Add the endog and exog and time hemi mean together to form mean_hemi
+      #   endog_hemi = endog_hemi - endog_hemi_mean
+      #   exog_hemi = exog_hemi - exog_hemi_mean
+      #   time_hemi = time_hemi - time_hemi_mean
+      #   mean_hemi = endog_hemi_mean + exog_hemi_mean + time_hemi_mean
+      #   # Expand dimensions of mean_hemi
+      #   mean_hemi = torch.repeat_interleave(torch.unsqueeze(mean_hemi, axis = 0), endog_hemi.shape[0], dim = 0)
+        
+      #   betas_hemispheres_out = [endog_hemi, exog_hemi, time_hemi, mean_hemi]
 
       # Reorder alphas to the cholesky matrix
       cholesky_hemispheres = []
