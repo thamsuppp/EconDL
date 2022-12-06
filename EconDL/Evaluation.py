@@ -17,6 +17,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 
+from scipy.stats import multivariate_normal
+
 plotly_api_key = 'Dns1gp04h4QpiskQPFT3'
 chart_studio.tools.set_credentials_file(username= 'thamsuppp', api_key = plotly_api_key)
 
@@ -277,6 +279,15 @@ class Evaluation:
     self.Y_train = Y_train
     self.Y_test = Y_test
     
+    # Save files in predictive_density_test
+    # Save Y_test
+    np.save('predictive_density_test/Y_test.npy', self.Y_test)
+    # Save Sigmas all
+    np.save('predictive_density_test/SIGMAS_ALL.npy', self.SIGMAS_ALL)
+    # Save preds test all
+    np.save('predictive_density_test/PREDS_TEST_ALL.npy', self.PREDS_TEST_ALL)
+     
+    
     # Shift the means of the BETAS
     #self._shift_betas_means()
 
@@ -326,6 +337,52 @@ class Evaluation:
       preds_test = np.repeat(np.expand_dims(preds_test, axis = 1), self.num_bootstraps, axis = 1)
       self.PREDS_ALL[self.M_varnn + i, :,:,:] = preds
       self.PREDS_TEST_ALL[self.M_varnn + i,:,:,:] = preds_test
+      
+  def evaluate_predictive_density(self):
+        
+    PRED_DENSITY_MARG_ALL = np.zeros((self.M_varnn, self.PREDS_TEST_ALL.shape[1], self.PREDS_TEST_ALL.shape[3]))
+    PRED_DENSITY_JOINT_ALL = np.zeros((self.M_varnn, self.PREDS_TEST_ALL.shape[1]))
+
+    for model in range(self.M_varnn):
+      
+      PREDS_TEST = self.PREDS_TEST_ALL[model, :,:,:] # n_obs x n_bootstraps x n_vars
+      SIGMAS = self.SIGMAS_ALL[model, -self.test_size:,:,:,:] # n_obs x n_vars x n_vars x n_bootstraps
+
+      # Take the mean across all bootstraps: 20 x 3
+      preds_test_mean = PREDS_TEST.mean(axis=1)
+      # Take the mean of all cov mats across all bootstraps. sigmas_mean: 20 x 3 x 3
+      sigmas_mean = SIGMAS.mean(axis = 3)
+
+      # Loop over all time steps
+      for t in range(PREDS_TEST.shape[0]):
+        pred_mean = preds_test_mean[t, :]
+        pred_sigma = sigmas_mean[t, :, :]
+        y_test = self.Y_test[t, :]
+        
+        ### Calculating joint density
+        # Construct a multivariate normal with pred_mean and pred_sigma
+        mv_norm = multivariate_normal(pred_mean, pred_sigma)
+        # Evaluate the density at y_test
+        log_density = mv_norm.logpdf(y_test)
+        PRED_DENSITY_JOINT_ALL[model, t] = log_density
+        
+        ### Calculating marginal density
+        for var in range(PREDS_TEST.shape[2]):
+          # Construct a univariate normal with pred_mean and pred_sigma
+          univ_norm = multivariate_normal(pred_mean[var], pred_sigma[var, var])
+          # Evaluate the density at y_test
+          log_density = univ_norm.logpdf(y_test[var])
+          PRED_DENSITY_MARG_ALL[model, t, var] = log_density
+    
+    # Sum over all time periods
+    PRED_DENSITY_MARG_ALL_sum = PRED_DENSITY_MARG_ALL.sum(axis=1)
+    PRED_DENSITY_JOINT_ALL_sum = PRED_DENSITY_JOINT_ALL.sum(axis=1)
+
+    joint_density_df = pd.DataFrame(PRED_DENSITY_JOINT_ALL_sum, columns = ['Joint Density'], index = self.experiment_names)
+    marg_density_df = pd.DataFrame(PRED_DENSITY_MARG_ALL_sum, columns = self.var_names, index = self.experiment_names)
+    
+    joint_density_df.to_csv(f'{self.image_folder_path}/joint_density_test.csv')
+    marg_density_df.to_csv(f'{self.image_folder_path}/marginal_density_test.csv')
     
   # Helper function to plot betas
   def _plot_betas_inner(self, BETAS, var_names, beta_names, image_file, q = 0.16, title = '', actual = None):
@@ -1033,7 +1090,9 @@ class Evaluation:
     self.plot_predictions()
     self.plot_errors(data_sample='oob')
     self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
-
+    self.evaluate_predictive_density()
+    
+    
     self.plot_betas_comparison(exps_to_compare = self.experiments_to_compare)
     self.plot_sigmas_comparison(exps_to_compare = self.experiments_to_compare)
   
@@ -1056,6 +1115,7 @@ class Evaluation:
     self.plot_errors(data_sample='oob')
     self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
     self.evaluate_multi_step_forecasts()
+    self.evaluate_predictive_density()
 
   def evaluate_multi_step_forecasts(self, exclude_last = 0):
     multi_forecasting_params = {

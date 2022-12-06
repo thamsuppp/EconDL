@@ -339,6 +339,7 @@ class Experiment:
         SIGMAS_TRAIN_first_reestim = SIGMAS_TRAIN.copy()
         PRECISION_TRAIN_first_reestim = PRECISION_TRAIN.copy()
         CHOLESKY_TRAIN_first_reestim = CHOLESKY_TRAIN.copy()
+        BETAS_IN_first_reestim = BETAS_IN.copy()
       
     print('BETAS_TEST_ALL', BETAS_TEST_ALL.shape, 'SIGMAS_TEST_ALL', SIGMAS_TEST_ALL.shape, 'PRECISION_TEST_ALL', PRECISION_TEST_ALL.shape, 
           'CHOLESKY_TEST_ALL', CHOLESKY_TEST_ALL.shape, 'TEST_PREDS_ALL', PREDS_TEST_ALL.shape, 'BETAS_TRAIN', BETAS_TRAIN.shape, 'BETAS_IN', BETAS_IN.shape)
@@ -382,7 +383,7 @@ class Experiment:
     reestim_results = self.results[0] # Load the first reestimation results
     results_reestim_compiled = {
       'betas': BETAS_OUT,
-      'betas_in': BETAS_IN, 
+      'betas_in': BETAS_IN_first_reestim,
       'sigmas': SIGMAS_OUT,
       'sigmas_in': reestim_results['sigmas_in'],
       'precision': PRECISION_OUT,
