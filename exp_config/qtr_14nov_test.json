@@ -235,7 +235,8 @@
       "test_exclude_last": 12,
       "exclude_2020": false,
       "normalize_errors_to_benchmark": true,
-      "experiments_to_compare": [1,2,3,4]
+      "experiments_to_compare": [1,2,3,4],
+      "stoch_vol_results_name": "all_quarterly_4var"
   }
 }
 
