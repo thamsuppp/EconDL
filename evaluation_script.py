@@ -43,6 +43,7 @@ print(EvaluationObj.check_results_sizes())
 if density_only == True:
   EvaluationObj.evaluate_predictive_density()
   EvaluationObj.plot_predictions_with_bands()
+  EvaluationObj.plot_volatility()
 else:
   if fcast_only == True:
     EvaluationObj.plot_forecasts()

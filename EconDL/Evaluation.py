@@ -378,8 +378,8 @@ class Evaluation:
       y_test = Y_test[t, :]
       
       for var in range(preds_test_mean.shape[1]):
-        # Construct a univariate normal with pred_mean and pred_sigma
-        univ_norm = multivariate_normal(pred_mean[var], pred_sigma[var])
+        # Construct a univariate normal with pred_mean and pred_sigma *** SQUARE THIS BECAUSE THEY ARE ASKING FOR COV MAT
+        univ_norm = multivariate_normal(pred_mean[var], pred_sigma[var] ** 2)
         # Evaluate density at y_test
         log_density = univ_norm.logpdf(y_test[var])
         PRED_DENSITY_MARG_SVOL[0, t+2, var] = log_density
@@ -562,7 +562,6 @@ class Evaluation:
       joint_density_df.to_csv(f'{self.image_folder_path}/joint_density_test_post_covid.csv')
       marginal_density_df.to_csv(f'{self.image_folder_path}/marginal_density_test_post_covid.csv')
 
-    
   # Helper function to plot betas
   def _plot_betas_inner(self, BETAS, var_names, beta_names, image_file, q = 0.16, title = '', actual = None):
 
@@ -870,6 +869,58 @@ class Evaluation:
     except:
       print('Error plotting sigmas comparison')
 
+  def plot_volatility(self):
+    
+    # Load the VARNN SD results
+    # if is_test == False:
+    #   SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, :-self.test_size,:,:,:]
+    # else:
+    SIGMAS_ALL_PLOT = self.SIGMAS_ALL[:, -self.test_size:,:,:,:]
+    # SIGMAS_ALL_PLOT dim: (n_experiments, n_obs, n_var, n_var, n_bootstraps)
+    # sigmas_varnn dim: (n_experiments, n_obs, n_var)
+    sigmas_varnn = np.zeros((SIGMAS_ALL_PLOT.shape[0], SIGMAS_ALL_PLOT.shape[1], SIGMAS_ALL_PLOT.shape[2]))
+    
+    # Square root the diagonal elements to save as the volatility, taking the median across bootstraps
+    for i in range(self.M_varnn):
+      for var in range(self.n_var):
+        sigmas_varnn[i, :, var] = np.sqrt(np.nanmedian(SIGMAS_ALL_PLOT[i, :, var, var, :], axis = -1))
+    
+    # Load the SV results
+    svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}.RData')['svfit_all'].to_numpy().T
+    #sigmas_svol = np.zeros((svfit.shape[0] + 2 - self.test_exclude_last, svfit.shape[1]))
+    sigmas_svol = np.zeros((svfit.shape[0] + 2, svfit.shape[1]))
+    sigmas_svol[:] = np.nan
+    
+    sigmas_svol[2:, :] = svfit
+    
+    # if self.test_exclude_last > 0:
+    #   sigmas_svol[2:,:] = svfit[:-self.test_exclude_last, :]
+    # else:
+    #   sigmas_svol[2:,:] = svfit
+      
+    fig, axs = plt.subplots(self.n_var, 1, figsize = (6, 4 * (self.n_var + 1)), constrained_layout = True)
+    
+    for var in range(self.n_var):
+      # Plot every VARNN experiment
+      for i in range(self.M_varnn):
+        axs[var].plot(sigmas_varnn[i, :, var], label = self.experiment_names[i])
+      # Plot the SV experiment
+      axs[var].plot(sigmas_svol[:, var], label = 'SV')
+      axs[var].set_title(f'{self.var_names[var]}')
+      axs[var].set_xlabel('Time')
+      axs[var].set_ylabel('Volatility')
+    
+    # Legend for the first plot
+    axs[0].legend()
+    
+    fig.suptitle(f'Estimated Volatilities', fontsize=16)
+    image_file = f"{self.image_folder_path}/volatility.png"
+    plt.savefig(image_file)
+    plt.close()
+    
+    print(f'Volatilities plotted at {image_file}')
+
+  # Note: sigmas - covariance matrix
   def plot_sigmas(self, is_test = False):
         
     # Don't show test (change this code to show in-sample)
@@ -938,7 +989,6 @@ class Evaluation:
 
       print(f'Cov Mat plotted at {image_file}')
 
-  # New 9/13: Plot the correlation matrix
   def plot_corr_mat(self, is_test = False):
         
     if is_test == False:
@@ -1030,20 +1080,33 @@ class Evaluation:
     
   def plot_predictions_with_bands(self):
     
+    if self.test_exclude_last > 0:
+      SIGMAS_ALL_TEST = self.SIGMAS_ALL[:, -self.test_size:-self.test_exclude_last,:,:,:]
+    else:
+      SIGMAS_ALL_TEST = self.SIGMAS_ALL[:, -self.test_size:,:,:,:]
+    # Sigmas: n_models x n_obs x n_var x n_var x n_bootstraps
+    SIGMAS_ALL_TEST_MEDIAN = np.nanmedian(SIGMAS_ALL_TEST, axis = -1)
+    
      ### Evaluate the predictive density for StochVol Benchmark
     
     arfit = pyreadr.read_r(f'data/stochvol_results/arfit_{self.stoch_vol_results_name}.RData')['arfit_all'].to_numpy().T
     svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}.RData')['svfit_all'].to_numpy().T
     
-    preds_median_svol = np.zeros((arfit.shape[0] + 2, arfit.shape[1]))
-    sigmas_svol = np.zeros((arfit.shape[0] + 2, arfit.shape[1]))
+    preds_median_svol = np.zeros((arfit.shape[0] + 2 - self.test_exclude_last, arfit.shape[1]))
+    sigmas_svol = np.zeros((arfit.shape[0] + 2 - self.test_exclude_last, arfit.shape[1]))
+    preds_median_svol[:] = np.nan
+    sigmas_svol[:] = np.nan
+    
+    print(f'arfit shape: {arfit.shape}, exclude last: {self.test_exclude_last}, preds mean svol shape: {preds_median_svol.shape}')
     
     if self.test_exclude_last > 0:
       preds_median_svol[2:,:] = arfit[:-self.test_exclude_last, :]
       sigmas_svol[2:,:] = svfit[:-self.test_exclude_last, :]
+      actual = self.Y_test[:-self.test_exclude_last, :]
     else:
       preds_median_svol[2:,:] = arfit
       sigmas_svol[2:,:] = svfit
+      actual = self.Y_test
       
     # preds_median_svol and sigmas_svol dimension: (n_obs, n_var)
     preds_lcl_1sd_svol = preds_median_svol - sigmas_svol
@@ -1057,11 +1120,20 @@ class Evaluation:
       
       ### Plot preds with bands for StochVol
       
+      # Calculate the 68% and 95% nominal coverage
+      coverage_1sd_svol = (preds_lcl_1sd_svol[:, var] <= actual[:, var]) & (actual[:, var] <= preds_ucl_1sd_svol[:, var])
+      coverage_1sd_svol = np.mean(coverage_1sd_svol[2:])
+      coverage_2sd_svol = (preds_lcl_2sd_svol[:, var] <= actual[:, var]) & (actual[:, var] <= preds_ucl_2sd_svol[:, var])
+      coverage_2sd_svol = np.mean(coverage_2sd_svol[2:])
+      
       ax[self.M_varnn, var].plot(preds_median_svol[:, var], lw = 0.75, label = 'Median', color = 'b')
       ax[self.M_varnn, var].fill_between(list(range(preds_median_svol.shape[0])), preds_lcl_1sd_svol[:, var], preds_ucl_1sd_svol[:, var], color = 'b', alpha = 0.5)
       ax[self.M_varnn, var].fill_between(list(range(preds_median_svol.shape[0])), preds_lcl_2sd_svol[:, var], preds_ucl_2sd_svol[:, var], color = 'b', alpha = 0.25)
-      ax[self.M_varnn, var].plot(self.Y_test[:, var], lw = 1, label = 'Actual', color = 'black')
+      ax[self.M_varnn, var].plot(actual[:, var], lw = 1, label = 'Actual', color = 'black')
       ax[self.M_varnn, var].set_title(f'{self.var_names[var]}, StochVol')
+      
+      # Add text within the figure to show the coverage
+      ax[self.M_varnn, var].text(0.05, 0.95, f'68%: {coverage_1sd_svol:.2f}, 95%: {coverage_2sd_svol:.2f}', transform = ax[self.M_varnn, var].transAxes, fontsize = 12, verticalalignment = 'top')
       
       # Save the y-axis limits
       y_min = ax[self.M_varnn, var].get_ylim()[0]
@@ -1069,33 +1141,49 @@ class Evaluation:
       
       # Plot preds with bands for VARNN
       for i in range(self.M_varnn):
+        
+        variances = SIGMAS_ALL_TEST_MEDIAN[i,:,var,var] # this is wrong (for training) but change it later. sigmas: n_obs x n_var x n_var
+        # Square root every value
+        sigmas = np.sqrt(variances)
+
         if self.is_test == False:
-          preds = self.PREDS_ALL[i,:,:,:]
-          actual = self.Y_train
+          preds = self.PREDS_ALL[i,:,:,var] # preds: n_obs x n_bootstraps (for one variable)
+          
+          actual_var = self.Y_train[:, var]
         else:
           if self.test_exclude_last == 0:
-            preds = self.PREDS_TEST_ALL[i,:,:,:]
-            actual = self.Y_test
+            preds = self.PREDS_TEST_ALL[i,:,:,var]
+            actual_var = self.Y_test[:, var]
           else:
-            preds = self.PREDS_TEST_ALL[i,:,:,:-self.test_exclude_last, :]
-            actual = self.Y_test[:-self.test_exclude_last, :]
+            preds = self.PREDS_TEST_ALL[i,:-self.test_exclude_last,:,var]
+            actual_var = self.Y_test[:-self.test_exclude_last, var]
         
         # Calculate median and the 16th and 84th quantiles
         preds_median = np.nanmedian(preds, axis = 1)
-        preds_lcl_1sd = np.nanquantile(preds, axis = 1, q = 0.16)
-        preds_ucl_1sd = np.nanquantile(preds, axis = 1, q = 0.84)
-        preds_lcl_2sd = np.nanquantile(preds, axis = 1, q = 0.025)
-        preds_ucl_2sd = np.nanquantile(preds, axis = 1, q = 0.975)
+        
+        preds_lcl_1sd = preds_median - sigmas
+        preds_ucl_1sd = preds_median + sigmas
+        preds_lcl_2sd = preds_median - 1.96 * sigmas
+        preds_ucl_2sd = preds_median + 1.96 * sigmas
+        
+        # Calculate the 68% and 95% nominal coverage
+        coverage_1sd = (preds_lcl_1sd <= actual_var) & (actual_var <= preds_ucl_1sd)
+        coverage_1sd = np.mean(coverage_1sd[2:])
+        coverage_2sd = (preds_lcl_2sd <= actual_var) & (actual_var <= preds_ucl_2sd)
+        coverage_2sd = np.mean(coverage_2sd[2:])
       
          # preds: n_obs x n_bootstraps x n_var      
         # Plot the median
-        ax[i, var].plot(preds_median[:, var], lw = 0.75, label = 'Median', color = 'b')
+        ax[i, var].plot(preds_median, lw = 0.75, label = 'Median', color = 'b')
         # Plot the 16th and 84th quantiles
-        ax[i, var].fill_between(list(range(preds.shape[0])), preds_lcl_1sd[:, var], preds_ucl_1sd[:, var], color = 'b', alpha = 0.5)
+        ax[i, var].fill_between(list(range(preds.shape[0])), preds_lcl_1sd, preds_ucl_1sd, color = 'b', alpha = 0.5)
         # Plot the 2.5th and 97.5th quantiles
-        ax[i, var].fill_between(list(range(preds.shape[0])), preds_lcl_2sd[:, var], preds_ucl_2sd[:, var], color = 'b', alpha = 0.25)
-        ax[i, var].plot(actual[:, var], lw = 1, label = 'Actual', color = 'black')
+        ax[i, var].fill_between(list(range(preds.shape[0])), preds_lcl_2sd, preds_ucl_2sd, color = 'b', alpha = 0.25)
+        ax[i, var].plot(actual_var, lw = 1, label = 'Actual', color = 'black')
         ax[i, var].set_title(f'{self.var_names[var]}, {self.all_names[i]}')
+        # Add text within the figure to show the coverage
+        ax[i, var].text(0.05, 0.95, f'68%: {coverage_1sd:.2f}, 95%: {coverage_2sd:.2f}', transform = ax[i, var].transAxes, fontsize = 12, verticalalignment = 'top')
+        
         # Set the y-axis limits to be the same as StochVol
         ax[i, var].set_ylim(y_min, y_max)
     
@@ -1375,6 +1463,7 @@ class Evaluation:
   def plot_forecasts(self):
     self.plot_predictions()
     self.plot_predictions_with_bands()
+    self.plot_volatility()
     self.plot_errors(data_sample='oob')
     self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
     self.evaluate_multi_step_forecasts()
