@@ -41,8 +41,10 @@ if cond_irf == True:
 print(EvaluationObj.check_results_sizes())
 
 if density_only == True:
-  EvaluationObj.evaluate_predictive_density()
-  EvaluationObj.plot_predictions_with_bands()
+  EvaluationObj.evaluate_predictive_density(post_covid = False)
+  EvaluationObj.evaluate_predictive_density(post_covid = True)
+  EvaluationObj.plot_predictions_with_bands(post_covid = False)
+  EvaluationObj.plot_predictions_with_bands(post_covid = True)
   EvaluationObj.plot_volatility()
 else:
   if fcast_only == True:

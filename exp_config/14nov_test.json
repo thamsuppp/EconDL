@@ -144,7 +144,7 @@
       "plot_all_bootstraps": false,
       "exps_to_plot": null,
       "repeats_to_include": null,
-      "test_exclude_last": 0,
+      "test_exclude_last": 10,
       "exclude_2020": false,
       "normalize_errors_to_benchmark": true,
       "experiments_to_compare": [0,1,2],

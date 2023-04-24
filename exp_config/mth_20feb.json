@@ -4,7 +4,7 @@
 
       "dataset": "monthly_new",
       "num_inner_bootstraps": 25,
-      "num_repeats": 3,
+      "num_repeats": 6,
       "default_nn_hyps": "nn_hyps_default",
       
       "var_names": ["oil", "Ex", "SPY", "DGS3", "inf", "unrate", "house_starts"],
@@ -54,38 +54,16 @@
           "reestimation_window": 1
       },
       "multi_forecasting": {
-          "forecast_horizons": 12,
+          "forecast_horizons": 24,
           "reestimation_window": 180,
           "forecast_method": "new",
-          "num_sim_bootstraps": 30,
+          "num_sim_bootstraps": 40,
           "benchmarks": ["VAR_roll", "AR_roll", "VAR_expand", "AR_expand", "RF", "XGBoost", "zero", "mean"]
       }
   },
 
   "nn_hyps": 
   [
-    {
-      "nodes": [200, 100, 50], 
-      "actv": "nn.SELU()", 
-      "tvpl_archi": [10], 
-      "lr": 0.00025, 
-      "time_dummy_setting": 2, 
-      "dropout_rate": 0.25, 
-      "precision_lambda": 0.1, 
-      "lambda_temper_epochs": 20, 
-      "optimizer": "Adam",
-      "s_pos_setting": {"hemis": "endog_time"}, 
-      "joint_estimation": true, 
-      "exog_data": false,
-      "time_hemi_prior_variance": 1,
-      "vol_hemi_prior_variance": 1,
-      "name": "Endog Time - Reestim 6",
-      "reestim_params": {
-          "reestim": true,
-          "same_train": false,
-          "reestimation_window": 6
-      }
-  },
       {
         "nodes": [200, 100, 50], 
         "actv": "nn.SELU()", 
@@ -154,6 +132,51 @@
   },
   {
     "nodes": [200, 100, 50], 
+    "actv": "nn.ReLU()", 
+    "tvpl_archi": [10], 
+    "lr": 0.00025, 
+    "time_dummy_setting": 2, 
+    "dropout_rate": 0.25, 
+    "precision_lambda": 0.1, 
+    "lambda_temper_epochs": 20, 
+    "optimizer": "Adam",
+    "s_pos_setting": {"hemis": "endog_exog_time"}, 
+    "joint_estimation": true, 
+    "exog_data": true,
+    "time_hemi_prior_variance": 1,
+    "vol_hemi_prior_variance": 1,
+    "name": "Endog Exog Time - Reestim 12 - RELU",
+    "reestim_params": {
+        "reestim": true,
+        "same_train": false,
+        "reestimation_window": 12
+    }
+},
+  {
+    "nodes": [200, 100, 50], 
+    "actv": "nn.SELU()", 
+    "tvpl_archi": [10], 
+    "lr": 0.00025, 
+    "time_dummy_setting": 2, 
+    "dropout_rate": 0.25, 
+    "precision_lambda": 0.1, 
+    "lambda_temper_epochs": 20, 
+    "optimizer": "Adam",
+    "s_pos_setting": {"hemis": "endog_exog_time"}, 
+    "joint_estimation": true, 
+    "exog_data": true,
+    "time_hemi_prior_variance": 1,
+    "vol_hemi_prior_variance": 25,
+    "name": "Endog Exog Time - Reestim 12 - PriorVol25",
+    "reestim_params": {
+        "reestim": true,
+        "same_train": false,
+        "reestimation_window": 12
+    }
+},
+  
+  {
+    "nodes": [200, 100, 50], 
     "actv": "nn.SELU()", 
     "tvpl_archi": [10], 
     "lr": 0.00025, 
@@ -164,7 +187,7 @@
     "optimizer": "Adam",
     "s_pos_setting": {"hemis": "endog"}, 
     "joint_estimation": true, 
-    "exog_data": true,
+    "exog_data": false,
     "time_hemi_prior_variance": 1,
     "vol_hemi_prior_variance": 1,
     "name": "Endog - No Reestim",
@@ -191,7 +214,7 @@
       "test_exclude_last": 30,
       "exclude_2020": false,
       "normalize_errors_to_benchmark": true,
-      "experiments_to_compare": [1,2,0,3],
+      "experiments_to_compare": [2,3,4],
       "stoch_vol_results_name": "all_monthly_feb"
   }
 }

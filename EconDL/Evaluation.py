@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.api import VAR
+from sklearn.linear_model import LinearRegression
 import os
 import seaborn as sns
 import colorcet as cc
@@ -17,7 +18,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 
-from scipy.stats import multivariate_normal
+from scipy.stats import multivariate_normal, norm
 import pyreadr
 
 
@@ -82,6 +83,8 @@ class Evaluation:
     self.SIGMAS_CONS_ALL = None
     self.PREDS_ALL = None
     self.PREDS_TEST_ALL = None
+    
+    self.VOL_SCALE_ALL = None # n_experiments x n_var
 
     self.Y_train = None
     self.Y_test = None
@@ -111,6 +114,8 @@ class Evaluation:
     self.load_results()
     if self.exclude_2020 == True:
       self.exclude_2020_results()
+      
+    self.conduct_volatility_correction()
 
   def check_results_sizes(self):
     return {
@@ -331,119 +336,254 @@ class Evaluation:
       preds_test = np.repeat(np.expand_dims(preds_test, axis = 1), self.num_bootstraps, axis = 1)
       self.PREDS_ALL[self.M_varnn + i, :,:,:] = preds
       self.PREDS_TEST_ALL[self.M_varnn + i,:,:,:] = preds_test
-      
-  def evaluate_predictive_density(self):
+  
+  def conduct_volatility_correction(self):
+
+    VOL_CORR_ALL = {
+      'scaler': np.ones((self.M_varnn, self.n_var)),
+      'intercept': np.zeros((self.M_varnn, self.n_var)),
+      'coef': np.ones((self.M_varnn, self.n_var))
+    }
+    
+    print('Conducting volatility correction')
+    # Conduct the volatility correction
+    for i in range(self.M_varnn):
+      for var in range(self.n_var):
+        
+        # Predicted volatility from model
+        oob_vol_pred = np.nanmedian(self.SIGMAS_ALL[i, :-self.test_size,var,var,:], axis = -1)
+        oob_mean_pred = np.nanmedian(self.PREDS_ALL[i,:,:,var], axis = 1)
+        # Residual
+        varnn_resid = self.Y_train[:,var] - oob_mean_pred
+        
+        x = oob_vol_pred # Predicted variance
+        y = varnn_resid ** 2 # Squared residuals
+        
+        # Run a linear regression: log squared residuals vs log predicted variance (with a constant term)
+        reg = LinearRegression().fit(np.log(x.reshape(-1, 1)), np.log(y))
+        # Get fitted values: 
+        log_y_hat = reg.predict(np.log(x.reshape(-1, 1)))
+        # Get residuals
+        reg_resid = np.log(y) - log_y_hat
+        scaler = np.mean(np.exp(reg_resid))
+        
+        # Get the intercept and coef of the regression
+        VOL_CORR_ALL['intercept'][i, var] = reg.intercept_
+        VOL_CORR_ALL['coef'][i, var] = reg.coef_
+        VOL_CORR_ALL['scaler'][i, var] = scaler
+        
+        print(f'Variable {var}: Intercept = {reg.intercept_}, Coef = {reg.coef_}, Scaler = {scaler}')
+        
+    self.VOL_CORR_ALL = VOL_CORR_ALL
+  
+  def evaluate_predictive_density(self, post_covid = False):
+    
+    if post_covid == True:
+      if self.dataset_name == 'quarterly_new':
+        post_covid_obs = 6
+      elif self.dataset_name == 'monthly_new':
+        post_covid_obs = 19
+      else:
+        post_covid_obs = 6
         
     ### Evaluate the predictive density for StochVol Benchmark
     
-    arfit = pyreadr.read_r(f'data/stochvol_results/arfit_{self.stoch_vol_results_name}.RData')['arfit_all'].to_numpy().T
-    svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}.RData')['svfit_all'].to_numpy().T
     # Stochvol loses 2 observations at the beginning
     Y_test = self.Y_test[2:, :]
     
-    # Plot y and the predicted mean in a graph (testing purposes)
-    # for var_num in range(Y_test.shape[1]):
-    #   y = Y_test[:,var_num]
-    #   ar = arfit[:,var_num]
-    #   sv = svfit[:, var_num]
-      
-    #   var_name = self.var_names[var_num]
-      
-    #   # Create a 2x1 subplot, plotting arfit_all and y in the first plot, and svfit_all in the second plot
-    #   fig, (ax1, ax2) = plt.subplots(2, 1)
-    #   fig.suptitle('SV Fit for ' + var_name)
-    #   ax1.plot(ar, label='AR(2) Mean Fit')
-    #   ax1.plot(y, label='Actual')
-    #   ax1.legend()
-    #   ax2.plot(sv, label='SVol Fit')
-    #   ax2.legend()
-    #   plt.show()
-    #   image_file = f"{self.image_folder_path}/stochvol_density_{var_name}.png"
-    #   plt.savefig(image_file)
-    #   plt.close()
-    if self.test_exclude_last > 0:
+    #stochvol_benchmarks = ['AR2', 'AR0', 'AR2 Const Vol', 'BVAR']
+    stochvol_benchmarks = ['AR2', 'AR0', 'AR2 Const Vol']
+
+    arfit = pyreadr.read_r(f'data/stochvol_results/arfit_{self.stoch_vol_results_name}.RData')['arfit_all'].to_numpy().T
+    if post_covid == False:
       preds_test_mean = arfit[:-self.test_exclude_last, :]
-      sigmas_mean = svfit[:-self.test_exclude_last, :]
       Y_test = Y_test[:-self.test_exclude_last, :]
-    else:
-      preds_test_mean = arfit
-      sigmas_mean = svfit
+    else: # If we are doing post_covid
+      preds_test_mean = arfit[-post_covid_obs:, :]
+      Y_test = Y_test[-post_covid_obs:, :]
     
-    PRED_DENSITY_MARG_SVOL = np.zeros((1, preds_test_mean.shape[0] + 2, preds_test_mean.shape[1]))
+    # PRED_DENSITY_MARG_SVOL has size of test_obs (after excluding) + 2
+    PRED_DENSITY_MARG_SVOL = np.zeros((len(stochvol_benchmarks), preds_test_mean.shape[0] + 2, preds_test_mean.shape[1]))
     PRED_DENSITY_MARG_SVOL[:] = np.nan
-    # Loop over all time steps
-    for t in range(preds_test_mean.shape[0]):
-      pred_mean = preds_test_mean[t, :]
-      pred_sigma = sigmas_mean[t, :]
-      y_test = Y_test[t, :]
+    
+    # Make dataframe wtih summary statistics of the predictive density for SVol
+    marginal_density_df_svol = pd.DataFrame()
+    
+    for benchmark_id, benchmark in enumerate(stochvol_benchmarks):
+      # Loading the StochVol benchmarks: called arfit and svfit: (n_obs x n_var)
+      if benchmark == 'AR2':
+        arfit = pyreadr.read_r(f'data/stochvol_results/arfit_{self.stoch_vol_results_name}.RData')['arfit_all'].to_numpy().T
+        svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}.RData')['svfit_all'].to_numpy().T
+      elif benchmark == 'AR0':
+        arfit = pyreadr.read_r(f'data/stochvol_results/arfit_{self.stoch_vol_results_name}_ar0.RData')['arfit_all'].to_numpy().T
+        svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}_ar0.RData')['svfit_all'].to_numpy().T
+      elif benchmark == 'AR2 Const Vol':
+        arfit = np.load(f'data/stochvol_results/arfit_{self.stoch_vol_results_name}_ar2_constvol.npy')[2:, :]
+        svfit = np.load(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}_ar2_constvol.npy')[2:, :]
+      elif benchmark == 'BVAR':
+        arfit = pyreadr.read_r(f'data/stochvol_results/y_pred_{self.stoch_vol_results_name}_bvar_hor1.RData')['y_pred_hor1'].to_numpy().T[2:, :]
+        svfit = pyreadr.read_r(f'data/stochvol_results/y_sd_{self.stoch_vol_results_name}_bvar_hor1.RData')['y_sd_hor1'].to_numpy().T[2:, :]
+        
+      if self.test_exclude_last > 0 and post_covid == False:
+        preds_test_mean = arfit[:-self.test_exclude_last, :]
+        sigmas_test_mean = svfit[:-self.test_exclude_last, :]
+      elif post_covid == True:
+        preds_test_mean = arfit[-post_covid_obs:, :]
+        sigmas_test_mean = svfit[-post_covid_obs:, :]
+      else:
+        preds_test_mean = arfit
+        sigmas_test_mean = svfit   
+        
+      # preds_test_mean and sigmas_test_mean have size of test_obs (after excluding)
+      
+      # Loop over all time steps
+      for t in range(preds_test_mean.shape[0]):
+        
+        # Get the mean of test, sigmas of test, and y_test
+        pred_mean = preds_test_mean[t, :]
+        pred_sigma = sigmas_test_mean[t, :]
+        y_test = Y_test[t, :]
+        
+        for var in range(preds_test_mean.shape[1]):
+          
+          log_density = -np.log(norm.pdf(y_test[var] - pred_mean[var], loc = 0, scale = pred_sigma[var]))
+          
+          # Construct a univariate normal with pred_mean and pred_sigma *** SQUARE THIS BECAUSE THEY ARE ASKING FOR COV MAT
+          # univ_norm = multivariate_normal(pred_mean[var], pred_sigma[var] ** 2)
+          # Evaluate density at y_test
+          # log_density = univ_norm.logpdf(y_test[var])
+          PRED_DENSITY_MARG_SVOL[benchmark_id, t+2, var] = log_density
       
       for var in range(preds_test_mean.shape[1]):
-        # Construct a univariate normal with pred_mean and pred_sigma *** SQUARE THIS BECAUSE THEY ARE ASKING FOR COV MAT
-        univ_norm = multivariate_normal(pred_mean[var], pred_sigma[var] ** 2)
-        # Evaluate density at y_test
-        log_density = univ_norm.logpdf(y_test[var])
-        PRED_DENSITY_MARG_SVOL[0, t+2, var] = log_density
+        marginal_density_df_var = pd.DataFrame({'Mean': PRED_DENSITY_MARG_SVOL[benchmark_id, 2:, var].mean(),
+                              'Median': np.median(PRED_DENSITY_MARG_SVOL[benchmark_id, 2:, var]),
+                              '10th': np.percentile(PRED_DENSITY_MARG_SVOL[benchmark_id, 2:, var], 10),
+                              '90th': np.percentile(PRED_DENSITY_MARG_SVOL[benchmark_id, 2:, var], 90),
+                              'Variable': self.var_names[var],
+                              'Experiment': f'StochVol {benchmark}'
+                              }, index=[0])
         
-    # Make dataframe wtih sum and mean of predictive density as the 2 columns
-    marginal_density_df_svol = pd.DataFrame()
-    for var in range(preds_test_mean.shape[1]):
-      marginal_density_df_var = pd.DataFrame({'Mean': PRED_DENSITY_MARG_SVOL[:, 2:, var].mean(axis=1),
-                            'Median': np.median(PRED_DENSITY_MARG_SVOL[:, 2:, var], axis=1),
-                            '10th': np.percentile(PRED_DENSITY_MARG_SVOL[:, 2:, var], 10, axis=1),
-                            '90th': np.percentile(PRED_DENSITY_MARG_SVOL[:, 2:, var], 90, axis=1),
-                            'Variable': self.var_names[var],
-                            'Experiment': 'StochVol'
-                            })
-      
-      marginal_density_df_svol = pd.concat([marginal_density_df_svol, marginal_density_df_var], axis=0).reset_index(drop=True)
+        marginal_density_df_svol = pd.concat([marginal_density_df_svol, marginal_density_df_var], axis=0).reset_index(drop=True)
     
-    marginal_density_df_svol.to_csv(f'{self.image_folder_path}/marginal_density_svol_test.csv')
+    marginal_density_df_svol.to_csv(f"{self.image_folder_path}/marginal_density_svol_test{'_post_covid' if post_covid == True else ''}.csv")
     
-  
     ### Evaluate the predictive density for VARNN
-        
-    PRED_DENSITY_MARG_ALL = np.zeros((self.M_varnn, self.PREDS_TEST_ALL.shape[1], self.PREDS_TEST_ALL.shape[3]))
-    PRED_DENSITY_JOINT_ALL = np.zeros((self.M_varnn, self.PREDS_TEST_ALL.shape[1]))
+    if post_covid == False:
+      pred_density_marg_all_n_obs = self.PREDS_TEST_ALL.shape[1] - self.test_exclude_last
+      Y_test = self.Y_test[:-self.test_exclude_last, :]
+    else:
+      pred_density_marg_all_n_obs = post_covid_obs
+      Y_test = self.Y_test[-post_covid_obs:, :]
+
+    PRED_DENSITY_MARG_ALL = np.zeros((self.M_varnn, pred_density_marg_all_n_obs, self.PREDS_TEST_ALL.shape[3]))
+    PRED_DENSITY_JOINT_ALL = np.zeros((self.M_varnn, pred_density_marg_all_n_obs))
+    PRED_DENSITY_MARG_ALL[:] = np.nan
+    PRED_DENSITY_JOINT_ALL[:] = np.nan
+    
+    # PRED_DENSITY_MARG_ALL has the same size as the test set (after excluding)
 
     for model in range(self.M_varnn):
       
-      PREDS_TEST = self.PREDS_TEST_ALL[model, :,:,:] # n_obs x n_bootstraps x n_vars
-      SIGMAS = self.SIGMAS_ALL[model, -self.test_size:,:,:,:] # n_obs x n_vars x n_vars x n_bootstraps
-
+      if self.test_exclude_last > 0 and post_covid == False:
+        PREDS_TEST = self.PREDS_TEST_ALL[model, :(-self.test_exclude_last),:,:] # n_obs x n_bootstraps x n_vars
+        SIGMAS_TEST = self.SIGMAS_ALL[model, -self.test_size:(-self.test_exclude_last),:,:,:] # n_obs x n_vars x n_vars x n_bootstraps
+      elif post_covid == True:
+        PREDS_TEST = self.PREDS_TEST_ALL[model, -post_covid_obs:,:,:] # n_obs x n_bootstraps x n_vars
+        SIGMAS_TEST = self.SIGMAS_ALL[model, -post_covid_obs:,:,:] # n_obs x n_vars x n_vars x n_bootstraps
+      else:
+        PREDS_TEST = self.PREDS_TEST_ALL[model, :,:,:] # n_obs x n_bootstraps x n_vars
+        SIGMAS_TEST = self.SIGMAS_ALL[model, -self.test_size:,:,:,:] # n_obs x n_vars x n_vars x n_bootstraps
+        
       # Take the mean across all bootstraps: 20 x 3
       preds_test_mean = PREDS_TEST.mean(axis=1)
-      # Take the mean of all cov mats across all bootstraps. sigmas_mean: 20 x 3 x 3
-      sigmas_mean = SIGMAS.mean(axis = 3)
+      # Take the mean of all cov mats across all bootstraps. sigmas_test_mean: 20 x 3 x 3
+      sigmas_test_mean = SIGMAS_TEST.mean(axis = 3)
+      
+      #preds_test_mean and sigmas_test_mean have the same size as the test set (after excluding)
 
       # Loop over all time steps
       for t in range(PREDS_TEST.shape[0]):
         pred_mean = preds_test_mean[t, :]
-        pred_sigma = sigmas_mean[t, :, :]
-        y_test = self.Y_test[t, :]
+        pred_sigma = sigmas_test_mean[t, :, :]
+        y_test = Y_test[t, :]
         
         ### Calculating joint density
         # Construct a multivariate normal with pred_mean and pred_sigma
         mv_norm = multivariate_normal(pred_mean, pred_sigma)
         # Evaluate the density at y_test
-        log_density = mv_norm.logpdf(y_test)
+        log_density = -mv_norm.logpdf(y_test)
         PRED_DENSITY_JOINT_ALL[model, t] = log_density
         
         ### Calculating marginal density
         for var in range(PREDS_TEST.shape[2]):
-          # Construct a univariate normal with pred_mean and pred_sigma
-          univ_norm = multivariate_normal(pred_mean[var], pred_sigma[var, var])
+          # Construct a univariate normal with pred_mean and pred_sigma 
+          # Vol Correction Regression: log squared residuals vs log predicted variance (with a constant term)
+          scaler = self.VOL_CORR_ALL['scaler'][model, var] # scaler: E[exp(epsilon)]
+          intercept = self.VOL_CORR_ALL['intercept'][model, var]
+          coef = self.VOL_CORR_ALL['coef'][model, var]
+          if t == 0:
+            print(f'Volatility Scaling: Model: {model}, Var: {var}, Scaler: {scaler}, Intercept: {intercept}, Coef: {coef}')
+          
+          # Get fitted values of the vol corr regression, using predicted variance (remember that pred_sigma is a cov mat) as the independent variable
+          fitted = intercept + coef * np.log(pred_sigma[var, var])
+          # First term of updated volatility eqn: exp of fitted
+          exp_fitted = np.exp(fitted)
+          # Second term of updated volatility eqn: exp of log of predicted variance (scaler)
+          corrected_pred_sigmas = exp_fitted * scaler
+          # Square root the variance into volatility
+          corrected_pred_vol = corrected_pred_sigmas ** 0.5
+  
+          log_density = -np.log(norm.pdf(y_test[var] - pred_mean[var], loc = 0, scale = corrected_pred_vol))
+          #univ_norm = multivariate_normal(pred_mean[var], pred_sigma[var, var])
           # Evaluate the density at y_test
-          log_density = univ_norm.logpdf(y_test[var])
+          #log_density = univ_norm.logpdf(y_test[var])
           PRED_DENSITY_MARG_ALL[model, t, var] = log_density
           
+
+    # Make dataframe with sum and mean of predictive density as the 2 columns
+    # *to make this comparable with StochVol, we need to exclude the first 2 time steps
+    marginal_density_df = pd.DataFrame()
+    
+    if post_covid == False:
+      PRED_DENSITY_MARG_ALL_SUBSET =  PRED_DENSITY_MARG_ALL[:, 2:, :]
+      PRED_DENSITY_JOINT_ALL_SUBSET = PRED_DENSITY_JOINT_ALL[:, 2:]
+    else:
+      PRED_DENSITY_MARG_ALL_SUBSET =  PRED_DENSITY_MARG_ALL
+      PRED_DENSITY_JOINT_ALL_SUBSET = PRED_DENSITY_JOINT_ALL
+      
+    for var in range(self.n_var):
+      marginal_density_df_var = pd.DataFrame({'Mean': PRED_DENSITY_MARG_ALL_SUBSET[:,:,var].mean(axis=1),
+                            'Median': np.median(PRED_DENSITY_MARG_ALL_SUBSET[:,:,var], axis=1),
+                            '10th': np.percentile(PRED_DENSITY_MARG_ALL_SUBSET[:,:,var], 10, axis=1),
+                            '90th': np.percentile(PRED_DENSITY_MARG_ALL_SUBSET[:,:,var], 90, axis=1),
+                            'Variable': self.var_names[var]
+                            }, index = self.experiment_names)
+      marginal_density_df_var = marginal_density_df_var.reset_index()
+      marginal_density_df_var = marginal_density_df_var.rename(columns = {'index': 'Experiment'})
+      
+      marginal_density_df = pd.concat([marginal_density_df, marginal_density_df_var], axis=0)
+    
+    # Combine the SVol benchmark results to the VARNN results
+    marginal_density_df = pd.concat([marginal_density_df, marginal_density_df_svol], axis = 0)
+    # Sort by variable
+    marginal_density_df = marginal_density_df.sort_values(by = ['Variable', 'Experiment'])
+    
+    # Make dataframe wtih sum and mean of predictive density as the 2 columns
+    joint_density_df = pd.DataFrame({'Mean': PRED_DENSITY_JOINT_ALL_SUBSET.mean(axis=1), 
+                                     'Median': np.median(PRED_DENSITY_JOINT_ALL_SUBSET, axis=1),
+                      '10th': np.percentile(PRED_DENSITY_JOINT_ALL_SUBSET, 10, axis=1),
+                      '90th': np.percentile(PRED_DENSITY_JOINT_ALL_SUBSET, 90, axis=1)
+    }, index = self.experiment_names)
+    
+    joint_density_df.to_csv(f"{self.image_folder_path}/joint_density_test{'_post_covid' if post_covid == True else ''}.csv")
+    marginal_density_df.to_csv(f"{self.image_folder_path}/marginal_density_test{'_post_covid' if post_covid == True else ''}.csv")
+    
+
     ### Plot the predictive density of all the models' predictive densities pre-COVID
-    fig, axs = plt.subplots(self.M_varnn + 1, 1, figsize = (6, 4 * self.M_varnn + 1), constrained_layout=True)
+    fig, axs = plt.subplots(self.M_varnn + len(stochvol_benchmarks), 1, figsize = (6, 4 * self.M_varnn + len(stochvol_benchmarks)), constrained_layout=True)
     for model in range(self.M_varnn):
       for var in range(self.n_var):
-        if self.test_exclude_last > 0:
-          axs[model].plot(PRED_DENSITY_MARG_ALL[model, :-self.test_exclude_last, var], label = self.var_names[var])
-        else:
-          axs[model].plot(PRED_DENSITY_MARG_ALL[model, :, var], label = self.var_names[var])  
+        axs[model].plot(PRED_DENSITY_MARG_ALL_SUBSET[model, :, var], label = self.var_names[var])  
       # Place title (experiment name)
       axs[model].set_title(self.experiment_names[model])
       # Place legend on the first figure
@@ -451,62 +591,34 @@ class Evaluation:
         axs[model].legend()
         
     # Plot the predictive density for SVol benchmark
-    for var in range(self.n_var):
-      axs[-1].plot(PRED_DENSITY_MARG_SVOL[0, :, var], label = self.var_names[var])
-    axs[-1].set_title('Stochastic Volatility Benchmark')
+    for benchmark_id, benchmark in enumerate(stochvol_benchmarks):
+      for var in range(self.n_var):
+        axs[self.M_varnn + benchmark_id].plot(PRED_DENSITY_MARG_SVOL[benchmark_id, 2:, var], label = self.var_names[var])
+      axs[self.M_varnn + benchmark_id].set_title(f'SVol {benchmark}')
     
-    image_file = f"{self.image_folder_path}/pred_density_by_model.png"
+    image_file = f"{self.image_folder_path}/pred_density_by_model{'_post_covid' if post_covid == True else ''}.png"
     plt.savefig(image_file)
     plt.close()
     
-    # Make dataframe wtih sum and mean of predictive density as the 2 columns
-    joint_density_df = pd.DataFrame({'Mean': PRED_DENSITY_JOINT_ALL.mean(axis=1), 
-                                     'Median': np.median(PRED_DENSITY_JOINT_ALL, axis=1),
-                      '10th': np.percentile(PRED_DENSITY_JOINT_ALL, 10, axis=1),
-                      '90th': np.percentile(PRED_DENSITY_JOINT_ALL, 90, axis=1)
-    }, index = self.experiment_names)
     
     ### Plot the predictive density for each variable
     fig, axs = plt.subplots(self.n_var, 1, figsize = (6, 4 * self.n_var), constrained_layout=True)
     for var in range(self.n_var):
       for model in range(self.M_varnn):
-        if self.test_exclude_last > 0:
-          axs[var].plot(PRED_DENSITY_MARG_ALL[model, :-self.test_exclude_last, var], label = self.experiment_names[model])
-        else:
-          axs[var].plot(PRED_DENSITY_MARG_ALL[model, :, var], label = self.experiment_names[model])
+        axs[var].plot(PRED_DENSITY_MARG_ALL_SUBSET[model, :, var], label = self.experiment_names[model])
       # Plot the SVol bench mark
-      axs[var].plot(PRED_DENSITY_MARG_SVOL[0, :, var], label = 'SVol')
+      for benchmark_id, benchmark in enumerate(stochvol_benchmarks):
+        axs[var].plot(PRED_DENSITY_MARG_SVOL[benchmark_id, 2:, var], label = f'SVol {benchmark}')
       # Place title (variable name)
       axs[var].set_title(self.var_names[var])
       # Place legend on first figure
       if var == 0:
         axs[var].legend()
     
-    image_file = f"{self.image_folder_path}/pred_density_by_var.png"
+    image_file = f"{self.image_folder_path}/pred_density_by_var{'_post_covid' if post_covid == True else ''}.png"
     plt.savefig(image_file)
     plt.close()
-
-    # Make dataframe wtih sum and mean of predictive density as the 2 columns
-    # *to make this comparable with StochVol, we need to exclude the first 2 time steps
-    marginal_density_df = pd.DataFrame()
-    for var in range(self.n_var):
-      marginal_density_df_var = pd.DataFrame({'Mean': PRED_DENSITY_MARG_ALL[:, 2:, var].mean(axis=1),
-                            'Median': np.median(PRED_DENSITY_MARG_ALL[:, 2:, var], axis=1),
-                            '10th': np.percentile(PRED_DENSITY_MARG_ALL[:, 2:, var], 10, axis=1),
-                            '90th': np.percentile(PRED_DENSITY_MARG_ALL[:, 2:, var], 90, axis=1),
-                            'Variable': self.var_names[var]
-                            }, index = self.experiment_names)
-      marginal_density_df_var = marginal_density_df_var.reset_index()
-      marginal_density_df_var = marginal_density_df_var.rename(columns = {'index': 'Experiment'})
-      
-      marginal_density_df = pd.concat([marginal_density_df, marginal_density_df_var], axis=0)
-      
-    marginal_density_df = pd.concat([marginal_density_df, marginal_density_df_svol], axis = 0)
-    # Sort by variable
-    marginal_density_df = marginal_density_df.sort_values(by = ['Variable', 'Experiment'])
     
-    joint_density_df.to_csv(f'{self.image_folder_path}/joint_density_test.csv')
-    marginal_density_df.to_csv(f'{self.image_folder_path}/marginal_density_test.csv')
     
     # If exclude_2020, then also output the density scores pre and post COVID (as well as the total errors)
     if self.exclude_2020 == True:
@@ -883,15 +995,46 @@ class Evaluation:
     # Square root the diagonal elements to save as the volatility, taking the median across bootstraps
     for i in range(self.M_varnn):
       for var in range(self.n_var):
-        sigmas_varnn[i, :, var] = np.sqrt(np.nanmedian(SIGMAS_ALL_PLOT[i, :, var, var, :], axis = -1))
+        pred_sigma_var = np.nanmedian(SIGMAS_ALL_PLOT[i, :, var, var, :], axis = -1)
+        
+        # Construct a univariate normal with pred_mean and pred_sigma 
+        # Vol Correction Regression: log squared residuals vs log predicted variance (with a constant term)
+        scaler = self.VOL_CORR_ALL['scaler'][i, var] # scaler: E[exp(epsilon)]
+        intercept = self.VOL_CORR_ALL['intercept'][i, var]
+        coef = self.VOL_CORR_ALL['coef'][i, var]
+        print(f'Volatility Scaling: Model: {i}, Var: {var}, Scaler: {scaler}, Intercept: {intercept}, Coef: {coef}')
+        
+        # Get fitted values of the vol corr regression, using predicted variance (remember that pred_sigma is a cov mat) as the independent variable
+        fitted = intercept + coef * np.log(pred_sigma_var)
+        # First term of updated volatility eqn: exp of fitted
+        exp_fitted = np.exp(fitted)
+        # Second term of updated volatility eqn: exp of log of predicted variance (scaler)
+        corrected_pred_sigmas = exp_fitted * scaler
+        # Square root the variance into volatility
+        corrected_pred_vol = corrected_pred_sigmas ** 0.5
+        
+        sigmas_varnn[i, :, var] = corrected_pred_vol
     
     # Load the SV results
     svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}.RData')['svfit_all'].to_numpy().T
-    #sigmas_svol = np.zeros((svfit.shape[0] + 2 - self.test_exclude_last, svfit.shape[1]))
-    sigmas_svol = np.zeros((svfit.shape[0] + 2, svfit.shape[1]))
+    
+    benchmarks = ['AR2', 'AR0', 'AR2 Const Vol', 'BVAR']
+    sigmas_svol = np.zeros((len(benchmarks), svfit.shape[0] + 2, svfit.shape[1]))
     sigmas_svol[:] = np.nan
     
-    sigmas_svol[2:, :] = svfit
+    for benchmark_id, benchmark in enumerate(benchmarks):
+      
+      # Loading the StochVol benchmarks: called arfit and svfit
+      if benchmark == 'AR2':
+        svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}.RData')['svfit_all'].to_numpy().T
+      elif benchmark == 'AR0':
+        svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}_ar0.RData')['svfit_all'].to_numpy().T
+      elif benchmark == 'AR2 Const Vol':
+        svfit = np.load(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}_ar2_constvol.npy')[2:, :]
+      elif benchmark == 'BVAR':
+        svfit = pyreadr.read_r(f'data/stochvol_results/y_sd_{self.stoch_vol_results_name}_bvar_hor1.RData')['y_sd_hor1'].to_numpy().T[2:, :]
+    
+      sigmas_svol[benchmark_id, 2:, :] = svfit
     
     # if self.test_exclude_last > 0:
     #   sigmas_svol[2:,:] = svfit[:-self.test_exclude_last, :]
@@ -905,7 +1048,8 @@ class Evaluation:
       for i in range(self.M_varnn):
         axs[var].plot(sigmas_varnn[i, :, var], label = self.experiment_names[i])
       # Plot the SV experiment
-      axs[var].plot(sigmas_svol[:, var], label = 'SV')
+      for benchmark_id, benchmark in enumerate(benchmarks):
+        axs[var].plot(sigmas_svol[benchmark_id, :, var], label = f'SV {benchmark}')
       axs[var].set_title(f'{self.var_names[var]}')
       axs[var].set_xlabel('Time')
       axs[var].set_ylabel('Volatility')
@@ -1078,10 +1222,20 @@ class Evaluation:
 
     print(f'Predictions plotted at {image_file}')
     
-  def plot_predictions_with_bands(self):
+  def plot_predictions_with_bands(self, post_covid = False):
     
-    if self.test_exclude_last > 0:
+    if post_covid == True:
+      if self.dataset_name == 'quarterly_new':
+        post_covid_obs = 6
+      elif self.dataset_name == 'monthly_new':
+        post_covid_obs = 19
+      else:
+        post_covid_obs = 6
+    
+    if self.test_exclude_last > 0 and post_covid == False:
       SIGMAS_ALL_TEST = self.SIGMAS_ALL[:, -self.test_size:-self.test_exclude_last,:,:,:]
+    elif post_covid == True:
+      SIGMAS_ALL_TEST = self.SIGMAS_ALL[:, -post_covid_obs:,:,:,:]
     else:
       SIGMAS_ALL_TEST = self.SIGMAS_ALL[:, -self.test_size:,:,:,:]
     # Sigmas: n_models x n_obs x n_var x n_var x n_bootstraps
@@ -1092,49 +1246,80 @@ class Evaluation:
     arfit = pyreadr.read_r(f'data/stochvol_results/arfit_{self.stoch_vol_results_name}.RData')['arfit_all'].to_numpy().T
     svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}.RData')['svfit_all'].to_numpy().T
     
-    preds_median_svol = np.zeros((arfit.shape[0] + 2 - self.test_exclude_last, arfit.shape[1]))
-    sigmas_svol = np.zeros((arfit.shape[0] + 2 - self.test_exclude_last, arfit.shape[1]))
+    #stochvol_benchmarks = ['AR2', 'AR0', 'AR2 Const Vol', 'BVAR']
+    stochvol_benchmarks = ['AR2', 'AR0', 'AR2 Const Vol']
+    # preds_median_svol: n_benchmarks x n_test_obs x n_var
+    if post_covid == False:
+      preds_median_svol = np.zeros((len(stochvol_benchmarks), arfit.shape[0] + 2 - self.test_exclude_last, arfit.shape[1]))
+      sigmas_svol = np.zeros((len(stochvol_benchmarks), arfit.shape[0] + 2 - self.test_exclude_last, arfit.shape[1]))
+    else:
+      preds_median_svol = np.zeros((len(stochvol_benchmarks), post_covid_obs, arfit.shape[1]))
+      sigmas_svol = np.zeros((len(stochvol_benchmarks), post_covid_obs, arfit.shape[1]))
+      
     preds_median_svol[:] = np.nan
     sigmas_svol[:] = np.nan
+
     
-    print(f'arfit shape: {arfit.shape}, exclude last: {self.test_exclude_last}, preds mean svol shape: {preds_median_svol.shape}')
-    
-    if self.test_exclude_last > 0:
-      preds_median_svol[2:,:] = arfit[:-self.test_exclude_last, :]
-      sigmas_svol[2:,:] = svfit[:-self.test_exclude_last, :]
-      actual = self.Y_test[:-self.test_exclude_last, :]
-    else:
-      preds_median_svol[2:,:] = arfit
-      sigmas_svol[2:,:] = svfit
-      actual = self.Y_test
+    for benchmark_id, benchmark in enumerate(stochvol_benchmarks):
       
-    # preds_median_svol and sigmas_svol dimension: (n_obs, n_var)
+      # Loading the StochVol benchmarks: arfit and svfit - size
+      if benchmark == 'AR2':
+        arfit = pyreadr.read_r(f'data/stochvol_results/arfit_{self.stoch_vol_results_name}.RData')['arfit_all'].to_numpy().T
+        svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}.RData')['svfit_all'].to_numpy().T
+      elif benchmark == 'AR0':
+        arfit = pyreadr.read_r(f'data/stochvol_results/arfit_{self.stoch_vol_results_name}_ar0.RData')['arfit_all'].to_numpy().T
+        svfit = pyreadr.read_r(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}_ar0.RData')['svfit_all'].to_numpy().T
+      elif benchmark == 'AR2 Const Vol':
+        # Read an npy file
+        arfit = np.load(f'data/stochvol_results/arfit_{self.stoch_vol_results_name}_ar2_constvol.npy')[2:, :]
+        svfit = np.load(f'data/stochvol_results/svfit_{self.stoch_vol_results_name}_ar2_constvol.npy')[2:, :]
+      elif benchmark == 'BVAR':
+        arfit = pyreadr.read_r(f'data/stochvol_results/y_pred_{self.stoch_vol_results_name}_bvar_hor1.RData')['y_pred_hor1'].to_numpy().T[2:, :]
+        svfit = pyreadr.read_r(f'data/stochvol_results/y_sd_{self.stoch_vol_results_name}_bvar_hor1.RData')['y_sd_hor1'].to_numpy().T[2:, :]
+      
+      if self.test_exclude_last > 0 and post_covid == False:
+        preds_median_svol[benchmark_id, 2:,:] = arfit[:-self.test_exclude_last, :]
+        sigmas_svol[benchmark_id, 2:,:] = svfit[:-self.test_exclude_last, :]
+        actual = self.Y_test[:-self.test_exclude_last, :]
+      elif post_covid == True:
+        preds_median_svol[benchmark_id, :,:] = arfit[-post_covid_obs:, :]
+        sigmas_svol[benchmark_id, :,:] = svfit[-post_covid_obs:, :]
+        actual = self.Y_test[-post_covid_obs:, :]
+      else:
+        preds_median_svol[benchmark_id, 2:,:] = arfit
+        sigmas_svol[benchmark_id, 2:,:] = svfit
+        actual = self.Y_test
+        
+    # preds_median_svol and sigmas_svol dimension: (n_benchmarks, n_obs, n_var)
     preds_lcl_1sd_svol = preds_median_svol - sigmas_svol
     preds_ucl_1sd_svol = preds_median_svol + sigmas_svol   
     preds_lcl_2sd_svol = preds_median_svol - 1.96 * sigmas_svol
     preds_ucl_2sd_svol = preds_median_svol + 1.96 * sigmas_svol
     
-    fig, ax = plt.subplots(self.M_varnn + 1, self.n_var, figsize = (6 * self.n_var, 4 * (self.M_varnn + 1)), constrained_layout = True)
+    ### Plot the predictions with bands
+    fig, ax = plt.subplots(self.M_varnn + len(stochvol_benchmarks), self.n_var, figsize = (6 * self.n_var, 4 * (self.M_varnn + len(stochvol_benchmarks))), constrained_layout = True)
     
     for var in range(self.n_var):
       
       ### Plot preds with bands for StochVol
+      for benchmark_id, benchmark in enumerate(stochvol_benchmarks):
       
-      # Calculate the 68% and 95% nominal coverage
-      coverage_1sd_svol = (preds_lcl_1sd_svol[:, var] <= actual[:, var]) & (actual[:, var] <= preds_ucl_1sd_svol[:, var])
-      coverage_1sd_svol = np.mean(coverage_1sd_svol[2:])
-      coverage_2sd_svol = (preds_lcl_2sd_svol[:, var] <= actual[:, var]) & (actual[:, var] <= preds_ucl_2sd_svol[:, var])
-      coverage_2sd_svol = np.mean(coverage_2sd_svol[2:])
-      
-      ax[self.M_varnn, var].plot(preds_median_svol[:, var], lw = 0.75, label = 'Median', color = 'b')
-      ax[self.M_varnn, var].fill_between(list(range(preds_median_svol.shape[0])), preds_lcl_1sd_svol[:, var], preds_ucl_1sd_svol[:, var], color = 'b', alpha = 0.5)
-      ax[self.M_varnn, var].fill_between(list(range(preds_median_svol.shape[0])), preds_lcl_2sd_svol[:, var], preds_ucl_2sd_svol[:, var], color = 'b', alpha = 0.25)
-      ax[self.M_varnn, var].plot(actual[:, var], lw = 1, label = 'Actual', color = 'black')
-      ax[self.M_varnn, var].set_title(f'{self.var_names[var]}, StochVol')
-      
-      # Add text within the figure to show the coverage
-      ax[self.M_varnn, var].text(0.05, 0.95, f'68%: {coverage_1sd_svol:.2f}, 95%: {coverage_2sd_svol:.2f}', transform = ax[self.M_varnn, var].transAxes, fontsize = 12, verticalalignment = 'top')
-      
+        # Calculate the 68% and 95% nominal coverage
+        coverage_1sd_svol = (preds_lcl_1sd_svol[benchmark_id, :, var] <= actual[:, var]) & (actual[:, var] <= preds_ucl_1sd_svol[benchmark_id, :, var])
+        coverage_1sd_svol = np.mean(coverage_1sd_svol[2:])
+        coverage_2sd_svol = (preds_lcl_2sd_svol[benchmark_id, :, var] <= actual[:, var]) & (actual[:, var] <= preds_ucl_2sd_svol[benchmark_id, :, var])
+        coverage_2sd_svol = np.mean(coverage_2sd_svol[2:])
+        
+        ax[self.M_varnn + benchmark_id, var].plot(preds_median_svol[benchmark_id, :, var], lw = 0.75, label = 'Median', color = 'b')
+        ax[self.M_varnn + benchmark_id, var].fill_between(list(range(preds_median_svol.shape[1])), preds_lcl_1sd_svol[benchmark_id, :, var], preds_ucl_1sd_svol[benchmark_id, :, var], color = 'b', alpha = 0.5)
+        ax[self.M_varnn + benchmark_id, var].fill_between(list(range(preds_median_svol.shape[1])), preds_lcl_2sd_svol[benchmark_id, :, var], preds_ucl_2sd_svol[benchmark_id, :, var], color = 'b', alpha = 0.25)
+        ax[self.M_varnn + benchmark_id, var].plot(actual[:, var], lw = 1, label = 'Actual', color = 'black')
+        ax[self.M_varnn + benchmark_id, var].set_title(f'{self.var_names[var]}, StochVol {benchmark}')
+        
+        # Add text within the figure to show the coverage
+        ax[self.M_varnn + benchmark_id, var].text(0.05, 0.95, f'68%: {coverage_1sd_svol:.2f}, 95%: {coverage_2sd_svol:.2f}', 
+                                                  transform = ax[self.M_varnn + benchmark_id, var].transAxes, fontsize = 12, verticalalignment = 'top')
+        
       # Save the y-axis limits
       y_min = ax[self.M_varnn, var].get_ylim()[0]
       y_max = ax[self.M_varnn, var].get_ylim()[1]
@@ -1143,28 +1328,44 @@ class Evaluation:
       for i in range(self.M_varnn):
         
         variances = SIGMAS_ALL_TEST_MEDIAN[i,:,var,var] # this is wrong (for training) but change it later. sigmas: n_obs x n_var x n_var
-        # Square root every value
-        sigmas = np.sqrt(variances)
+        
+        scaler = self.VOL_CORR_ALL['scaler'][i, var]
+        intercept = self.VOL_CORR_ALL['intercept'][i, var]
+        coef = self.VOL_CORR_ALL['coef'][i, var]
+        
+        print(f'Volatility Scaling: Model: {i}, Var: {var}, Scaler: {scaler}, Intercept: {intercept}, Coef: {coef}')
+        
+        # Get fitted values of the vol corr regression, using predicted variance (remember that pred_sigma is a cov mat) as the independent variable
+        fitted = intercept + coef * np.log(variances)
+        # First term of updated volatility eqn: exp of fitted
+        exp_fitted = np.exp(fitted)
+        # Second term of updated volatility eqn: exp of log of predicted variance (scaler)
+        corrected_pred_sigmas = exp_fitted * scaler
+        # Square root the variance into volatility
+        corrected_pred_vols = corrected_pred_sigmas ** 0.5
 
         if self.is_test == False:
           preds = self.PREDS_ALL[i,:,:,var] # preds: n_obs x n_bootstraps (for one variable)
           
           actual_var = self.Y_train[:, var]
         else:
-          if self.test_exclude_last == 0:
-            preds = self.PREDS_TEST_ALL[i,:,:,var]
-            actual_var = self.Y_test[:, var]
-          else:
+          if self.test_exclude_last > 0 and post_covid == False:
             preds = self.PREDS_TEST_ALL[i,:-self.test_exclude_last,:,var]
             actual_var = self.Y_test[:-self.test_exclude_last, var]
+          elif post_covid == True:
+            preds = self.PREDS_TEST_ALL[i,-post_covid_obs:,:,var]
+            actual_var = self.Y_test[-post_covid_obs:, var]
+          else:
+            preds = self.PREDS_TEST_ALL[i,:,:,var]
+            actual_var = self.Y_test[:, var]
         
         # Calculate median and the 16th and 84th quantiles
         preds_median = np.nanmedian(preds, axis = 1)
         
-        preds_lcl_1sd = preds_median - sigmas
-        preds_ucl_1sd = preds_median + sigmas
-        preds_lcl_2sd = preds_median - 1.96 * sigmas
-        preds_ucl_2sd = preds_median + 1.96 * sigmas
+        preds_lcl_1sd = preds_median - corrected_pred_vols
+        preds_ucl_1sd = preds_median + corrected_pred_vols
+        preds_lcl_2sd = preds_median - 1.96 * corrected_pred_vols
+        preds_ucl_2sd = preds_median + 1.96 * corrected_pred_vols
         
         # Calculate the 68% and 95% nominal coverage
         coverage_1sd = (preds_lcl_1sd <= actual_var) & (actual_var <= preds_ucl_1sd)
@@ -1188,7 +1389,7 @@ class Evaluation:
         ax[i, var].set_ylim(y_min, y_max)
     
     
-    image_file = f'{self.image_folder_path}/preds_with_bands.png'
+    image_file = f"{self.image_folder_path}/preds_with_bands{'_post_covid' if post_covid == True else ''}.png"
     plt.savefig(image_file)
     plt.close()
     
@@ -1438,9 +1639,12 @@ class Evaluation:
       self.plot_betas(is_test = True)
 
     self.plot_predictions()
+    self.plot_predictions_with_bands()
+    self.plot_volatility()
     self.plot_errors(data_sample='oob')
     self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
-    self.evaluate_predictive_density()
+    self.evaluate_predictive_density(post_covid = False)
+    self.evaluate_predictive_density(post_covid = True)
     
     
     self.plot_betas_comparison(exps_to_compare = self.experiments_to_compare)
@@ -1467,7 +1671,8 @@ class Evaluation:
     self.plot_errors(data_sample='oob')
     self.plot_errors(data_sample='test', exclude_last = self.test_exclude_last)
     self.evaluate_multi_step_forecasts()
-    self.evaluate_predictive_density()
+    self.evaluate_predictive_density(post_covid = False)
+    self.evaluate_predictive_density(post_covid = True)
 
   def evaluate_multi_step_forecasts(self, exclude_last = 0):
     multi_forecasting_params = {
