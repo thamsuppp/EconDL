@@ -213,12 +213,12 @@ class Run:
 
     print('Multi-forecasting Benchmarks trained')
 
-  def compute_conditional_irfs(self, experiment_ids = None):
+  def compute_conditional_irfs(self, Y_train, experiment_ids = None):
     # If experiment_ids = None, then train all
     experiment_ids = experiment_ids if experiment_ids else list(range(self.num_experiments))
     for experiment_id in experiment_ids:
       ExperimentObj = self.experiments[experiment_id]
-      ExperimentObj.compute_conditional_irfs()
+      ExperimentObj.compute_conditional_irfs(Y_train)
 
   def evaluate_unconditional_irfs(self, Y_train, experiment_ids = None):
     # If experiment_ids = None, then train all

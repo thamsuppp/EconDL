@@ -84,7 +84,7 @@ class Experiment:
       print(k, self.results[k].shape)
 
   # Only done after all repeats are trained (called by Evaluation function)
-  def compute_conditional_irfs(self):
+  def compute_conditional_irfs(self, Y_train):
     if self.execution_params['conditional_irfs'] == False or self.job_id is not None:
       print('Experiment compute_conditional_irfs(): Conditional IRFs turned off')
       return
@@ -100,6 +100,7 @@ class Experiment:
         'n_var': self.nn_hyps['n_var'],
         'var_names': self.nn_hyps['var_names'],
         'n_lags': self.nn_hyps['n_lag_linear'],
+        'n_lag_d': self.nn_hyps['n_lag_d'],
         'n_betas': self.nn_hyps['n_var'] * self.nn_hyps['n_lag_linear'] + 1,
         'max_h': self.extensions_params['conditional_irfs']['max_h'],
         'test_exclude_last': self.extensions_params['conditional_irfs']['test_exclude_last'],
@@ -109,7 +110,7 @@ class Experiment:
         'experiment_name': self.nn_hyps['name']
       }
       #try:
-      IRFConditionalObj = IRFConditional(self.results, conditional_irf_params)
+      IRFConditionalObj = IRFConditional(self.results, conditional_irf_params, Y_train, image_folder_path)
       IRFConditionalObj.plot_irfs(image_folder_path)
       IRFConditionalObj.plot_irfs_3d(image_folder_path, is_test = False)
       IRFConditionalObj.plot_irfs_3d(image_folder_path, is_test = True)

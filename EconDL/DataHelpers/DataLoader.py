@@ -27,9 +27,9 @@ def load_data(dataset_name):
         # Rename a column
         data = data.rename(columns = {'Unnamed: 0': 'Date'})
 
-        x_d_all = data[['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L_0y', 'L0_UNRATE', 'L0_HOUST']]
-        x_d_all.columns = ['oil', 'Ex', 'SPY', 'DGS3', 'inf', 'unrate', 'house_starts']
-        exog_data = data[[e for e in data.columns if e not in ['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L_0y', 'L0_UNRATE', 'L0_HOUST']]]
+        x_d_all = data[['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L_0y', 'L0_UNRATE', 'L0_INDPRO', 'L0_HOUST']]
+        x_d_all.columns = ['oil', 'Ex', 'SPY', 'DGS3', 'inf', 'unrate', 'indpro', 'house_starts']
+        exog_data = data[[e for e in data.columns if e not in ['L0_OILPRICEx', 'L0_EXUSUKx', 'L0_S.P.500', 'L0_TB3MS', 'L_0y', 'L0_UNRATE', 'L0_INDPRO', 'L0_HOUST']]]
 
     elif dataset_name == 'quarterly':
         data = pd.read_csv('data/monthlyData.csv')

@@ -206,160 +206,79 @@ class ForecastMultiEvaluation:
     print(f'Multi-forecasting Different Horizon Preds plotted at {image_file}')
 
   def plot_forecast_errors(self):
-
+    
     n_models = self.Y_pred_big_latest.shape[0]
-
-    fig, ax = plt.subplots(self.h ,self.n_var, figsize = (self.n_var * 6, self.h * 4), constrained_layout = True)
-
-    if self.exclude_2020 == True:
-      errors = np.zeros((n_models, self.Y_test.shape[0], self.h, self.n_var))
-    else:
-      errors = np.zeros((n_models, self.test_size - self.exclude_last, self.h, self.n_var))
-  
+    
+    ### Calculate MAE
+    Y_test = self.Y_test
+    
+    test_periods = ['all', 'exclude_2020', 'exclude_2020_and_after']
+    
+    if self.dataset_name == 'quarterly_new':
+      test_obs = {
+        'all': list(range(Y_test.shape[0])),
+        'exclude_2020': list(range(Y_test.shape[0] - 10)) + list(range(Y_test.shape[0] - 6, Y_test.shape[0])),
+        'exclude_2020_and_after': list(range(Y_test.shape[0] - 10))
+      }
+    elif self.dataset_name == 'monthly_new':
+      test_obs = {
+        'all': list(range(Y_test.shape[0])),
+        'exclude_2020': list(range(Y_test.shape[0] - 31)) + list(range(Y_test.shape[0] - 19, Y_test.shape[0])),
+        'exclude_2020_and_after': list(range(Y_test.shape[0] - 31))
+      }
+      
+    errors = np.zeros((n_models, self.test_size, self.h, self.n_var))  
+    
     for horizon in range(1, self.h+1):
-
-      # Plot actual
-      for var in range(self.n_var):
-        ax[horizon-1, var].set_title(f'{self.var_names[var]}, h = {horizon}')
-
-        # Draw a vertical line at the point where we excluded data
-        if self.exclude_2020 == True:
-          ax[horizon-1, var].axvline(x = self.first_test_id_to_exclude - 0.5, ls = 'dashed', color = 'black')
-        
-      # Plot predicted
+      # Get actual, predicted and error
       for model in range(n_models):
         Y_pred_h = np.transpose(self.Y_pred_big_latest_shifted[model, horizon, :, :])
-
         for var in range(self.n_var):
-          if self.exclude_last > 0:
-            actual = self.Y_test[:-self.exclude_last, var]
-            pred = Y_pred_h[:-self.exclude_last, var]
-          else:
-            actual = self.Y_test[:, var]
-            pred = Y_pred_h[:, var]
+          actual = self.Y_test[:, var]
+          pred = Y_pred_h[:, var]
           error = np.abs(actual - pred)
-    
           # Store the errors in the errors array
-          errors[model, :, horizon-1, var] = error
+          errors[model, :, horizon-1, var] = error  
+
 
     cum_errors = np.nancumsum(errors, axis = 1)
     cum_error_benchmark = cum_errors[self.M_varnn + 1, :, :, :] # Benchmark is the AR rolling model
-
-    # After computing all the cum errors, plot them
-    for horizon in range(1, self.h+1):
-      for model in range(n_models):
-        for var in range(self.n_var):
-          if model < self.M_varnn:
-            ax[horizon-1, var].plot(cum_errors[model, :, horizon-1, var] - cum_error_benchmark[:, horizon-1, var], label = self.experiments_names[model], color = palette[model])
-          else: # Dotted lines plot for benchmarks
-            ax[horizon-1, var].plot(cum_errors[model, :, horizon-1, var] - cum_error_benchmark[:, horizon-1, var], label = self.experiments_names[model], color = palette[model], ls = 'dotted')
-
-      if var == (self.n_var - 1) and horizon == 1:
-        ax[horizon-1, var].legend()
-
-    image_file = f'{self.image_folder_path}/multi_forecast_cum_errors.png'
-    plt.savefig(image_file)
-    print(f'Multi-forecasting Cum Errors plotted at {image_file}')
-
-    # Calculate MAE and save file
     
-    maes = np.nanmean(errors, axis = 1)
-    maes_reshaped = maes.reshape(maes.shape[0] * maes.shape[1], maes.shape[2])
-    mae_df = pd.DataFrame(maes_reshaped,
-                columns = self.var_names
-    )
-    mae_df['model'] = np.repeat(self.experiments_names, maes.shape[1])
-    mae_df['horizon'] = np.tile(np.arange(1, maes.shape[1] + 1), maes.shape[0])
+    mae_df_all = pd.DataFrame()
+    # Calculate mean errors for different test periods
+    for test_period in test_periods:
+      
+      errors_test_period = errors[:, test_obs[test_period], :, :]
+      
+      maes = np.nanmean(errors_test_period, axis = 1)
+      maes_reshaped = maes.reshape(maes.shape[0] * maes.shape[1], maes.shape[2])
+      mae_df = pd.DataFrame(maes_reshaped,
+                  columns = self.var_names
+      )
+      mae_df['model'] = np.repeat(self.experiments_names, maes.shape[1])
+      mae_df['horizon'] = np.tile(np.arange(1, maes.shape[1] + 1), maes.shape[0])
+      mae_df['test_period'] = test_period
 
-    # Standardize errors by benchmark model
-    if self.normalize_errors_to_benchmark == True:
-      normalized_df = pd.DataFrame()
-      for horizon in range(1, self.h+1):
-        maes_horizon = mae_df.loc[mae_df['horizon'] == horizon, :].copy()
-        maes_horizon[self.var_names] = maes_horizon[self.var_names] / maes_horizon.loc[maes_horizon['model'] == self.experiments_names[self.M_varnn + 1], self.var_names].values
-        normalized_df = pd.concat([normalized_df, maes_horizon])
-      mae_df = normalized_df
+      # Standardize errors by benchmark model
+      if self.normalize_errors_to_benchmark == True:
+        normalized_df = pd.DataFrame()
+        for horizon in range(1, self.h+1):
+          maes_horizon = mae_df.loc[mae_df['horizon'] == horizon, :].copy()
+          maes_horizon[self.var_names] = maes_horizon[self.var_names] / maes_horizon.loc[maes_horizon['model'] == self.experiments_names[self.M_varnn + 1], self.var_names].values
+          normalized_df = pd.concat([normalized_df, maes_horizon])
+        mae_df = normalized_df
+      mae_df_all = pd.concat([mae_df_all, mae_df])
 
-    mae_df = mae_df[['model', 'horizon'] + self.var_names]
-    mae_df['model_id'] = mae_df['model'].apply(lambda x: self.experiments_names.index(x))
-    mae_df = mae_df.sort_values(by = ['horizon', 'model_id'])
-    mae_df = mae_df.drop(columns = ['model_id'])
+    mae_df_all = mae_df_all[['test_period', 'model', 'horizon'] + self.var_names]
+    mae_df_all['model_id'] = mae_df_all['model'].apply(lambda x: self.experiments_names.index(x))
+    mae_df_all = mae_df_all.sort_values(by = ['test_period', 'horizon', 'model_id'])
+    mae_df_all = mae_df_all.drop(columns = ['model_id'])
     # Convert into the format in PGC's papers
-    mae_df = mae_df.melt(['model', 'horizon'], var_name = 'variable', value_name = 'MAE')
-    mae_df = mae_df.sort_values(['variable', 'horizon']).pivot(values = 'MAE',
-                                                    index = ['variable', 'horizon'],
+    mae_df_all = mae_df_all.melt(['test_period', 'model', 'horizon'], var_name = 'variable', value_name = 'MAE')
+    mae_df_all = mae_df_all.sort_values(['test_period', 'variable', 'horizon']).pivot(values = 'MAE',
+                                                    index = ['test_period', 'variable', 'horizon'],
                                                     columns = 'model'
     )
-    mae_df = mae_df[self.experiments_names]
-    mae_df = mae_df.reset_index()
-    mae_df.to_csv(f'{self.image_folder_path}/multi_forecast_errors.csv', index = False)
-
-    # If exclude_2020, then also output the errors pre and post COVID (as well as total errors)
-    if self.exclude_2020 == True:
-
-
-      # Pre COVID
-      maes = np.nanmean(errors[:, :self.first_test_id_to_exclude, :, :], axis = 1)
-      maes_reshaped = maes.reshape(maes.shape[0] * maes.shape[1], maes.shape[2])
-      mae_df = pd.DataFrame(maes_reshaped,
-                  columns = self.var_names
-      )
-      mae_df['model'] = np.repeat(self.experiments_names, maes.shape[1])
-      mae_df['horizon'] = np.tile(np.arange(1, maes.shape[1] + 1), maes.shape[0])
-
-      # Standardize errors by benchmark model
-      if self.normalize_errors_to_benchmark == True:
-        normalized_df = pd.DataFrame()
-        for horizon in range(1, self.h+1):
-          maes_horizon = mae_df.loc[mae_df['horizon'] == horizon, :].copy()
-          maes_horizon[self.var_names] = maes_horizon[self.var_names] / maes_horizon.loc[maes_horizon['model'] == self.experiments_names[self.M_varnn + 1], self.var_names].values
-          normalized_df = pd.concat([normalized_df, maes_horizon])
-        mae_df = normalized_df
-
-      mae_df = mae_df[['model', 'horizon'] + self.var_names]
-      mae_df['model_id'] = mae_df['model'].apply(lambda x: self.experiments_names.index(x))
-      mae_df = mae_df.sort_values(by = ['horizon', 'model_id'])
-      mae_df = mae_df.drop(columns = ['model_id'])
-      # Convert into the format in PGC's papers
-      mae_df = mae_df.melt(['model', 'horizon'], var_name = 'variable', value_name = 'MAE')
-      mae_df = mae_df.sort_values(['variable', 'horizon']).pivot(values = 'MAE',
-                                                      index = ['variable', 'horizon'],
-                                                      columns = 'model'
-      )
-      mae_df = mae_df[self.experiments_names]
-      mae_df = mae_df.reset_index()
-      mae_df.to_csv(f'{self.image_folder_path}/multi_forecast_errors_pre_covid.csv', index = False)
-
-      
-      ### POST COVID
-
-      maes = np.nanmean(errors[:, self.first_test_id_to_exclude:, :, :], axis = 1)
-      maes_reshaped = maes.reshape(maes.shape[0] * maes.shape[1], maes.shape[2])
-      mae_df = pd.DataFrame(maes_reshaped,
-                  columns = self.var_names
-      )
-      mae_df['model'] = np.repeat(self.experiments_names, maes.shape[1])
-      mae_df['horizon'] = np.tile(np.arange(1, maes.shape[1] + 1), maes.shape[0])
-
-      # Standardize errors by benchmark model
-      if self.normalize_errors_to_benchmark == True:
-        normalized_df = pd.DataFrame()
-        for horizon in range(1, self.h+1):
-          maes_horizon = mae_df.loc[mae_df['horizon'] == horizon, :].copy()
-          maes_horizon[self.var_names] = maes_horizon[self.var_names] / maes_horizon.loc[maes_horizon['model'] == self.experiments_names[self.M_varnn + 1], self.var_names].values
-          normalized_df = pd.concat([normalized_df, maes_horizon])
-        mae_df = normalized_df
-
-      mae_df = mae_df[['model', 'horizon'] + self.var_names]
-      mae_df['model_id'] = mae_df['model'].apply(lambda x: self.experiments_names.index(x))
-      mae_df = mae_df.sort_values(by = ['horizon', 'model_id'])
-      mae_df = mae_df.drop(columns = ['model_id'])
-      # Convert into the format in PGC's papers
-      mae_df = mae_df.melt(['model', 'horizon'], var_name = 'variable', value_name = 'MAE')
-      mae_df = mae_df.sort_values(['variable', 'horizon']).pivot(values = 'MAE',
-                                                      index = ['variable', 'horizon'],
-                                                      columns = 'model'
-      )
-      mae_df = mae_df[self.experiments_names]
-      mae_df = mae_df.reset_index()
-      mae_df.to_csv(f'{self.image_folder_path}/multi_forecast_errors_post_covid.csv', index = False)
+    mae_df_all = mae_df_all[self.experiments_names]
+    mae_df_all = mae_df_all.reset_index()
+    mae_df_all.to_csv(f'{self.image_folder_path}/multi_forecast_errors_all.csv', index = False)

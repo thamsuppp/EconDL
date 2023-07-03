@@ -35,7 +35,7 @@ RunObj.train_multi_forecast_benchmarks()
 
 EvaluationObj = Evaluation(RunObj)
 if cond_irf == True:
-  EvaluationObj.Run.compute_conditional_irfs()
+  EvaluationObj.compute_conditional_irfs()
   EvaluationObj.plot_conditional_irf_comparison_3d()
 
 print(EvaluationObj.check_results_sizes())
@@ -46,11 +46,11 @@ if density_only == True:
   EvaluationObj.plot_predictions_with_bands(post_covid = False)
   EvaluationObj.plot_predictions_with_bands(post_covid = True)
   EvaluationObj.plot_volatility()
+
+if fcast_only == True:
+  EvaluationObj.plot_forecasts()
 else:
-  if fcast_only == True:
-    EvaluationObj.plot_forecasts()
-  else:
-    EvaluationObj.plot_all(cond_irf = cond_irf)
+  EvaluationObj.plot_all(cond_irf = cond_irf)
 
 
 

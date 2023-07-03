@@ -1,0 +1,139 @@
+Run is qtr_5var_26apr, cond_irf is True, fcast_only is False
+Folder at results/qtr_5var_26apr already exists
+DataLoader: Loaded dataset quarterly_new
+Experiment Initialized: experiment 0, repeat None, reestim 0, num reestims 18
+Experiment load_results(): Loading results for Experiment id 0, reestims: 18, repeats_to_include: None
+Experiment load_results(): Loaded compiled results
+Experiment Initialized: experiment 1, repeat None, reestim 0, num reestims 18
+Experiment load_results(): Loading results for Experiment id 1, reestims: 18, repeats_to_include: None
+Experiment load_results(): Loaded compiled results
+Experiment Initialized: experiment 2, repeat None, reestim 0, num reestims 18
+Experiment load_results(): Loading results for Experiment id 2, reestims: 18, repeats_to_include: None
+Experiment load_results(): Loaded compiled results
+Benchmarks already trained
+Multiforecast Benchmarks already trained
+Evaluation compile_results: Repeats_to_include None
+Run compile_experiments(): repeats_to_include None
+Experiment load_results(): Loading results for Experiment id 0, reestims: 18, repeats_to_include: None
+Experiment load_results(): Loaded compiled results
+Experiment _compile_results(): Compiled results already
+Experiment _compile_reestims(): Compiled results already
+FCAST (9, 5, 360, 72, 1)
+FCAST (9, 5, 360, 68, 1)
+FCAST (9, 5, 360, 64, 1)
+FCAST (9, 5, 360, 60, 1)
+FCAST (9, 5, 360, 56, 1)
+FCAST (9, 5, 360, 52, 1)
+FCAST (9, 5, 360, 48, 1)
+FCAST (9, 5, 360, 44, 1)
+FCAST (9, 5, 360, 40, 1)
+FCAST (9, 5, 360, 36, 1)
+FCAST (9, 5, 360, 32, 1)
+FCAST (9, 5, 360, 28, 1)
+FCAST (9, 5, 360, 24, 1)
+FCAST (9, 5, 360, 20, 1)
+FCAST (9, 5, 360, 16, 1)
+FCAST (9, 5, 360, 12, 1)
+FCAST (9, 5, 360, 8, 1)
+FCAST (9, 5, 360, 4, 1)
+FCAST_ALL (9, 5, 360, 72, 18)
+Compiled Multi-Forecasting Re-estimations FCAST_OUT (9, 5, 360, 72, 1)
+Experiment load_results(): Loading results for Experiment id 1, reestims: 18, repeats_to_include: None
+Experiment load_results(): Loaded compiled results
+Experiment _compile_results(): Compiled results already
+Experiment _compile_reestims(): Compiled results already
+FCAST (9, 5, 360, 72, 1)
+FCAST (9, 5, 360, 68, 1)
+FCAST (9, 5, 360, 64, 1)
+FCAST (9, 5, 360, 60, 1)
+FCAST (9, 5, 360, 56, 1)
+FCAST (9, 5, 360, 52, 1)
+FCAST (9, 5, 360, 48, 1)
+FCAST (9, 5, 360, 44, 1)
+FCAST (9, 5, 360, 40, 1)
+FCAST (9, 5, 360, 36, 1)
+FCAST (9, 5, 360, 32, 1)
+FCAST (9, 5, 360, 28, 1)
+FCAST (9, 5, 360, 24, 1)
+FCAST (9, 5, 360, 20, 1)
+FCAST (9, 5, 360, 16, 1)
+FCAST (9, 5, 360, 12, 1)
+FCAST (9, 5, 360, 8, 1)
+FCAST (9, 5, 360, 4, 1)
+FCAST_ALL (9, 5, 360, 72, 18)
+Compiled Multi-Forecasting Re-estimations FCAST_OUT (9, 5, 360, 72, 1)
+Experiment _compile_unconditional_irf_results(): Experiment has multiple hemispheres, not training unconditional IRFs
+Experiment load_results(): Loading results for Experiment id 2, reestims: 18, repeats_to_include: None
+Experiment load_results(): Loaded compiled results
+Experiment _compile_results(): Compiled results already
+Experiment _compile_reestims(): Compiled results already
+FCAST (9, 5, 360, 72, 1)
+FCAST (9, 5, 360, 68, 1)
+FCAST (9, 5, 360, 64, 1)
+FCAST (9, 5, 360, 60, 1)
+FCAST (9, 5, 360, 56, 1)
+FCAST (9, 5, 360, 52, 1)
+FCAST (9, 5, 360, 48, 1)
+FCAST (9, 5, 360, 44, 1)
+FCAST (9, 5, 360, 40, 1)
+FCAST (9, 5, 360, 36, 1)
+FCAST (9, 5, 360, 32, 1)
+FCAST (9, 5, 360, 28, 1)
+FCAST (9, 5, 360, 24, 1)
+FCAST (9, 5, 360, 20, 1)
+FCAST (9, 5, 360, 16, 1)
+FCAST (9, 5, 360, 12, 1)
+FCAST (9, 5, 360, 8, 1)
+FCAST (9, 5, 360, 4, 1)
+FCAST_ALL (9, 5, 360, 72, 18)
+Compiled Multi-Forecasting Re-estimations FCAST_OUT (9, 5, 360, 72, 1)
+Experiment _compile_unconditional_irf_results(): Experiment has multiple hemispheres, not training unconditional IRFs
+Evaluation load_results(): load_file: results/qtr_5var_26apr/params_0_compiled.npz
+Evaluation load_results(): load_file: results/qtr_5var_26apr/params_1_compiled.npz
+Evaluation load_results(): load_file: results/qtr_5var_26apr/params_2_compiled.npz
+Starting to load 0: VAR_whole
+Starting to load 1: AR_whole
+Starting to load 2: VAR_roll
+Starting to load 3: AR_roll
+Starting to load 4: VAR_expand
+Starting to load 5: AR_expand
+Starting to load 6: RF_whole
+Starting to load 7: zero
+Starting to load 8: mean
+Conducting volatility correction
+Variable 0: Intercept = -2.3520971209854684, Coef = [0.51373026], Scaler = 5.352022692489818
+Variable 1: Intercept = -3.8478621385208136, Coef = [0.51943355], Scaler = 3.582603162164498
+Variable 2: Intercept = -2.9135688898377543, Coef = [0.52274119], Scaler = 4.136577168339975
+Variable 3: Intercept = -5.189159587671414, Coef = [0.59852698], Scaler = 3.8896230250694965
+Variable 4: Intercept = -3.9082925673732927, Coef = [0.78570536], Scaler = 3.8703420136209243
+Variable 0: Intercept = -1.5184318382343942, Coef = [1.05515599], Scaler = 4.077102227595875
+Variable 1: Intercept = -2.289545125751637, Coef = [0.81440232], Scaler = 3.944365225759764
+Variable 2: Intercept = -1.8937621155483875, Coef = [0.83791007], Scaler = 3.9399238116581996
+Variable 3: Intercept = -5.76071107754223, Coef = [0.525947], Scaler = 3.3068063207950718
+Variable 4: Intercept = -4.665271501773652, Coef = [0.71850577], Scaler = 3.6975470358511573
+Variable 0: Intercept = -1.649500969916503, Coef = [0.93071593], Scaler = 4.446912382093001
+Variable 1: Intercept = -1.4452782456091855, Coef = [0.93969054], Scaler = 3.453853195752384
+Variable 2: Intercept = -0.9027321337620062, Coef = [1.16877073], Scaler = 3.85494943226691
+Variable 3: Intercept = -4.2864197504619765, Coef = [0.66744463], Scaler = 3.011250274296503
+Variable 4: Intercept = -1.7578080257312045, Coef = [0.99234369], Scaler = 3.488165834165664
+Simulation timestep 0 at 2023-05-14 22:13:39.041922
+Simulation timestep 100 at 2023-05-14 22:13:45.341472
+Simulation timestep 200 at 2023-05-14 22:13:57.404775
+Traceback (most recent call last):
+  File "evaluation_script.py", line 38, in <module>
+    EvaluationObj.compute_conditional_irfs()
+  File "/lustre06/project/6019022/VARNN-Isaac-Latest/EconDL/EconDL/Evaluation.py", line 1549, in compute_conditional_irfs
+    self.Run.compute_conditional_irfs(self.Y_train)
+  File "/lustre06/project/6019022/VARNN-Isaac-Latest/EconDL/EconDL/Run.py", line 221, in compute_conditional_irfs
+    ExperimentObj.compute_conditional_irfs(Y_train)
+  File "/lustre06/project/6019022/VARNN-Isaac-Latest/EconDL/EconDL/Experiment.py", line 113, in compute_conditional_irfs
+    IRFConditionalObj.plot_irfs(image_folder_path)
+  File "/lustre06/project/6019022/VARNN-Isaac-Latest/EconDL/EconDL/IRF/IRFConditional.py", line 290, in plot_irfs
+    alpha = 0.3, color = 'black')
+  File "/lustre06/project/6019022/VARNN-Isaac-Latest/ENV/lib/python3.7/site-packages/matplotlib/__init__.py", line 1361, in inner
+    return func(ax, *map(sanitize_sequence, args), **kwargs)
+  File "/lustre06/project/6019022/VARNN-Isaac-Latest/ENV/lib/python3.7/site-packages/matplotlib/axes/_axes.py", line 5388, in fill_between
+    where=where, interpolate=interpolate, step=step, **kwargs)
+  File "/lustre06/project/6019022/VARNN-Isaac-Latest/ENV/lib/python3.7/site-packages/matplotlib/axes/_axes.py", line 5309, in _fill_between_x_or_y
+    np.logical_or, map(np.ma.getmask, [ind, dep1, dep2]))
+ValueError: operands could not be broadcast together with shapes (16,) (17,) 
